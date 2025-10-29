@@ -1,5 +1,5 @@
 import { Dimensions, Image, Keyboard, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, TouchableWithoutFeedback, View } from 'react-native'
-import React, { useState } from 'react'
+import React, { useRef, useState } from 'react'
 import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 
 export default function LoginScreen() {
@@ -7,62 +7,69 @@ export default function LoginScreen() {
     const [password, setPassword] = useState("");
     const [username, setUsername] = useState("");
     const [remember, setRemember] = useState(false);
+
+    const passwordRef = useRef(null);
+
     return (
         <KeyboardAvoidingView
             style={{ flex: 1 }}
-            behavior={Platform.OS === "ios" ? "padding" : "height"}
-        // keyboardVerticalOffset={Platform.OS === "ios" ? 64 : 0}
+            behavior={Platform.OS === "ios" ? "padding" : undefined} // Để undefined cho Android
         >
             <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
                 <ScrollView
-                    contentContainerStyle={styles.container}
+                    contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', paddingHorizontal: 16 }}
                     keyboardShouldPersistTaps="handled"
                     showsVerticalScrollIndicator={false}
                 >
-                    <View style={{ width: Dimensions.get('screen').width, paddingHorizontal: 16, marginTop: Dimensions.get('window').height / 4, flex: 1 }}>
-                        <View style={{ alignItems: 'center' }}>
-                            <Image source={{ uri: 'https://cdn-icons-png.flaticon.com/512/10984/10984874.png' }} width={100} height={100} resizeMode='contain' />
-                            <Text style={{ fontSize: 20, marginTop: 16, fontWeight: '800', letterSpacing: 2, color: '#004643' }}>X-Work</Text>
+                    <View style={{ alignItems: 'center' }}>
+                        <Image
+                            source={{ uri: 'https://cdn-icons-png.flaticon.com/512/10984/10984874.png' }}
+                            style={{ width: 100, height: 100 }}
+                            resizeMode='contain'
+                        />
+                        <Text style={{ fontSize: 20, marginTop: 16, fontWeight: '800', letterSpacing: 2, color: '#004643' }}>
+                            X-Work
+                        </Text>
+                    </View>
+
+                    <View style={{ marginTop: 40, width: Dimensions.get('window').width - 48 }}>
+                        <Text style={styles.titleInput}>Tên tài khoản</Text>
+                        <TextInput
+                            placeholder="Nhập tên tài khoản"
+                            value={username}
+                            onChangeText={setUsername}
+                            style={styles.input}
+                            autoCapitalize="none"
+                            returnKeyType="next"
+                            onSubmitEditing={() => passwordRef.current?.focus()}
+                            blurOnSubmit={false} // 👈 tránh ẩn bàn phím
+                        />
+
+                        <Text style={[styles.titleInput, { marginTop: 18 }]}>Mật khẩu</Text>
+                        <View style={{
+                            flexDirection: 'row',
+                            alignItems: 'center',
+                            borderWidth: 1,
+                            borderColor: "#C4C4C4",
+                            borderRadius: 8,
+                        }}>
+                            <TextInput
+                                ref={passwordRef}
+                                placeholder="Nhập mật khẩu"
+                                value={password}
+                                onChangeText={setPassword}
+                                secureTextEntry={!visible}
+                                style={styles.inputPassword}
+                            />
+                            <TouchableOpacity style={{ marginRight: 12 }} activeOpacity={0.7} onPress={() => setVisible(!visible)}>
+                                <Ionicons name={visible ? "eye-off" : "eye"} size={24} color="#757575" />
+                            </TouchableOpacity>
                         </View>
-                        {/* <Text style={{ alignSelf: 'center', marginTop: 32, color: '#004643', fontSize: 20, fontWeight: '500' }}>Đăng nhập</Text> */}
-                        <View style={{ flex: 1, paddingHorizontal: 8, marginTop: 40 }}>
-                            <View>
-                                <Text style={styles.titleInput}>Tên tài khoản</Text>
-                                <TextInput
-                                    placeholder="Nhập tên tài khoản"
-                                    value={username}
-                                    onChangeText={setUsername}
-                                    style={styles.input}
-                                    autoCapitalize="none"
-                                    returnKeyType="next"
-                                />
-                            </View>
-                            <View style={{ marginTop: 18 }}>
-                                <Text style={styles.titleInput}>Mật khẩu</Text>
-                                <View style={{
-                                    flexDirection: 'row',
-                                    alignItems: 'center',
-                                    borderWidth: 1,
-                                    borderColor: "#C4C4C4",
-                                    borderRadius: 8,
-                                }}>
-                                    <TextInput
-                                        placeholder="Nhập mật khẩu"
-                                        value={password}
-                                        onChangeText={setPassword}
-                                        secureTextEntry={!visible}
-                                        style={styles.inputPassword}
-                                    />
-                                    <TouchableOpacity style={{ marginRight: 12 }} activeOpacity={0.7} onPress={() => setVisible(!visible)}>
-                                        <Ionicons name={visible ? "eye-off" : "eye"} size={24} color="#757575" />
-                                    </TouchableOpacity>
-                                </View>
-                            </View>
-                            <TouchableOpacity
-                                style={styles.rememberContainer}
-                                activeOpacity={0.8}
-                                onPress={() => setRemember(!remember)}
-                            >
+
+                        <View
+                            style={styles.rememberContainer}
+                        >
+                            <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center' }} activeOpacity={0.8} onPress={() => setRemember(!remember)}>
                                 <Ionicons
                                     name={remember ? "checkbox" : "checkbox-outline"}
                                     size={22}
@@ -70,12 +77,23 @@ export default function LoginScreen() {
                                 />
                                 <Text style={styles.rememberText}>Ghi nhớ đăng nhập</Text>
                             </TouchableOpacity>
-                            <TouchableOpacity style={{ marginTop: 40, height: 48, backgroundColor: '#004643', borderRadius: 100, justifyContent: 'center', alignItems: 'center' }}>
-                                <Text style={{ color: '#FFFFFF', fontSize: 14, fontWeight: '600' }}>
-                                    Đăng nhập
-                                </Text>
-                            </TouchableOpacity>
                         </View>
+
+                        <TouchableOpacity
+                            style={{
+                                marginTop: 40,
+                                height: 48,
+                                backgroundColor: '#004643',
+                                borderRadius: 100,
+                                justifyContent: 'center',
+                                alignItems: 'center',
+                            }}
+                            activeOpacity={0.7}
+                        >
+                            <Text style={{ color: '#FFFFFF', fontSize: 14, fontWeight: '600' }}>
+                                Đăng nhập
+                            </Text>
+                        </TouchableOpacity>
                     </View>
                 </ScrollView>
             </TouchableWithoutFeedback>
