@@ -6,6 +6,7 @@ export default function LoginScreen() {
     const [visible, setVisible] = useState(false);
     const [password, setPassword] = useState("");
     const [username, setUsername] = useState("");
+    const [remember, setRemember] = useState(false);
     return (
         <KeyboardAvoidingView
             style={{ flex: 1 }}
@@ -18,15 +19,14 @@ export default function LoginScreen() {
                     keyboardShouldPersistTaps="handled"
                     showsVerticalScrollIndicator={false}
                 >
-                    <View style={{ width: Dimensions.get('screen').width, paddingHorizontal: 16, marginTop: 68, flex: 1 }}>
-
+                    <View style={{ width: Dimensions.get('screen').width, paddingHorizontal: 16, marginTop: Dimensions.get('window').height / 4, flex: 1 }}>
+                        <View style={{ alignItems: 'center' }}>
+                            <Image source={{ uri: 'https://cdn-icons-png.flaticon.com/512/10984/10984874.png' }} width={100} height={100} resizeMode='contain' />
+                            <Text style={{ fontSize: 20, marginTop: 16, fontWeight: '800', letterSpacing: 2, color: '#004643' }}>X-Work</Text>
+                        </View>
                         {/* <Text style={{ alignSelf: 'center', marginTop: 32, color: '#004643', fontSize: 20, fontWeight: '500' }}>Đăng nhập</Text> */}
-                        <View style={{ flex: 1, paddingHorizontal: 8, justifyContent: 'center' }}>
-                            <View style={{ alignItems: 'center' }}>
-                                <Image source={{ uri: 'https://cdn-icons-png.flaticon.com/512/10984/10984874.png' }} width={100} height={100} resizeMode='contain' />
-                                <Text style={{ fontSize: 20, marginTop: 16, fontWeight: '800', letterSpacing: 2, color: '#004643' }}>X-Work</Text>
-                            </View>
-                            <View style={{ marginTop: 72 }}>
+                        <View style={{ flex: 1, paddingHorizontal: 8, marginTop: 40 }}>
+                            <View>
                                 <Text style={styles.titleInput}>Tên tài khoản</Text>
                                 <TextInput
                                     placeholder="Nhập tên tài khoản"
@@ -58,7 +58,19 @@ export default function LoginScreen() {
                                     </TouchableOpacity>
                                 </View>
                             </View>
-                            <TouchableOpacity style={{ marginTop: 40, height: 48, backgroundColor: '#004643', borderRadius: 100, justifyContent: 'center', alignItems: 'center' }} activeOpacity={0.7}>
+                            <TouchableOpacity
+                                style={styles.rememberContainer}
+                                activeOpacity={0.8}
+                                onPress={() => setRemember(!remember)}
+                            >
+                                <Ionicons
+                                    name={remember ? "checkbox" : "checkbox-outline"}
+                                    size={22}
+                                    color="#004643"
+                                />
+                                <Text style={styles.rememberText}>Ghi nhớ đăng nhập</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity style={{ marginTop: 40, height: 48, backgroundColor: '#004643', borderRadius: 100, justifyContent: 'center', alignItems: 'center' }}>
                                 <Text style={{ color: '#FFFFFF', fontSize: 14, fontWeight: '600' }}>
                                     Đăng nhập
                                 </Text>
@@ -98,5 +110,15 @@ const styles = StyleSheet.create({
         fontWeight: 'semibold',
         color: '#000000',
         marginBottom: 6,
-    }
+    },
+    rememberContainer: {
+        flexDirection: "row",
+        alignItems: "center",
+        marginTop: 16,
+    },
+    rememberText: {
+        marginLeft: 8,
+        fontSize: 14,
+        color: "#333",
+    },
 })
