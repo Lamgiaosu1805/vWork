@@ -1,8 +1,9 @@
 import { Dimensions, Image, Keyboard, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, TouchableWithoutFeedback, View } from 'react-native'
 import React, { useRef, useState } from 'react'
 import { Ionicons, MaterialIcons } from "@expo/vector-icons";
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
-export default function LoginScreen() {
+export default function LoginScreen({ navigation }) {
     const [visible, setVisible] = useState(false);
     const [password, setPassword] = useState("");
     const [username, setUsername] = useState("");
@@ -10,9 +11,35 @@ export default function LoginScreen() {
 
     const passwordRef = useRef(null);
 
+    const handleLogin = async () => {
+        try {
+
+            const lastStack = await AsyncStorage.getItem("lastStack");
+            console.log(lastStack)
+            const initialRoute = lastStack || "WorkPlaceStackNavigator";
+
+            navigation.reset({
+                index: 0,
+                routes: [
+                    {
+                        name: "RootDrawer",
+                        params: { initialRoute },
+                    },
+                ],
+            });
+        } catch (error) {
+            console.error("Login error:", error);
+        }
+    }
+
     return (
         <KeyboardAvoidingView
-            style={{ flex: 1 }}
+            style={{
+                flex: 1,
+                backgroundColor: '#fff',
+                alignItems: 'center',
+                justifyContent: 'center',
+            }}
             behavior={Platform.OS === "ios" ? "padding" : undefined} // Để undefined cho Android
         >
             <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
@@ -89,6 +116,7 @@ export default function LoginScreen() {
                                 alignItems: 'center',
                             }}
                             activeOpacity={0.7}
+                            onPress={handleLogin}
                         >
                             <Text style={{ color: '#FFFFFF', fontSize: 14, fontWeight: '600' }}>
                                 Đăng nhập
