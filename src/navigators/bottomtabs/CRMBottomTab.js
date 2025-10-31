@@ -14,7 +14,7 @@ export default function CRMBottomTab() {
         tabBarInactiveTintColor: "gray",
         tabBarIcon: ({ color, size }) => {
           let iconName = "home-outline";
-          if (route.name === "Dashboard") iconName = "home-outline";
+          if (route.name === "Dashboard") iconName = "cart-outline";
           else if (route.name === "Tasks") iconName = "briefcase-outline";
           else if (route.name === "Profile") iconName = "person-outline";
           return <Ionicons name={iconName} size={size} color={color} />;

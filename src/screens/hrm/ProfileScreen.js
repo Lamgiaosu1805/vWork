@@ -3,11 +3,11 @@ import React from 'react'
 import Header from '../../components/Header'
 import { openDrawer } from '../../helpers/navigationRef'
 
-export default function AttendanceScreen() {
+export default function ProfileScreen() {
     return (
         <View style={styles.container}>
             <Header
-                title="Chấm công"
+                title="Hồ sơ cá nhân"
                 leftIconName="menu"
                 onLeftPress={() => {
                     openDrawer()
