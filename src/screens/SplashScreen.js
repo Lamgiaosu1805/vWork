@@ -14,7 +14,7 @@ export default function SplashScreen({ navigation }) {
             try {
                 const accessToken = await AsyncStorage.getItem("accessToken");
                 const res = await api.get("/user/getUserInfo", { requiresAuth: true });
-
+                // console.log(JSON.stringify(res.data, null, 2));
                 if (accessToken) {
                     dispatch(
                         setCredentials({
