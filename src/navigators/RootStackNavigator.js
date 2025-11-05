@@ -5,6 +5,7 @@ import { StatusBar } from 'expo-status-bar';
 import RootDrawerNavigator from './RootDrawerNavigator';
 import SettingsScreen from '../screens/SettingsScreen';
 import { navigationRef } from '../helpers/navigationRef';
+import SplashScreen from '../screens/SplashScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -12,8 +13,9 @@ export function RootStackNavigator() {
     return (
         <NavigationContainer ref={navigationRef}>
             <StatusBar style="auto" />
-            <Stack.Navigator 
+            <Stack.Navigator
                 screenOptions={{ headerShown: false }}>
+                <Stack.Screen name="SplashScreen" component={SplashScreen} />
                 <Stack.Screen name="LoginScreen" component={LoginScreen} />
                 <Stack.Screen name="RootDrawer" component={RootDrawerNavigator} />
                 <Stack.Screen
