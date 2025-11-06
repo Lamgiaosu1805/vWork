@@ -14,7 +14,7 @@ export default function HRMBottomTab() {
     <Tab.Navigator
       screenOptions={({ route }) => ({
         headerShown: false,
-        tabBarActiveTintColor: "#007AFF",
+        tabBarActiveTintColor: "#09A896",
         tabBarInactiveTintColor: "gray",
         tabBarIcon: ({ color, size }) => {
           let iconName;

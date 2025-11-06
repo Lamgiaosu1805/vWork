@@ -33,7 +33,7 @@ export default function LoginScreen({ navigation }) {
 
     const { showAlert } = useCustomAlert();
     const passwordRef = useRef(null);
-      const dispatch = useDispatch();
+    const dispatch = useDispatch();
 
     const handleLogin = async () => {
         try {
@@ -53,12 +53,16 @@ export default function LoginScreen({ navigation }) {
                 setLoading(false);
                 return;
             } else {
-                const { user, accessToken, refreshToken } = res.data;
-                dispatch(setCredentials({ user, accessToken, refreshToken }));
+                const { accessToken, refreshToken } = res.data;
+                const resUserInfo = await api.get("/user/getUserInfo", {
+                    headers: { Authorization: `Bearer ${accessToken}` }
+                });
+                const user = resUserInfo.data
+                dispatch(setCredentials({ user, accessToken }));
+
                 if (remember) {
                     await AsyncStorage.setItem("accessToken", accessToken);
                     await AsyncStorage.setItem("refreshToken", refreshToken);
-                    // await AsyncStorage.setItem("user", JSON.stringify(user));
                 } else {
                     await AsyncStorage.multiRemove(["accessToken", "refreshToken"]);
                 }

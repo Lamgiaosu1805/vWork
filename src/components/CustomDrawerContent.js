@@ -82,7 +82,7 @@ export default function CustomDrawerContent(props) {
             {/* Header profile */}
             <View style={styles.profileContainer}>
                 <Image
-                    source={{ uri: "https://dimensions.edu.vn/public/upload/2025/01/hinh-nen-dien-thoai-meme-7.webp" }}
+                    source={{ uri: "https://thuvienvector.vn/wp-content/uploads/2025/04/logo-co-dang-vector.jpg" }}
                     style={styles.avatar}
                 />
                 <Text style={styles.username}>Nghiêm Khắc Lâm</Text>
