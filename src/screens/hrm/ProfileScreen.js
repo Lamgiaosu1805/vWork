@@ -6,7 +6,7 @@ import { store } from '../../redux/store'
 import { Ionicons } from '@expo/vector-icons';
 import utils from '../../helpers/utils'
 
-export default function ProfileScreen() {
+export default function ProfileScreen({ navigation }) {
     const { auth } = store.getState()
     const user = auth.user
     console.log(JSON.stringify(auth, null, 2))
@@ -64,6 +64,13 @@ export default function ProfileScreen() {
                             </View>
                         </View>
                         <View style={styles.infoItem}>
+                            <Ionicons name="card-outline" size={24} color="#004643" />
+                            <View style={{ marginLeft: 8 }}>
+                                <Text style={{ fontSize: 12, color: 'gray', marginBottom: 4 }}>Số CC/CCCD/CMND</Text>
+                                <Text style={{ color: '#004643' }}>{user.cccd}</Text>
+                            </View>
+                        </View>
+                        <View style={styles.infoItem}>
                             <Ionicons name="calendar-outline" size={24} color="#004643" />
                             <View style={{ marginLeft: 8 }}>
                                 <Text style={{ fontSize: 12, color: 'gray', marginBottom: 4 }}>Ngày sinh</Text>
@@ -93,25 +100,27 @@ export default function ProfileScreen() {
                         </View>
                     </View>
                 </View>
-                <View style={[styles.block, {paddingVertical: 8}]}>
-                    <TouchableOpacity style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderBottomWidth: 1, borderColor: '#E5E7EB', paddingVertical: 12 }} activeOpacity={0.7}>
+                <View style={[styles.block, { paddingVertical: 8 }]}>
+                    <TouchableOpacity style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderBottomWidth: 1, borderColor: '#E5E7EB', paddingVertical: 12 }} activeOpacity={0.7}
+                        onPress={() => navigation.navigate('DocumentInfoScreen')}
+                    >
                         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                             <Ionicons name="document-outline" size={24} color="#004643" />
-                            <Text style={{fontSize: 14, fontWeight: '600', color: '#004643', marginLeft: 16}}>Tài liệu hồ sơ</Text>
+                            <Text style={{ fontSize: 14, fontWeight: '600', color: '#004643', marginLeft: 16 }}>Tài liệu hồ sơ</Text>
                         </View>
                         <Ionicons name="chevron-forward-outline" size={24} color="#004643" />
                     </TouchableOpacity>
                     <TouchableOpacity style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderBottomWidth: 1, borderColor: '#E5E7EB', paddingVertical: 12 }} activeOpacity={0.7}>
                         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                             <Ionicons name="document-text-outline" size={24} color="#004643" />
-                            <Text style={{fontSize: 14, fontWeight: '600', color: '#004643', marginLeft: 16}}>Hợp đồng lao động</Text>
+                            <Text style={{ fontSize: 14, fontWeight: '600', color: '#004643', marginLeft: 16 }}>Hợp đồng lao động</Text>
                         </View>
                         <Ionicons name="chevron-forward-outline" size={24} color="#004643" />
                     </TouchableOpacity>
                     <TouchableOpacity style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 12 }} activeOpacity={0.7}>
                         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                             <Ionicons name="timer-outline" size={24} color="#004643" />
-                            <Text style={{fontSize: 14, fontWeight: '600', color: '#004643', marginLeft: 16}}>Lịch sử làm việc</Text>
+                            <Text style={{ fontSize: 14, fontWeight: '600', color: '#004643', marginLeft: 16 }}>Lịch sử làm việc</Text>
                         </View>
                         <Ionicons name="chevron-forward-outline" size={24} color="#004643" />
                     </TouchableOpacity>
