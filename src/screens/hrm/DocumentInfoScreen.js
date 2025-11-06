@@ -1,15 +1,16 @@
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
+import { Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 import React, { useEffect, useState } from 'react'
 import Header from '../../components/Header'
 import api from '../../api/axiosInstance'
 import { store } from '../../redux/store'
+import utils from '../../helpers/utils'
 
 export default function DocumentInfoScreen({ navigation }) {
     const [listDocument, setListDocument] = useState([])
 
     const { auth } = store.getState()
+
     const documentUser = auth.user.documents
-    // console.log(documentUser)
     useEffect(() => {
         const getListDocument = async () => {
             const res = await api.get('/document/getListDocument', { requiresAuth: true })
@@ -26,6 +27,11 @@ export default function DocumentInfoScreen({ navigation }) {
 
             return (
                 <TouchableOpacity
+                    onPress={() => isProvided 
+                        ? navigation.navigate('DocumentUserDetailScreen', {
+                            documentDetail: documentUser.find(e => e.type?._id === document._id), title: document.name
+                        }) 
+                        : null}
                     activeOpacity={0.7}
                     key={document._id}
                     style={{
@@ -88,5 +94,9 @@ const styles = StyleSheet.create({
         backgroundColor: 'white',
         marginTop: 20,
         borderRadius: 8
+    },
+    image: {
+        width: '100%',
+        height: 300,
     },
 })

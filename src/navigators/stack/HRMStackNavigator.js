@@ -2,6 +2,7 @@ import React from "react";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import HRMBottomTab from "../bottomtabs/HRMBottomTab";
 import DocumentInfoScreen from "../../screens/hrm/DocumentInfoScreen";
+import DocumentUserDetail from "../../screens/hrm/DocumentUserDetail";
 const Stack = createNativeStackNavigator();
 
 export default function HRMStackNavigator() {
@@ -10,6 +11,7 @@ export default function HRMStackNavigator() {
 
       <Stack.Screen name="HRMBottomTab" component={HRMBottomTab} />
       <Stack.Screen name="DocumentInfoScreen" component={DocumentInfoScreen} />
+      <Stack.Screen name="DocumentUserDetailScreen" component={DocumentUserDetail} />
 
     </Stack.Navigator>
   );

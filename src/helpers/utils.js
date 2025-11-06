@@ -23,8 +23,17 @@ const formatDate = (dateString) => {
     return `${day}/${month}/${year}`;
 }
 
+const getFileExtension = (fileURL) => {
+    return {
+        extension: fileURL.split('.').pop(),
+        fileName: fileURL.split('/').pop()
+    }
+}
+
+
 export default {
     BASE_URL,
     renderMaritalStatus,
-    formatDate
+    formatDate,
+    getFileExtension
 }

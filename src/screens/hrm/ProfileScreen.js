@@ -9,7 +9,7 @@ import utils from '../../helpers/utils'
 export default function ProfileScreen({ navigation }) {
     const { auth } = store.getState()
     const user = auth.user
-    console.log(JSON.stringify(auth, null, 2))
+    // console.log(JSON.stringify(auth, null, 2))
     return (
         <View style={styles.container}>
             <Header
