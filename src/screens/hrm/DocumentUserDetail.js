@@ -4,6 +4,7 @@ import Header from '../../components/Header'
 import utils from '../../helpers/utils'
 import FileViewer from '../../components/FileViewer'
 import { store } from '../../redux/store'
+import { Ionicons } from '@expo/vector-icons';
 
 export default function DocumentUserDetail({ route, navigation }) {
     const [currentAttachment, setCurrentAttachment] = useState(null)
@@ -20,7 +21,7 @@ export default function DocumentUserDetail({ route, navigation }) {
                 style={{
                     width: 120,
                     height: 160,
-                    backgroundColor: currentAttachment?.file_name == e?.file_name ? 'grey' : 'white',
+                    backgroundColor: currentAttachment?.file_name == e?.file_name ? '#c5d8d7ff' : 'white',
                     justifyContent: 'center',
                     alignItems: 'center',
                     marginHorizontal: 32,
@@ -28,8 +29,14 @@ export default function DocumentUserDetail({ route, navigation }) {
                     paddingHorizontal: 8
                 }}
             >
-                <Text style={{ fontSize: 16, fontWeight: '600' }}>.{utils.getFileExtension(e.file_url).extension} file</Text>
-                <Text style={{ fontSize: 14, fontWeight: '400', marginTop: 12 }}>{e.file_name}</Text>
+                {
+                    utils.getFileExtension(e.file_url).extension == "pdf"
+                        ?
+                        <Ionicons name={"document"} size={20} />
+                        :
+                        <Ionicons name={"image"} size={20} />
+                }
+                <Text style={{ fontSize: 16, fontWeight: '600', marginTop: 12 }}>.{utils.getFileExtension(e.file_url).extension}</Text>
             </TouchableOpacity>
         ))
     }
@@ -43,6 +50,7 @@ export default function DocumentUserDetail({ route, navigation }) {
                 }}
             />
             <ScrollView
+                showsVerticalScrollIndicator={false}
                 style={{ flex: 1 }}
                 contentContainerStyle={{
                     flexGrow: 1,
@@ -55,14 +63,16 @@ export default function DocumentUserDetail({ route, navigation }) {
                         renderPreview()
                     }
                 </View>
-                <Text style={{ alignSelf: 'center', marginTop: 32, marginBottom: 20 }}>PREVIEW</Text>
+                <Text style={{ alignSelf: 'center', marginTop: 32, marginBottom: 20, fontWeight: '800', fontSize: 16, color: '#004643' }}>PREVIEW</Text>
                 {
                     currentAttachment != null && (
-                        <FileViewer
-                            extension={utils.getFileExtension(currentAttachment?.file_url).extension}
-                            filename={utils.getFileExtension(currentAttachment?.file_url).fileName}
-                            authToken={auth.accessToken}
-                        />
+                        <View style={{ borderWidth: 1, borderColor: '#004643', flex: utils.getFileExtension(currentAttachment?.file_url).extension == "pdf" ? 1 : 0, borderRadius: 8, backgroundColor: '#c5d8d7ff' }}>
+                            <FileViewer
+                                extension={utils.getFileExtension(currentAttachment?.file_url).extension}
+                                filename={utils.getFileExtension(currentAttachment?.file_url).fileName}
+                                authToken={auth.accessToken}
+                            />
+                        </View>
                     )
                 }
             </ScrollView>

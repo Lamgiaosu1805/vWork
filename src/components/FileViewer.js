@@ -1,5 +1,5 @@
 import React from 'react';
-import { Image, StyleSheet, Text } from 'react-native';
+import { Dimensions, Image, StyleSheet, Text } from 'react-native';
 import Pdf from 'react-native-pdf';
 import utils from '../helpers/utils';
 
@@ -42,7 +42,7 @@ export default function FileViewer({ filename, extension, authToken }) {
 const styles = StyleSheet.create({
   image: {
     width: '100%',
-    height: 300,
+    height: Dimensions.get('window').width - 40,
   },
   pdf: {
     flex: 1,

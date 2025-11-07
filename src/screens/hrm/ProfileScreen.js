@@ -22,6 +22,7 @@ export default function ProfileScreen({ navigation }) {
                 onRightPress={() => Alert.alert('Notifications Pressed')}
             />
             <ScrollView
+                showsVerticalScrollIndicator={false}
                 style={{ flex: 1 }}
                 contentContainerStyle={{
                     flexGrow: 1,

@@ -27,10 +27,10 @@ export default function DocumentInfoScreen({ navigation }) {
 
             return (
                 <TouchableOpacity
-                    onPress={() => isProvided 
+                    onPress={() => isProvided
                         ? navigation.navigate('DocumentUserDetailScreen', {
                             documentDetail: documentUser.find(e => e.type?._id === document._id), title: document.name
-                        }) 
+                        })
                         : null}
                     activeOpacity={0.7}
                     key={document._id}
@@ -68,6 +68,7 @@ export default function DocumentInfoScreen({ navigation }) {
                 }}
             />
             <ScrollView
+                showsVerticalScrollIndicator={false}
                 style={{ flex: 1 }}
                 contentContainerStyle={{
                     flexGrow: 1,

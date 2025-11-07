@@ -110,6 +110,7 @@ export default function DashboardHRMScreen() {
 
             {/* 🔽 Đặt ScrollView full màn */}
             <ScrollView
+                showsVerticalScrollIndicator={false}
                 style={{ flex: 1 }}
                 contentContainerStyle={{
                     flexGrow: 1,

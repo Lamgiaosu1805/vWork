@@ -62,10 +62,11 @@ export default function LoginScreen({ navigation }) {
 
                 if (remember) {
                     await AsyncStorage.setItem("accessToken", accessToken);
-                    await AsyncStorage.setItem("refreshToken", refreshToken);
+                    
                 } else {
-                    await AsyncStorage.multiRemove(["accessToken", "refreshToken"]);
+                    await AsyncStorage.multiRemove(["accessToken"]);
                 }
+                await AsyncStorage.setItem("refreshToken", refreshToken);
 
                 const lastStack = (await AsyncStorage.getItem("lastStack")) || "WorkPlaceStackNavigator";
                 navigation.reset({
