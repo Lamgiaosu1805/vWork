@@ -111,7 +111,11 @@ export default function ProfileScreen({ navigation }) {
                         </View>
                         <Ionicons name="chevron-forward-outline" size={24} color="#004643" />
                     </TouchableOpacity>
-                    <TouchableOpacity style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderBottomWidth: 1, borderColor: '#E5E7EB', paddingVertical: 12 }} activeOpacity={0.7}>
+                    <TouchableOpacity 
+                        style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderBottomWidth: 1, borderColor: '#E5E7EB', paddingVertical: 12 }} 
+                        activeOpacity={0.7}
+                        onPress={() => navigation.navigate('ShowFileScreen')}
+                    >
                         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                             <Ionicons name="document-text-outline" size={24} color="#004643" />
                             <Text style={{ fontSize: 14, fontWeight: '600', color: '#004643', marginLeft: 16 }}>Hợp đồng lao động</Text>

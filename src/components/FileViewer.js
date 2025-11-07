@@ -27,6 +27,9 @@ export default function FileViewer({ filename, extension, authToken }) {
         trustAllCerts={false}
         source={{ uri: fileUrl, cache: true, headers }}
         style={styles.pdf}
+        onError={(error) => {
+          console.log(error);
+        }}
       />
     );
   }
