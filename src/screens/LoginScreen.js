@@ -117,6 +117,7 @@ export default function LoginScreen({ navigation }) {
                             returnKeyType="next"
                             onSubmitEditing={() => passwordRef.current?.focus()}
                             blurOnSubmit={false}
+                            autoCorrect={false}
                         />
 
                         <Text style={[styles.titleInput, { marginTop: 18 }]}>Mật khẩu</Text>
@@ -128,6 +129,8 @@ export default function LoginScreen({ navigation }) {
                                 onChangeText={setPassword}
                                 secureTextEntry={!visible}
                                 style={styles.inputPassword}
+                                autoCapitalize="none"
+                                autoCorrect={false}
                             />
                             <TouchableOpacity style={{ marginRight: 12 }} onPress={() => setVisible(!visible)}>
                                 <Ionicons name={visible ? "eye-off" : "eye"} size={24} color="#757575" />

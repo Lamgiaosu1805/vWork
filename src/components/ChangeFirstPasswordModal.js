@@ -87,6 +87,8 @@ export default function ChangeFirstPasswordModal({
                   value={newPassword}
                   onChangeText={setNewPassword}
                   style={styles.input}
+                  autoCorrect={false}
+                  autoCapitalize="none"
                 />
                 <TouchableOpacity
                   onPress={() => setShowNewPassword(!showNewPassword)}
@@ -110,6 +112,8 @@ export default function ChangeFirstPasswordModal({
                   value={confirmPassword}
                   onChangeText={setConfirmPassword}
                   style={styles.input}
+                  autoCorrect={false}
+                  autoCapitalize="none"
                 />
                 <TouchableOpacity
                   onPress={() => setShowConfirmPassword(!showConfirmPassword)}
