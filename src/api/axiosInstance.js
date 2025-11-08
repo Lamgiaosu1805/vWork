@@ -10,12 +10,26 @@ const api = axios.create({
 });
 
 /**
+ * ✅ Hàm tạo requestId duy nhất
+ */
+const generateRequestId = () => {
+    // Tạo ID dựa trên timestamp + random
+    return `req_${Date.now()}_${Math.floor(Math.random() * 1000000)}`;
+};
+
+/**
  * Request Interceptor
- * - Chỉ thêm Authorization nếu `config.requiresAuth = true`
- * - Cho phép thêm header tùy chọn qua `config.headers`
+ * - Thêm Authorization nếu requiresAuth = true
+ * - Thêm requestId vào header mặc định
  */
 api.interceptors.request.use(
     async (config) => {
+        // ✅ Gắn requestId vào header (client -> server)
+        config.headers = {
+            ...config.headers,
+            "x-request-id": generateRequestId(),
+        };
+
         // Nếu API không yêu cầu token thì bỏ qua
         if (!config.requiresAuth) return config;
 
@@ -26,11 +40,9 @@ api.interceptors.request.use(
         if (!accessToken) {
             accessToken = await AsyncStorage.getItem("accessToken");
         }
+
         if (accessToken) {
-            config.headers = {
-                ...config.headers,
-                Authorization: `Bearer ${accessToken}`,
-            };
+            config.headers.Authorization = `Bearer ${accessToken}`;
         }
 
         return config;
@@ -39,11 +51,17 @@ api.interceptors.request.use(
 );
 
 /**
- *  Response Interceptor
+ * Response Interceptor
  * - Tự động refresh token nếu 401 (accessToken hết hạn)
  */
 api.interceptors.response.use(
-    (response) => response,
+    (response) => {
+        // ✅ Log lại requestId (từ server trả về, nếu có)
+        if (response.config.headers["x-request-id"]) {
+            console.log("📩 Response for requestId:", response.config.headers["x-request-id"]);
+        }
+        return response;
+    },
     async (error) => {
         const originalRequest = error.config;
 
@@ -53,7 +71,7 @@ api.interceptors.response.use(
         }
 
         // Nếu token hết hạn
-        if (error.response.status === 401 && !originalRequest._retry && originalRequest.requiresAuth) {
+        if (error.response.status === 401 && error.response.errorCode == "TOKEN_EXPIRED" && !originalRequest._retry && originalRequest.requiresAuth) {
             originalRequest._retry = true;
 
             try {
@@ -68,7 +86,7 @@ api.interceptors.response.use(
                 const res = await axios.post(`${utils.BASE_URL}/auth/refreshToken`, { refreshToken });
 
                 const newAccessToken = res.data?.accessToken;
-                const newRefreshToken = res.data?.refreshToken
+                const newRefreshToken = res.data?.refreshToken;
                 if (!newAccessToken) throw new Error("Không có accessToken mới");
 
                 // Lưu lại Redux + AsyncStorage
