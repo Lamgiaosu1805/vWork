@@ -30,10 +30,39 @@ const getFileExtension = (fileURL) => {
     }
 }
 
+const getTypeLaborContract = (type) => {
+    switch (type) {
+        case "probation":
+            return "Thử việc";
+        case "fixed_term":
+            return "Chính thức xác định thời hạn";
+        case "indefinite_term":
+            return "Chính thức không định thời hạn";
+
+        default:
+            return "Khác";
+    }
+}
+
+const getStatusLaborContract = (status) => {
+    switch (status) {
+        case "active":
+            return "Còn hiệu lực";
+        case "expired":
+            return "Đã hết hạn";
+        case "terminated":
+            return "Đã thanh lý";
+        default:
+            return "Không rõ";
+    }
+}
+
 
 export default {
     BASE_URL,
     renderMaritalStatus,
     formatDate,
-    getFileExtension
+    getFileExtension,
+    getStatusLaborContract,
+    getTypeLaborContract
 }
