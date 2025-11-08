@@ -71,9 +71,9 @@ api.interceptors.response.use(
         }
 
         // Nếu token hết hạn
-        if (error.response.status === 401 && error.response.errorCode == "TOKEN_EXPIRED" && !originalRequest._retry && originalRequest.requiresAuth) {
+        if (error.response.status === 401 && error.response.data.errorCode == "TOKEN_EXPIRED" && !originalRequest._retry && originalRequest.requiresAuth) {
             originalRequest._retry = true;
-
+            
             try {
                 const refreshToken = await AsyncStorage.getItem("refreshToken");
 

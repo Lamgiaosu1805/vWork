@@ -5,10 +5,13 @@ import { openDrawer } from '../../helpers/navigationRef'
 import { store } from '../../redux/store'
 import { Ionicons } from '@expo/vector-icons';
 import utils from '../../helpers/utils'
+import { useCustomAlert } from '../../components/CustomAlertProvider'
 
 export default function ProfileScreen({ navigation }) {
     const { auth } = store.getState()
+    const { showAlert } = useCustomAlert();
     const user = auth.user
+    
     // console.log(JSON.stringify(auth, null, 2))
     return (
         <View style={styles.container}>
@@ -114,7 +117,10 @@ export default function ProfileScreen({ navigation }) {
                     <TouchableOpacity 
                         style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderBottomWidth: 1, borderColor: '#E5E7EB', paddingVertical: 12 }} 
                         activeOpacity={0.7}
-                        onPress={() => navigation.navigate('ShowFileScreen')}
+                        onPress={() => user.laborContracts 
+                            ? navigation.navigate('ShowFileScreen') 
+                            : showAlert("Thông báo", "Hợp đồng của bạn chưa được tải lên !")
+                        }
                     >
                         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                             <Ionicons name="document-text-outline" size={24} color="#004643" />
