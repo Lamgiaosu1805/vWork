@@ -16,7 +16,8 @@
       "supportsTablet": false,
       "bundleIdentifier": "com.kylanx11.vnfitevwork",
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSLocalNetworkUsageDescription": "Ứng dụng cần quyền truy cập vị trí để xác định vị trí và thông tin Wi-Fi bạn đang kết nối."
       }
     },
     "android": {
@@ -38,7 +39,8 @@
     },
     "plugins": [
       "@config-plugins/react-native-blob-util",
-      "@config-plugins/react-native-pdf"
+      "@config-plugins/react-native-pdf",
+      "react-native-wifi-reborn"
     ],
     "extra": {
       "eas": {
