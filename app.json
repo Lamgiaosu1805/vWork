@@ -17,7 +17,7 @@
       "bundleIdentifier": "com.kylanx11.vnfitevwork",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
-        "NSLocalNetworkUsageDescription": "Ứng dụng cần quyền truy cập vị trí để xác định vị trí và thông tin Wi-Fi bạn đang kết nối."
+        "NSLocationWhenInUseUsageDescription": "Ứng dụng cần quyền truy cập vị trí để xác định vị trí và thông tin Wi-Fi bạn đang kết nối."
       }
     },
     "android": {
