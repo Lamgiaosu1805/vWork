@@ -40,7 +40,8 @@
     "plugins": [
       "@config-plugins/react-native-blob-util",
       "@config-plugins/react-native-pdf",
-      "react-native-wifi-reborn"
+      "react-native-wifi-reborn",
+      "expo-location"
     ],
     "extra": {
       "eas": {

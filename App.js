@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { RootStackNavigator } from './src/navigators/RootStackNavigator';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -8,17 +8,18 @@ import { CustomAlertProvider } from './src/components/CustomAlertProvider';
 import Toast from 'react-native-toast-message';
 import WifiManager from 'react-native-wifi-reborn';
 import { Alert, Linking, AppState } from 'react-native';
+import * as Location from 'expo-location';
 
 export default function App() {
   // Hàm lấy SSID có xử lý lỗi đúng cách
   const getSSID = async () => {
     try {
       const ssid = await WifiManager.getCurrentWifiSSID();
-      console.log('📶 SSID:', ssid);
+      let location = await Location.getCurrentPositionAsync({});
+      console.log('📶 SSID:', location);
       return ssid;
     } catch (error) {
-      console.log('❌ Lỗi lấy SSID:', error?.message || error);
-      // Chỉ hiển thị alert 1 lần, không spam khi AppState change liên tục
+      console.log('Lỗi lấy SSID:', error?.message || error);
       Alert.alert(
         'Quyền vị trí bị tắt',
         'Ứng dụng cần quyền truy cập vị trí để lấy vị trí hiện tại và tên Wi-Fi. Mở cài đặt để bật lại?',
