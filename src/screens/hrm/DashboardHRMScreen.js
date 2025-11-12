@@ -6,6 +6,11 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import dayjs from 'dayjs';
 import 'dayjs/locale/vi';
+import api from '../../api/axiosInstance';
+import WifiManager from 'react-native-wifi-reborn';
+import { Linking, AppState } from 'react-native';
+import * as Location from 'expo-location';
+
 
 export default function DashboardHRMScreen() {
     const [date, setDate] = useState('');
@@ -94,6 +99,30 @@ export default function DashboardHRMScreen() {
         startRipple(ripples[1], 1000);
         startRipple(ripples[2], 2000);
     }, []);
+    const sendAttendance = async () => {
+        try {
+            const ssid = await WifiManager.getCurrentWifiSSID();
+            const location = await Location.getCurrentPositionAsync({});
+            const { latitude, longitude } = location.coords
+
+            const res = await api.post('attendance/sendAttendance', {
+                ssid:"VNFITE tang 3_5G", latitude, longitude
+            }, { requiresAuth: true })
+            console.log(res.data)
+        } catch (error) {
+            console.log('Lỗi lấy SSID:', error?.message || error);
+            Alert.alert(
+                'Quyền vị trí bị tắt',
+                'Ứng dụng cần quyền truy cập vị trí để lấy vị trí hiện tại và tên Wi-Fi. Mở cài đặt để bật lại?',
+                [
+                    { text: 'Huỷ', style: 'cancel' },
+                    { text: 'Mở Cài đặt', onPress: () => Linking.openSettings() },
+                ],
+            );
+            return null;
+        }
+
+    }
 
 
     return (
@@ -130,7 +159,11 @@ export default function DashboardHRMScreen() {
                     {date}
                 </Text>
 
-                <TouchableOpacity activeOpacity={0.85}>
+                <TouchableOpacity activeOpacity={0.85}
+                    onPress={() => {
+                        sendAttendance()
+                    }}
+                >
                     <LinearGradient
                         colors={['#004643', '#00a896']}
                         start={{ x: 0, y: 0 }}
