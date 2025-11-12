@@ -117,7 +117,7 @@ export default function ProfileScreen({ navigation }) {
                     <TouchableOpacity 
                         style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderBottomWidth: 1, borderColor: '#E5E7EB', paddingVertical: 12 }} 
                         activeOpacity={0.7}
-                        onPress={() => user.laborContracts 
+                        onPress={() => (user.laborContracts && user.laborContracts?.length > 0)
                             ? navigation.navigate('ShowFileScreen') 
                             : showAlert("Thông báo", "Hợp đồng của bạn chưa được tải lên !")
                         }

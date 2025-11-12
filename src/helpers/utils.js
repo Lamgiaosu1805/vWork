@@ -25,8 +25,8 @@ const formatDate = (dateString) => {
 
 const getFileExtension = (fileURL) => {
     return {
-        extension: fileURL.split('.').pop(),
-        fileName: fileURL.split('/').pop()
+        extension: fileURL?.split('.').pop(),
+        fileName: fileURL?.split('/').pop()
     }
 }
 
