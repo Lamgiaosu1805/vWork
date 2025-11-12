@@ -1,5 +1,5 @@
 const apiLive = "https://vWork.vnfite.com.vn"
-const apiTest = "http://192.168.100.178:2345"
+const apiTest = "http://192.168.100.48:2345"
 
 const BASE_URL = apiLive
 
@@ -21,6 +21,20 @@ const formatDate = (dateString) => {
     const month = String(date.getMonth() + 1).padStart(2, "0");
     const year = date.getFullYear();
     return `${day}/${month}/${year}`;
+}
+
+const formatTime = (dateTimeString) => {
+    if (!dateTimeString) return '';
+    try {
+        const date = new Date(dateTimeString);
+        const hours = String(date.getHours()).padStart(2, '0');
+        const minutes = String(date.getMinutes()).padStart(2, '0');
+        const seconds = String(date.getSeconds()).padStart(2, '0'); // Thêm giây
+        return `${hours}:${minutes}:${seconds}`; // Thêm giây vào chuỗi trả về
+    } catch (e) {
+        console.error("Error formatting time:", e);
+        return '---';
+    }
 }
 
 const getFileExtension = (fileURL) => {
@@ -62,6 +76,7 @@ export default {
     BASE_URL,
     renderMaritalStatus,
     formatDate,
+    formatTime,
     getFileExtension,
     getStatusLaborContract,
     getTypeLaborContract

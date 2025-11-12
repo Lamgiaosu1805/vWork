@@ -13,8 +13,12 @@ export default function DocumentInfoScreen({ navigation }) {
     const documentUser = auth.user.documents
     useEffect(() => {
         const getListDocument = async () => {
-            const res = await api.get('/document/getListDocument', { requiresAuth: true })
-            setListDocument(res.data.data)
+            try {
+                const res = await api.get('/document/getListDocument', { requiresAuth: true })
+                setListDocument(res.data.data)
+            } catch (error) {
+                console.log("getListDocument error:", error.response?.data || error.message);
+            }
         }
         getListDocument()
     }, [])
