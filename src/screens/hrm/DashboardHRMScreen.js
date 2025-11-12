@@ -216,6 +216,8 @@ export default function DashboardHRMScreen() {
     
     // 💡 Xác định trạng thái của nút
     const buttonDisabled = isLoading || hasCheckedIn;
+    // 💡 Lấy tên ca chỉ khi currentWorkSheet đã được tải (dù có check-in hay không)
+    const shiftName = currentWorkSheet ? getShiftName() : 'Đang tải ca...';
 
     return (
         <View style={styles.container}>
@@ -333,30 +335,42 @@ export default function DashboardHRMScreen() {
 
                             {/*Nội dung bên phải */}
                             <View style={{ flex: 1 }}>
-                                {hasCheckedIn ? (
-                                    <>
-                                        <Text
-                                            style={{
-                                                color: '#fff',
-                                                fontSize: 18,
-                                                fontWeight: '700',
-                                                marginBottom: 4, 
-                                            }}
-                                        >
-                                            Đã Check-in!
-                                        </Text>
-                                        
-                                        <Text
-                                            style={{
-                                                color: '#fff', 
-                                                fontSize: 15,
-                                                fontWeight: '700',
-                                                marginBottom: 8,
-                                            }}
-                                        >
-                                            Ca: {getShiftName()}
-                                        </Text>
+                                <Text
+                                    style={{
+                                        color: '#fff',
+                                        fontSize: 18,
+                                        fontWeight: '700',
+                                        marginBottom: 4, 
+                                    }}
+                                >
+                                    {hasCheckedIn ? 'Đã Check-in!' : 'Chấm công nhanh'}
+                                </Text>
+                                
+                                {/* 🚨 HIỂN THỊ TÊN CA LUÔN KHI ĐÃ TẢI DỮ LIỆU */}
+                                <Text
+                                    style={{
+                                        color: '#fff', 
+                                        fontSize: 15,
+                                        fontWeight: '700',
+                                        marginBottom: hasCheckedIn ? 8 : 12, // Giữ khoảng cách cố định
+                                    }}
+                                >
+                                    Ca: {shiftName}
+                                </Text>
 
+                                {!hasCheckedIn ? (
+                                    // 🎯 CHƯA check-in: Hiển thị hướng dẫn
+                                    <Text
+                                        style={{
+                                            color: '#e0f2f1',
+                                            fontSize: 15,
+                                        }}
+                                    >
+                                        Bấm để ghi nhận thời gian bắt đầu làm việc
+                                    </Text>
+                                ) : (
+                                    // 🎯 ĐÃ check-in: Hiển thị thời gian và thông báo muộn
+                                    <>
                                         <Text
                                             style={{
                                                 color: '#e0f2f1',
@@ -380,28 +394,6 @@ export default function DashboardHRMScreen() {
                                                 (Đã muộn {minutesLate} phút) 😔
                                             </Text>
                                         )}
-                                    </>
-                                ) : (
-                                    // Chưa check-in
-                                    <>
-                                        <Text
-                                            style={{
-                                                color: '#fff',
-                                                fontSize: 18,
-                                                fontWeight: '700',
-                                                marginBottom: 12,
-                                            }}
-                                        >
-                                            Chấm công nhanh
-                                        </Text>
-                                        <Text
-                                            style={{
-                                                color: '#e0f2f1',
-                                                fontSize: 15,
-                                            }}
-                                        >
-                                            Bấm để ghi nhận thời gian bắt đầu làm việc
-                                        </Text>
                                     </>
                                 )}
                             </View>
