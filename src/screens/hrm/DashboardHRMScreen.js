@@ -17,20 +17,43 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import dayjs from 'dayjs';
 import 'dayjs/locale/vi';
+import localeData from 'dayjs/plugin/localeData';
+dayjs.extend(localeData);
+
 import api from '../../api/axiosInstance';
 import WifiManager from 'react-native-wifi-reborn';
 import * as Location from 'expo-location';
 import Toast from 'react-native-toast-message';
 import utils from '../../helpers/utils';
+import { useSelector } from 'react-redux'; // ✅ Import useSelector
+
+
+// Dùng mảng tra cứu dựa trên chỉ số ngày (0=CN, 1=T2, ...)
+const weekdayAbbreviations = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
+
+// HÀM HỖ TRỢ: Viết hoa chữ cái đầu tiên (ví dụ: "thứ hai" -> "Thứ hai")
+const capitalizeFirstLetter = (string) => {
+    if (!string) return '';
+    return string.charAt(0).toUpperCase() + string.slice(1);
+}
 
 
 export default function DashboardHRMScreen() {
+    const auth = useSelector(state => state.auth);
+    const firstName = useMemo(() => {
+        const fullName = auth.user?.full_name;
+        if (!fullName) return 'Bạn';
+        const parts = fullName.trim().split(/\s+/);
+        return parts[parts.length - 1];
+    }, [auth.user?.full_name]);
+
     const [date, setDate] = useState('');
     const [time, setTime] = useState('');
     const [currentWorkSheet, setCurrentWorkSheet] = useState(null);
-    const [isLoading, setIsLoading] = useState(false); 
+    const [isLoading, setIsLoading] = useState(false);
 
-    // Dùng useRef cho Animated.Value (Để điều khiển UI)
+    const [calendarData, setCalendarData] = useState({});
+
     const rippleAnimations = [
         useRef(new Animated.Value(0)),
         useRef(new Animated.Value(0)),
@@ -38,8 +61,7 @@ export default function DashboardHRMScreen() {
     ];
     const ripples = rippleAnimations.map(ref => ref.current);
 
-    // Dùng useRef để lưu trữ các đối tượng Loop đang chạy (Để gọi .stop())
-    const rippleLoopsRef = useRef([]); 
+    const rippleLoopsRef = useRef([]);
 
     const today = dayjs();
 
@@ -47,11 +69,9 @@ export default function DashboardHRMScreen() {
     const { startDate, endDate } = useMemo(() => {
         let start, end;
         if (today.date() >= 26) {
-            // Hôm nay >= 26 → hiển thị 26 tháng này đến 25 tháng sau
             start = today.date(26);
             end = today.add(1, 'month').date(25);
         } else {
-            // 👉 Hôm nay <= 25 → hiển thị 26 tháng trước đến 25 tháng này
             start = today.subtract(1, 'month').date(26);
             end = today.date(25);
         }
@@ -69,11 +89,10 @@ export default function DashboardHRMScreen() {
         return list;
     }, [startDate, endDate]);
 
-    // Lấy WorkSheet của ngày hôm nay
+    // Lấy WorkSheet của ngày hôm nay (Dùng cho nút chấm công)
     const getCurrentWorkSheet = async () => {
         try {
             const res = await api.get(`attendance/getWorkSheet`, { requiresAuth: true })
-            // Lấy WorkSheet của ngày hôm nay, thường là phần tử đầu tiên nếu API trả về 1 ngày
             const todayWorkSheet = res.data?.data && res.data.data.length > 0 ? res.data.data[0] : null;
             setCurrentWorkSheet(todayWorkSheet);
         } catch (error) {
@@ -82,8 +101,35 @@ export default function DashboardHRMScreen() {
         }
     }
 
+    // HÀM: Lấy lịch công cho toàn bộ kỳ lương
+    const getLichCong = async () => {
+        try {
+            const params = {
+                startDate: startDate.toISOString(),
+                endDate: endDate.toISOString(),
+            };
+
+            const res = await api.get(`attendance/getLichCong`, { requiresAuth: true, params });
+
+            const dataMap = (res.data?.data || []).reduce((acc, item) => {
+                const dateKey = dayjs(item.date).format('YYYY-MM-DD');
+                acc[dateKey] = item;
+                return acc;
+            }, {});
+
+            setCalendarData(dataMap);
+        } catch (error) {
+            console.log("getLichCong error:", error.response?.data || error.message);
+            setCalendarData({});
+        }
+    }
+
+
     useEffect(() => {
-        getCurrentWorkSheet()
+        // console.log("Auth User Data:", auth.user); // Log ở đây nếu cần
+
+        getCurrentWorkSheet();
+        getLichCong();
     }, [])
 
     useEffect(() => {
@@ -107,13 +153,12 @@ export default function DashboardHRMScreen() {
             setTime(formattedTime);
         };
 
-        updateTime(); // gọi ngay khi mount
-        const timer = setInterval(updateTime, 1000); // cập nhật mỗi giây
+        updateTime();
+        const timer = setInterval(updateTime, 1000);
 
         return () => clearInterval(timer);
     }, []);
 
-    // Hàm tạo và chạy một animation loop
     const createRippleLoop = (anim, delay) => {
         return Animated.loop(
             Animated.sequence([
@@ -133,13 +178,11 @@ export default function DashboardHRMScreen() {
         );
     };
 
-    // Xác định trạng thái đã chấm công dựa trên trường 'check_in'
     const hasCheckedIn = currentWorkSheet && currentWorkSheet.check_in;
-
     const minutesLate = currentWorkSheet && currentWorkSheet.minutes_late ? parseInt(currentWorkSheet.minutes_late, 10) : 0;
 
-    const getShiftName = () => {
-        const shifts = currentWorkSheet?.shifts;
+    const getShiftName = (workSheet) => {
+        const shifts = workSheet?.shifts;
         if (!shifts || shifts.length === 0) {
             return "Không rõ ca";
         }
@@ -149,7 +192,6 @@ export default function DashboardHRMScreen() {
         return shifts[0].name || "Không tên ca";
     };
 
-    // Logic quản lý hiệu ứng ripple
     useEffect(() => {
         rippleLoopsRef.current.forEach(loop => loop.stop());
         rippleLoopsRef.current = [];
@@ -161,7 +203,7 @@ export default function DashboardHRMScreen() {
                 rippleLoopsRef.current.push(loop);
                 loop.start();
             });
-        } 
+        }
 
         return () => {
             rippleLoopsRef.current.forEach(loop => loop.stop());
@@ -169,7 +211,6 @@ export default function DashboardHRMScreen() {
         };
     }, [hasCheckedIn]);
 
-    // Logic chấm công
     const sendAttendance = async () => {
         if (isLoading || hasCheckedIn) return;
 
@@ -183,14 +224,14 @@ export default function DashboardHRMScreen() {
                 const res = await api.post('attendance/checkIn', {
                     ssid: ssid, latitude, longitude
                 }, { requiresAuth: true })
-                
+
                 Toast.show({
                     type: "success",
                     text1: "Thông báo",
                     text2: res.data.message || 'Chấm công thành công!',
                 });
-                // Cập nhật lại WorkSheet
-                await getCurrentWorkSheet(); 
+                await getCurrentWorkSheet();
+                await getLichCong();
             } catch (error) {
                 Toast.show({
                     type: "error",
@@ -210,19 +251,125 @@ export default function DashboardHRMScreen() {
                 ],
             );
         } finally {
-            setIsLoading(false); // Kết thúc loading
+            setIsLoading(false);
         }
     }
-    
-    // 💡 Xác định trạng thái của nút
+
     const buttonDisabled = isLoading || hasCheckedIn;
-    // 💡 Lấy tên ca chỉ khi currentWorkSheet đã được tải (dù có check-in hay không)
-    const shiftName = currentWorkSheet ? getShiftName() : 'Đang tải ca...';
+    const shiftNameToday = currentWorkSheet ? getShiftName(currentWorkSheet) : 'Đang tải ca...';
+
+    const getAttendanceStatus = (day) => {
+        const dateKey = day.format('YYYY-MM-DD');
+        const workSheet = calendarData[dateKey];
+        const isTodayOrPast = !day.isAfter(today, 'day');
+        const isSunday = day.day() === 0;
+
+        // 1. NGÀY NGHỈ CUỐI TUẦN MẶC ĐỊNH
+        if (isSunday) {
+            if (!workSheet || workSheet.status === 'off') {
+                return '#3498DB'; // Xanh dương cho Chủ Nhật nghỉ
+            }
+        }
+
+        // 2. NGÀY NGHỈ CÓ KẾ HOẠCH (áp dụng cho mọi ngày)
+        if (workSheet && workSheet.status === 'off') {
+            return null;
+        }
+
+        // 3. THIẾU DỮ LIỆU/NGHỈ KHÔNG PHÉP (Đã qua/Hôm nay)
+        if (!workSheet) {
+            if (isTodayOrPast) {
+                return '#FF0000'; // Đỏ
+            }
+            return null;
+        }
+
+        // 4. KIỂM TRA CHẤM CÔNG (Có Worksheet và không phải ngày nghỉ có kế hoạch)
+        const checkIn = workSheet.check_in;
+        const checkOut = workSheet.check_out;
+
+        if (!checkIn && !checkOut) {
+            return '#FF0000'; // Đỏ (Nghỉ không phép)
+        }
+
+        if (checkIn && checkOut) {
+            return '#00A896'; // Xanh lá (Đầy đủ)
+        }
+
+        return '#FFD700'; // Vàng (Thiếu 1 trong 2)
+    };
+
+    const showDayDetails = (day) => {
+        const dateKey = day.format('YYYY-MM-DD');
+        const workSheet = calendarData[dateKey];
+        const isFuture = day.isAfter(today, 'day');
+        const isSunday = day.day() === 0;
+
+        // Viết hoa chữ cái đầu tiên (Đảm bảo chữ "Thứ" viết hoa)
+        let formattedDateRaw = day.locale('vi').format('dddd, DD/MM/YYYY');
+        let formattedDate = capitalizeFirstLetter(formattedDateRaw);
+
+        let title = formattedDate;
+        let message = '';
+
+        // 1. Chủ Nhật (Ngày nghỉ mặc định)
+        if (isSunday && (!workSheet || workSheet.status === 'off')) {
+            message = 'Ngày nghỉ cuối tuần (Chủ Nhật).';
+            Alert.alert(title, message);
+            return;
+        }
+
+        if (isFuture) {
+            // 2. Ngày trong tương lai 
+            if (workSheet) {
+                const shiftName = getShiftName(workSheet);
+                message = `Đã xếp ca: ${shiftName}\n(Từ ${utils.formatTime(workSheet.shifts[0].start_time, true)} đến ${utils.formatTime(workSheet.shifts[0].end_time, true)})`;
+            } else {
+                message = 'Chưa có ca làm việc nào được xếp cho ngày này.';
+            }
+        } else {
+            // 3. Ngày đã qua hoặc hôm nay 
+            if (workSheet) {
+                const shiftName = getShiftName(workSheet);
+                const checkInTime = workSheet.check_in ? utils.formatTime(workSheet.check_in) : 'Chưa Check-in';
+                const checkOutTime = workSheet.check_out ? utils.formatTime(workSheet.check_out) : 'Chưa Check-out';
+                const minutesLate = workSheet.minutes_late ? parseInt(workSheet.minutes_late, 10) : 0;
+
+                if (workSheet.status === 'off') {
+                    message = 'Ngày nghỉ có kế hoạch (Ví dụ: Nghỉ phép, ốm...).';
+                } else {
+                    message = `Ca: ${shiftName}\n`;
+
+                    if (!workSheet.check_in && !workSheet.check_out) {
+                        message += `\nTrạng thái: NGHỈ KHÔNG PHÉP`;
+                    } else if (!workSheet.check_in || !workSheet.check_out) {
+                        message += `Vào: ${checkInTime}\n`;
+                        message += `Ra: ${checkOutTime}`;
+                        message += `\nTrạng thái: Thiếu chấm công.`;
+                    } else {
+                        message += `Vào: ${checkInTime}\n`;
+                        message += `Ra: ${checkOutTime}`;
+                        message += `\nTrạng thái: Hoàn thành.`;
+                    }
+
+                    if (minutesLate > 0) {
+                        message += `\nĐã muộn: ${minutesLate} phút 😔`;
+                    }
+                }
+            } else {
+                // Ngày đã qua không có worksheet
+                message = 'Không có thông tin ca làm việc nào được ghi nhận.\nTrạng thái: NGHỈ KHÔNG PHÉP hoặc cần báo cáo bổ sung.';
+            }
+        }
+
+        Alert.alert(title, message);
+    };
+
 
     return (
         <View style={styles.container}>
             <Header
-                title="Xin chào, Lâm !"
+                title={`Xin chào, ${firstName} !`}
                 leftIconName="menu"
                 onLeftPress={() => {
                     openDrawer();
@@ -252,15 +399,15 @@ export default function DashboardHRMScreen() {
                     {date}
                 </Text>
 
-                <TouchableOpacity 
+                <TouchableOpacity
                     activeOpacity={0.85}
                     onPress={sendAttendance}
-                    disabled={buttonDisabled} 
+                    disabled={buttonDisabled}
                 >
                     <LinearGradient
                         colors={
                             buttonDisabled
-                                ? ['#a0a0a0', '#c0c0c0'] // Màu xám khi disabled
+                                ? ['#a0a0a0', '#c0c0c0']
                                 : ['#004643', '#00a896']
                         }
                         start={{ x: 0, y: 0 }}
@@ -271,7 +418,7 @@ export default function DashboardHRMScreen() {
                             padding: 16,
                             marginTop: 20,
                             overflow: 'hidden',
-                            opacity: buttonDisabled ? 0.8 : 1, 
+                            opacity: buttonDisabled ? 0.8 : 1,
                         }}
                     >
                         <Text style={{ fontSize: 24, fontWeight: '700', color: 'white' }}>
@@ -289,7 +436,6 @@ export default function DashboardHRMScreen() {
                                     marginRight: 20,
                                 }}
                             >
-                                {/* 💨 Hiển thị hiệu ứng Ripple chỉ khi CHƯA Check-in */}
                                 {!hasCheckedIn &&
                                     ripples.map((anim, i) => {
                                         const scale = anim.interpolate({
@@ -340,26 +486,25 @@ export default function DashboardHRMScreen() {
                                         color: '#fff',
                                         fontSize: 18,
                                         fontWeight: '700',
-                                        marginBottom: 4, 
+                                        marginBottom: 4,
                                     }}
                                 >
                                     {hasCheckedIn ? 'Đã Check-in!' : 'Chấm công nhanh'}
                                 </Text>
-                                
-                                {/* 🚨 HIỂN THỊ TÊN CA LUÔN KHI ĐÃ TẢI DỮ LIỆU */}
+
                                 <Text
                                     style={{
-                                        color: '#fff', 
+                                        color: '#fff',
                                         fontSize: 15,
                                         fontWeight: '700',
-                                        marginBottom: hasCheckedIn ? 8 : 12, // Giữ khoảng cách cố định
+                                        marginBottom: hasCheckedIn ? 8 : 12,
                                     }}
                                 >
-                                    Ca: {shiftName}
+                                    Ca: {shiftNameToday}
                                 </Text>
 
                                 {!hasCheckedIn ? (
-                                    // 🎯 CHƯA check-in: Hiển thị hướng dẫn
+                                    // CHƯA check-in: Hiển thị hướng dẫn
                                     <Text
                                         style={{
                                             color: '#e0f2f1',
@@ -369,14 +514,14 @@ export default function DashboardHRMScreen() {
                                         Bấm để ghi nhận thời gian bắt đầu làm việc
                                     </Text>
                                 ) : (
-                                    // 🎯 ĐÃ check-in: Hiển thị thời gian và thông báo muộn
+                                    // ĐÃ check-in: Hiển thị thời gian và thông báo muộn
                                     <>
                                         <Text
                                             style={{
                                                 color: '#e0f2f1',
                                                 fontSize: 15,
                                                 fontWeight: '600',
-                                                marginBottom: minutesLate > 0 ? 8 : 0, 
+                                                marginBottom: minutesLate > 0 ? 8 : 0,
                                             }}
                                         >
                                             Vào: {utils.formatTime(currentWorkSheet.check_in)}
@@ -421,7 +566,7 @@ export default function DashboardHRMScreen() {
                     >
                         {/* <Ionicons name="people" size={32} color="#fff" /> */}
                         <Text style={{ color: '#004643', marginTop: 8, fontWeight: '600', textAlign: 'center' }}>Ngày phép còn lại</Text>
-                        <Text style={{ color: '#004643', marginTop: 8, fontWeight: '800', textAlign: 'center', fontSize: 20 }}>4</Text>
+                        <Text style={{ color: '#004643', marginTop: 8, fontWeight: '800', textAlign: 'center', fontSize: 20 }}>{auth.user.leave_balance.annual}</Text>
                         <Text style={{ color: '#004643', marginTop: 8, fontWeight: '600', textAlign: 'center' }}>ngày</Text>
                     </View>
 
@@ -466,37 +611,39 @@ export default function DashboardHRMScreen() {
                     {days.map((day) => {
                         const isToday = day.isSame(today, 'day');
 
-                        const weekdayMap = {
-                            'Monday': 'T2',
-                            'Tuesday': 'T3',
-                            'Wednesday': 'T4',
-                            'Thursday': 'T5',
-                            'Friday': 'T6',
-                            'Saturday': 'T7',
-                            'Sunday': 'CN',
-                        };
-                        const weekday = weekdayMap[day.format('dddd')] || day.format('dd');
+                        const statusColor = getAttendanceStatus(day);
 
-                        // ✅ Nếu là mùng 1 thì hiển thị thêm tháng
+                        const showStatusDot = statusColor !== null;
+
+                        const dayIndex = day.day(); // 0 (Sunday) to 6 (Saturday)
+                        const weekday = weekdayAbbreviations[dayIndex];
+
                         const dayDisplay =
                             day.date() === 1
                                 ? `${day.format('DD')}/${day.format('MM')}`
                                 : day.format('DD');
                         return (
-                            <View
+                            <TouchableOpacity
                                 key={day.format('YYYY-MM-DD')}
                                 style={[
                                     styles.dayBox,
                                     isToday && styles.todayBox,
                                 ]}
+                                onPress={() => showDayDetails(day)}
+                                activeOpacity={0.8}
                             >
                                 <Text style={[styles.dayText, isToday && styles.todayText]}>
                                     {dayDisplay}
                                 </Text>
+                                {/* HIỂN THỊ THỨ VIẾT TẮT (T2, CN) */}
                                 <Text style={[styles.weekdayText, isToday && styles.todayText]}>
                                     {weekday}
                                 </Text>
-                            </View>
+
+                                {showStatusDot && (
+                                    <View style={[styles.simpleStatusDot, { backgroundColor: statusColor }]} />
+                                )}
+                            </TouchableOpacity>
                         );
                     })}
                 </View>
@@ -508,7 +655,7 @@ export default function DashboardHRMScreen() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#f5f5f5', 
+        backgroundColor: '#f5f5f5',
     },
     calendarGrid: {
         flexDirection: 'row',
@@ -526,6 +673,7 @@ const styles = StyleSheet.create({
         backgroundColor: '#e0f2f1',
         justifyContent: 'center',
         alignItems: 'center',
+        position: 'relative',
     },
     todayBox: {
         backgroundColor: '#00a896',
@@ -548,5 +696,14 @@ const styles = StyleSheet.create({
         marginBottom: 12,
         color: '#004643',
         marginTop: 32
+    },
+    simpleStatusDot: {
+        width: 6,
+        height: 6,
+        borderRadius: 3,
+        position: 'absolute',
+        bottom: 12,
+        left: '50%',
+        marginLeft: -3,
     },
 })
