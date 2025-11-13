@@ -46,6 +46,7 @@ export default function ProfileScreen({ navigation }) {
                                 })
                             }
                             <Text style={styles.infoText}>Mã NV: VNF{user.ma_nv}</Text>
+                            <Text style={styles.infoText}>Hình thức: {user.employment_type || "chưa có"}</Text>
                             <Text style={styles.infoText}>Trạng thái: <Text style={{ color: "#22C55E", fontWeight: '800' }}>Đang làm việc</Text></Text>
                         </View>
                     </View>
