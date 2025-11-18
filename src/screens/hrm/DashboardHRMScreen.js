@@ -25,8 +25,7 @@ import WifiManager from 'react-native-wifi-reborn';
 import * as Location from 'expo-location';
 import Toast from 'react-native-toast-message';
 import utils from '../../helpers/utils';
-import { useSelector } from 'react-redux'; // ✅ Import useSelector
-
+import { useSelector } from 'react-redux';
 
 // Dùng mảng tra cứu dựa trên chỉ số ngày (0=CN, 1=T2, ...)
 const weekdayAbbreviations = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
@@ -36,6 +35,46 @@ const capitalizeFirstLetter = (string) => {
     if (!string) return '';
     return string.charAt(0).toUpperCase() + string.slice(1);
 }
+
+const TimeDisplay = ({ style }) => {
+    const [date, setDate] = useState('');
+    const [time, setTime] = useState('');
+
+    useEffect(() => {
+        const updateTime = () => {
+            const now = new Date();
+
+            const formattedDate = now.toLocaleDateString('vi-VN', {
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
+            });
+
+            const formattedTime = now.toLocaleTimeString('vi-VN', {
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+            });
+
+            setDate(formattedDate);
+            setTime(formattedTime);
+        };
+
+        updateTime();
+        const timer = setInterval(updateTime, 1000);
+
+        return () => clearInterval(timer);
+    }, []);
+
+    return (
+        <>
+            <Text style={style.dateText}>
+                {date}
+            </Text>
+        </>
+    );
+};
 
 
 export default function DashboardHRMScreen() {
@@ -47,8 +86,6 @@ export default function DashboardHRMScreen() {
         return parts[parts.length - 1];
     }, [auth.user?.full_name]);
 
-    const [date, setDate] = useState('');
-    const [time, setTime] = useState('');
     const [currentWorkSheet, setCurrentWorkSheet] = useState(null);
     const [isLoading, setIsLoading] = useState(false);
 
@@ -126,38 +163,10 @@ export default function DashboardHRMScreen() {
 
 
     useEffect(() => {
-        // console.log("Auth User Data:", auth.user); // Log ở đây nếu cần
-
         getCurrentWorkSheet();
         getLichCong();
     }, [])
 
-    useEffect(() => {
-        const updateTime = () => {
-            const now = new Date();
-
-            const formattedDate = now.toLocaleDateString('vi-VN', {
-                weekday: 'long',
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric',
-            });
-
-            const formattedTime = now.toLocaleTimeString('vi-VN', {
-                hour: '2-digit',
-                minute: '2-digit',
-                second: '2-digit',
-            });
-
-            setDate(formattedDate);
-            setTime(formattedTime);
-        };
-
-        updateTime();
-        const timer = setInterval(updateTime, 1000);
-
-        return () => clearInterval(timer);
-    }, []);
 
     const createRippleLoop = (anim, delay) => {
         return Animated.loop(
@@ -387,17 +396,7 @@ export default function DashboardHRMScreen() {
                     paddingBottom: 30,
                 }}
             >
-                <Text
-                    style={{
-                        fontSize: 18,
-                        fontWeight: '600',
-                        color: '#004643',
-                        alignSelf: 'center',
-                        marginTop: 20,
-                    }}
-                >
-                    {date}
-                </Text>
+                <TimeDisplay style={{ dateText: styles.dateText }} />
 
                 <TouchableOpacity
                     activeOpacity={0.85}
@@ -421,9 +420,8 @@ export default function DashboardHRMScreen() {
                             opacity: buttonDisabled ? 0.8 : 1,
                         }}
                     >
-                        <Text style={{ fontSize: 24, fontWeight: '700', color: 'white' }}>
-                            {time}
-                        </Text>
+                        <TimeDisplay style={{ timeText: styles.timeButtonText, dateText: { height: 0 } }} />
+
 
                         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                             {/* 🔵 Nút chấm công */}
@@ -564,7 +562,7 @@ export default function DashboardHRMScreen() {
                             justifyContent: 'space-between'
                         }}
                     >
-                        {/* <Ionicons name="people" size={32} color="#fff" /> */}
+                        {/* <Ionicons name="people" size={32} color="red" /> */}
                         <Text style={{ color: '#004643', marginTop: 8, fontWeight: '600', textAlign: 'center' }}>Ngày phép còn lại</Text>
                         <Text style={{ color: '#004643', marginTop: 8, fontWeight: '800', textAlign: 'center', fontSize: 20 }}>{auth.user?.leave_balance.annual || 0}</Text>
                         <Text style={{ color: '#004643', marginTop: 8, fontWeight: '600', textAlign: 'center' }}>ngày</Text>
@@ -656,6 +654,18 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: '#f5f5f5',
+    },
+    dateText: { // Style cho Text hiển thị ngày
+        fontSize: 18,
+        fontWeight: '600',
+        color: '#004643',
+        alignSelf: 'center',
+        marginTop: 20,
+    },
+    timeButtonText: { // Style cho Text hiển thị giờ (trong button)
+        fontSize: 24,
+        fontWeight: '700',
+        color: 'white',
     },
     calendarGrid: {
         flexDirection: 'row',
