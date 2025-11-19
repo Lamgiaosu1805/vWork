@@ -21,6 +21,9 @@ const authSlice = createSlice({
             } else {
                 state.lichCong.push(newItem);
             }
+        },
+        checkIn: (state, action) => {
+            // state.currentWorkSheet  action.payload;
         }
     }
 })

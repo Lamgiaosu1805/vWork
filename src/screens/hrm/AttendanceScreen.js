@@ -10,6 +10,7 @@ import WifiManager from 'react-native-wifi-reborn';
 import * as Location from 'expo-location';
 import Toast from 'react-native-toast-message';
 import { useDispatch, useSelector } from 'react-redux';
+import utils from '../../helpers/utils';
 
 dayjs.locale('vi');
 
@@ -106,21 +107,21 @@ const InlineStatusBox = ({ title, value, statusLabel, statusColor, showClockIcon
     </View>
 );
 
-const renderFullStatusSection = () => (
+const renderFullStatusSection = (currentWorkSheet) => (
     <View style={{ marginTop: 12, backgroundColor: 'white', borderRadius: 16, padding: 16 }}>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
             <InlineStatusBox
                 title="Giờ vào"
-                value={mockTodayData.gioVao}
-                statusLabel={mockTodayData.isCheckIn ? 'Đã check in' : 'Chưa check in'}
-                statusColor={'#00A896'}
+                value={utils.formatTime(currentWorkSheet.check_in) || "-:-"}
+                statusLabel={currentWorkSheet.check_in ? 'Đã check in' : 'Chưa check in'}
+                statusColor={!currentWorkSheet.check_in ? '#FF0000' : '#00A896'}
             />
             <View style={{ width: 10 }} />
             <InlineStatusBox
                 title="Giờ ra"
-                value={mockTodayData.gioRa}
-                statusLabel={mockTodayData.isCheckOut ? 'Đã check out' : 'Chưa check out'}
-                statusColor={'#FF0000'}
+                value={utils.formatTime(currentWorkSheet.check_out) || "-:-"}
+                statusLabel={currentWorkSheet.check_out ? 'Đã check out' : 'Chưa check out'}
+                statusColor={!currentWorkSheet.check_out ? '#FF0000' : '#00A896'}
             />
             <View style={{ width: 10 }} />
             <InlineStatusBox
@@ -212,6 +213,8 @@ export default function AttendanceScreen() {
     const dispatch = useDispatch();
 
     const attendance = useSelector(state => state.attendance);
+    const { currentWorkSheet } = attendance
+    console.log(currentWorkSheet)
 
     // Cập nhật days khi statMonth/statYear thay đổi
     useEffect(() => {
@@ -292,7 +295,7 @@ export default function AttendanceScreen() {
                     *Lưu ý: Giờ hành chính làm việc từ 08 giờ và kết thúc lúc 17 giờ, được phép chấm công muộn 5 phút so với giờ bắt đầu làm việc.
                 </Text>
 
-                {renderFullStatusSection()}
+                {renderFullStatusSection(currentWorkSheet)}
 
                 {/* Bảng công */}
                 <View style={{ marginTop: 16 }}>
