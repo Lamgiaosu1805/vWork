@@ -5,6 +5,11 @@ import { openDrawer } from '../../helpers/navigationRef';
 import { Ionicons } from '@expo/vector-icons';
 import dayjs from 'dayjs';
 import 'dayjs/locale/vi';
+import attendanceApi from '../../api/attendanceApi';
+import WifiManager from 'react-native-wifi-reborn';
+import * as Location from 'expo-location';
+import Toast from 'react-native-toast-message';
+import { useDispatch, useSelector } from 'react-redux';
 
 dayjs.locale('vi');
 
@@ -158,6 +163,42 @@ const TimeDisplay = ({ IMAGE_HEIGHT }) => {
     ), [timeDisplay, dateDisplay, IMAGE_HEIGHT]);
 };
 
+const checkIn = async () => {
+    try {
+        const ssid = await WifiManager.getCurrentWifiSSID();
+        const location = await Location.getCurrentPositionAsync({});
+        const { latitude, longitude } = location.coords
+        try {
+            const data = await attendanceApi.checkIn({
+                ssid: ssid, latitude, longitude
+            })
+            Toast.show({
+                type: "success",
+                text1: "Thông báo",
+                text2: data.data.message || 'Chấm công thành công!',
+            });
+        } catch (error) {
+            Toast.show({
+                type: "error",
+                text1: "Thông báo",
+                text2: error.response?.data.message || error.message,
+            });
+            console.log("Check in error:", error.response?.data || error.message);
+        }
+    } catch (error) {
+        console.log('Lỗi lấy SSID/Location:', error?.message || error);
+        Alert.alert(
+            'Quyền vị trí bị tắt',
+            'Ứng dụng cần quyền truy cập vị trí để lấy vị trí hiện tại và tên Wi-Fi. Mở cài đặt để bật lại?',
+            [
+                { text: 'Huỷ', style: 'cancel' },
+                { text: 'Mở Cài đặt', onPress: () => Linking.openSettings() },
+            ],
+        );
+    }
+
+}
+
 export default function AttendanceScreen() {
     const IMAGE_HEIGHT = 134;
     const today = dayjs();
@@ -167,6 +208,10 @@ export default function AttendanceScreen() {
     const [statYear, setStatYear] = useState(today.year());
     const [showDetail, setShowDetail] = useState(false);
     const [days, setDays] = useState([]);
+    const [period, setPeriod] = useState(0); // 0: hiện tại, -1: trước đó, 1: kế tiếp
+    const dispatch = useDispatch();
+
+    const attendance = useSelector(state => state.attendance);
 
     // Cập nhật days khi statMonth/statYear thay đổi
     useEffect(() => {
@@ -179,6 +224,15 @@ export default function AttendanceScreen() {
         return today.isSame(nextMonthStart, 'day') || today.isAfter(nextMonthStart, 'day');
     };
 
+    const getLichCong = async (currentPeriod, month, year) => {
+        try {
+            await attendanceApi.getLichCong(dispatch, currentPeriod, `${month}-${year}`);
+            setPeriod(currentPeriod);
+        } catch (error) {
+            console.log(error)
+        }
+    }
+
     // Back
     const handleBack = () => {
         let newMonth = statMonth - 1;
@@ -186,6 +240,7 @@ export default function AttendanceScreen() {
         if (newMonth < 1) { newMonth = 12; newYear -= 1; }
         setStatMonth(newMonth);
         setStatYear(newYear);
+        getLichCong(period - 1, newMonth, newYear);
     };
 
     // Forward
@@ -196,6 +251,7 @@ export default function AttendanceScreen() {
         if (newMonth > 12) { newMonth = 1; newYear += 1; }
         setStatMonth(newMonth);
         setStatYear(newYear);
+        getLichCong(period + 1, newMonth, newYear);
     };
 
     return (
@@ -216,7 +272,7 @@ export default function AttendanceScreen() {
                 <TimeDisplay IMAGE_HEIGHT={IMAGE_HEIGHT} />
 
                 <View style={{ marginTop: 20, flexDirection: 'row', justifyContent: 'space-between' }}>
-                    <TouchableOpacity style={styles.checkButton} activeOpacity={0.7}>
+                    <TouchableOpacity style={styles.checkButton} activeOpacity={0.7} onPress={() => { checkIn() }}>
                         <Text style={styles.checkButtonText}>CHECK IN</Text>
                     </TouchableOpacity>
                     <View style={{ width: 16 }} />

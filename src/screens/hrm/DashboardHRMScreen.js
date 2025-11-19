@@ -25,7 +25,8 @@ import WifiManager from 'react-native-wifi-reborn';
 import * as Location from 'expo-location';
 import Toast from 'react-native-toast-message';
 import utils from '../../helpers/utils';
-import { useSelector } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
+import { setCurrentWorkSheetAttendance } from '../../redux/slice/attendanceSlice';
 
 // Dùng mảng tra cứu dựa trên chỉ số ngày (0=CN, 1=T2, ...)
 const weekdayAbbreviations = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
@@ -79,6 +80,8 @@ const TimeDisplay = ({ style }) => {
 
 export default function DashboardHRMScreen() {
     const auth = useSelector(state => state.auth);
+    const dispatch = useDispatch();
+
     const firstName = useMemo(() => {
         const fullName = auth.user?.full_name;
         if (!fullName) return 'Bạn';
@@ -132,6 +135,7 @@ export default function DashboardHRMScreen() {
             const res = await api.get(`attendance/getWorkSheet`, { requiresAuth: true })
             const todayWorkSheet = res.data?.data && res.data.data.length > 0 ? res.data.data[0] : null;
             setCurrentWorkSheet(todayWorkSheet);
+            dispatch(setCurrentWorkSheetAttendance(todayWorkSheet));
         } catch (error) {
             console.log("getCurrentWorkSheet error:", error.response?.data || error.message);
             setCurrentWorkSheet(null);
@@ -141,12 +145,7 @@ export default function DashboardHRMScreen() {
     // HÀM: Lấy lịch công cho toàn bộ kỳ lương
     const getLichCong = async () => {
         try {
-            const params = {
-                startDate: startDate.toISOString(),
-                endDate: endDate.toISOString(),
-            };
-
-            const res = await api.get(`attendance/getLichCong`, { requiresAuth: true, params });
+            const res = await api.get(`attendance/getLichCong`, { requiresAuth: true });
 
             const dataMap = (res.data?.data || []).reduce((acc, item) => {
                 const dateKey = dayjs(item.date).format('YYYY-MM-DD');
