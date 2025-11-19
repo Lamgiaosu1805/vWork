@@ -64,20 +64,35 @@ const getAttendanceRange = (year, month) => {
 };
 
 // Hàm xác định màu dấu chấm
-const getDotColor = (day) => {
+const getDotColor = (day, lichCongList) => {
     const today = dayjs();
     const dayDate = dayjs(day.full);
 
     if (dayDate.isAfter(today, 'day')) return '#FFFFFF'; // chưa tới → chấm trắng
     if (day.dow === 0) return '#3498DB'; // CN → xanh dương
 
-    // Fake check-in/check-out
-    const isCheckIn = Math.random() > 0.3;
-    const isCheckOut = Math.random() > 0.5;
+    // Tìm công tháng hiện tại
+    const currentCongThang = lichCongList.find(
+        (lc) => lc.congThang === `${dayDate.month() + 1}-${dayDate.year()}`
+    );
 
-    if (isCheckIn && isCheckOut) return '#00A896'; // xanh lá
-    if (isCheckIn || isCheckOut) return '#FFD700'; // vàng
-    return '#FF0000'; // đỏ
+    if (!currentCongThang || !currentCongThang.data) {
+        // Nếu chưa có dữ liệu tháng này
+        return '#FF0000';
+    }
+
+    const dayData = currentCongThang.data[day.full];
+    // if (!dayData) return '#FF0000'; // chưa chấm công → đỏ
+    // Kiểm tra trạng thái
+    const checkIn = dayData?.check_in;
+    const checkOut = dayData?.check_out;
+    if (!checkIn && !checkOut) {
+        return '#FF0000'; // Đỏ (Nghỉ không phép)
+    }
+    if (checkIn && checkOut) {
+        return '#00A896';
+    }
+    return '#FFD700';
 };
 
 const statusStyles = StyleSheet.create({
@@ -112,22 +127,22 @@ const renderFullStatusSection = (currentWorkSheet) => (
         <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
             <InlineStatusBox
                 title="Giờ vào"
-                value={utils.formatTime(currentWorkSheet.check_in) || "-:-"}
+                value={utils.formatTime(currentWorkSheet.check_in, false) || "-:-"}
                 statusLabel={currentWorkSheet.check_in ? 'Đã check in' : 'Chưa check in'}
                 statusColor={!currentWorkSheet.check_in ? '#FF0000' : '#00A896'}
             />
             <View style={{ width: 10 }} />
             <InlineStatusBox
                 title="Giờ ra"
-                value={utils.formatTime(currentWorkSheet.check_out) || "-:-"}
+                value={utils.formatTime(currentWorkSheet.check_out, false) || "-:-"}
                 statusLabel={currentWorkSheet.check_out ? 'Đã check out' : 'Chưa check out'}
                 statusColor={!currentWorkSheet.check_out ? '#FF0000' : '#00A896'}
             />
             <View style={{ width: 10 }} />
             <InlineStatusBox
                 title="Số giờ làm"
-                value={mockTodayData.soGioLam}
-                statusLabel={mockTodayData.lateMinutes + 'p'}
+                value={""}
+                statusLabel={""}
                 statusColor={'#3498DB'}
                 showClockIcon={true}
             />
@@ -213,8 +228,9 @@ export default function AttendanceScreen() {
     const dispatch = useDispatch();
 
     const attendance = useSelector(state => state.attendance);
-    const { currentWorkSheet } = attendance
-    console.log(currentWorkSheet)
+    const { currentWorkSheet, lichCong } = attendance
+
+    // console.log(JSON.stringify(lichCong, null, 2));
 
     // Cập nhật days khi statMonth/statYear thay đổi
     useEffect(() => {
@@ -255,6 +271,87 @@ export default function AttendanceScreen() {
         setStatMonth(newMonth);
         setStatYear(newYear);
         getLichCong(period + 1, newMonth, newYear);
+    };
+
+    // Hiển thị thông tin chấm công khi ấn vào ngày
+    const handleDayPress = (day) => {
+        try {
+            const dayDate = dayjs(day.full);
+            const congThangKey = `${dayDate.month() + 1}-${dayDate.year()}`;
+            const currentCongThang = lichCong?.find(lc => lc.congThang === congThangKey);
+            const workSheet = currentCongThang?.data?.[day.full];
+
+            const isFuture = dayDate.isAfter(today, 'day');
+            const isSunday = dayDate.day() === 0;
+
+            let formattedDateRaw = dayDate.locale('vi').format('dddd, DD/MM/YYYY');
+            let title = capitalizeFirstLetter(formattedDateRaw);
+            let message = '';
+
+            const getShiftName = (ws) => {
+                const shifts = ws?.shifts;
+                if (!shifts || shifts.length === 0) return 'Không rõ ca';
+                if (shifts.length >= 2) return 'Ca hành chính';
+                return shifts[0].name || 'Không tên ca';
+            };
+
+            if (isSunday && (!workSheet || workSheet.status === 'off')) {
+                message = 'Ngày nghỉ cuối tuần (Chủ Nhật).';
+                Alert.alert(title, message);
+                return;
+            }
+
+            if (isFuture) {
+                if (workSheet) {
+                    const shiftName = getShiftName(workSheet);
+                    const start = workSheet.shifts && workSheet.shifts[0]?.start_time;
+                    const end = workSheet.shifts && workSheet.shifts[0]?.end_time;
+                    message = `Đã xếp ca: ${shiftName}`;
+                    if (start && end) {
+                        message += `\n(Từ ${utils.formatTime(start, true)} đến ${utils.formatTime(end, true)})`;
+                    }
+                } else {
+                    message = 'Chưa có ca làm việc nào được xếp cho ngày này.';
+                }
+            } else {
+                // Ngày đã qua hoặc hôm nay
+                if (workSheet) {
+                    const shiftName = getShiftName(workSheet);
+                    const checkInTime = workSheet.check_in ? utils.formatTime(workSheet.check_in, true) : 'Chưa Check-in';
+                    const checkOutTime = workSheet.check_out ? utils.formatTime(workSheet.check_out, true) : 'Chưa Check-out';
+                    const minutesLate = workSheet.minutes_late ? parseInt(workSheet.minutes_late, 10) : 0;
+
+                    if (workSheet.status === 'off') {
+                        message = 'Ngày nghỉ có kế hoạch (Ví dụ: Nghỉ phép, ốm...).';
+                    } else {
+                        message = `Ca: ${shiftName}\n`;
+
+                        if (!workSheet.check_in && !workSheet.check_out) {
+                            message += `\nTrạng thái: NGHỈ KHÔNG PHÉP`;
+                        } else if (!workSheet.check_in || !workSheet.check_out) {
+                            message += `Vào: ${checkInTime}\n`;
+                            message += `Ra: ${checkOutTime}`;
+                            message += `\nTrạng thái: Thiếu chấm công.`;
+                        } else {
+                            message += `Vào: ${checkInTime}\n`;
+                            message += `Ra: ${checkOutTime}`;
+                            message += `\nTrạng thái: Hoàn thành.`;
+                        }
+
+                        if (minutesLate > 0) {
+                            message += `\nĐã muộn: ${minutesLate} phút 😔`;
+                        }
+                    }
+                } else {
+                    message = 'Không có thông tin ca làm việc nào được ghi nhận.\nTrạng thái: NGHỈ KHÔNG PHÉP hoặc cần báo cáo bổ sung.';
+                }
+            }
+
+            Alert.alert(title, message);
+        } catch (e) {
+            console.log('handleDayPress error', e);
+            Alert.alert('Lỗi', 'Không thể lấy thông tin ngày này');
+        }
     };
 
     return (
@@ -347,7 +444,7 @@ export default function AttendanceScreen() {
                                 alignItems: 'center'
                             }}>
                                 <Ionicons name="time" size={50} color="#2563EB" />
-                                <Text style={{ marginTop: 4, fontSize: 12, color: '#4D4D4D' }}>Số công thực tế</Text>
+                                <Text style={{ marginTop: 4, fontSize: 12, color: '#4D4D4D' }}>Số giờ làm thực tế</Text>
                                 <Text style={{ marginTop: 4, fontSize: 20, color: '#4D4D4D', fontWeight: '500' }}>12/24</Text>
                             </View>
                         </View>
@@ -368,11 +465,13 @@ export default function AttendanceScreen() {
                             <View style={{ marginTop: 16, backgroundColor: "#FFFFFF", padding: 12, borderRadius: 12 }}>
                                 <View style={{ flexDirection: "row", flexWrap: "wrap", marginTop: 12 }}>
                                     {days.map((d, index) => {
-                                        const dotColor = getDotColor(d);
+                                        const dotColor = getDotColor(d, lichCong);
                                         const isToday = dayjs(d.full).isSame(dayjs(), 'day');
                                         return (
-                                            <View
+                                            <TouchableOpacity
                                                 key={index}
+                                                activeOpacity={0.7}
+                                                onPress={() => handleDayPress(d)}
                                                 style={{
                                                     width: "20%",
                                                     borderWidth: 1,
@@ -396,7 +495,7 @@ export default function AttendanceScreen() {
                                                         marginTop: 6,
                                                     }}
                                                 />
-                                            </View>
+                                            </TouchableOpacity>
                                         );
                                     })}
                                 </View>

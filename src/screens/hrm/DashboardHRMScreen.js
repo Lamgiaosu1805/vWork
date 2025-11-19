@@ -26,7 +26,7 @@ import * as Location from 'expo-location';
 import Toast from 'react-native-toast-message';
 import utils from '../../helpers/utils';
 import { useDispatch, useSelector } from 'react-redux';
-import { setCurrentWorkSheetAttendance } from '../../redux/slice/attendanceSlice';
+import { pushLichCong, setCurrentWorkSheetAttendance } from '../../redux/slice/attendanceSlice';
 
 // Dùng mảng tra cứu dựa trên chỉ số ngày (0=CN, 1=T2, ...)
 const weekdayAbbreviations = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
@@ -146,12 +146,21 @@ export default function DashboardHRMScreen() {
     const getLichCong = async () => {
         try {
             const res = await api.get(`attendance/getLichCong`, { requiresAuth: true });
+            const currentMonth = endDate.month() + 1;
+            const currentYear = endDate.year();
 
             const dataMap = (res.data?.data || []).reduce((acc, item) => {
                 const dateKey = dayjs(item.date).format('YYYY-MM-DD');
                 acc[dateKey] = item;
                 return acc;
             }, {});
+
+            const lichCong = {
+                congThang: currentMonth + "-" + currentYear,
+                data: dataMap
+            }
+
+            dispatch(pushLichCong(lichCong))
 
             setCalendarData(dataMap);
         } catch (error) {
@@ -339,8 +348,8 @@ export default function DashboardHRMScreen() {
             // 3. Ngày đã qua hoặc hôm nay 
             if (workSheet) {
                 const shiftName = getShiftName(workSheet);
-                const checkInTime = workSheet.check_in ? utils.formatTime(workSheet.check_in) : 'Chưa Check-in';
-                const checkOutTime = workSheet.check_out ? utils.formatTime(workSheet.check_out) : 'Chưa Check-out';
+                const checkInTime = workSheet.check_in ? utils.formatTime(workSheet.check_in, true) : 'Chưa Check-in';
+                const checkOutTime = workSheet.check_out ? utils.formatTime(workSheet.check_out, true) : 'Chưa Check-out';
                 const minutesLate = workSheet.minutes_late ? parseInt(workSheet.minutes_late, 10) : 0;
 
                 if (workSheet.status === 'off') {
@@ -521,7 +530,7 @@ export default function DashboardHRMScreen() {
                                                 marginBottom: minutesLate > 0 ? 8 : 0,
                                             }}
                                         >
-                                            Vào: {utils.formatTime(currentWorkSheet.check_in)}
+                                            Vào: {utils.formatTime(currentWorkSheet.check_in, true)}
                                         </Text>
 
                                         {/* THÔNG BÁO MUỘN */}

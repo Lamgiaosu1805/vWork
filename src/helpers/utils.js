@@ -1,7 +1,7 @@
 const apiLive = "https://vWork.vnfite.com.vn"
 const apiTest = "http://192.168.1.7:2345"
 
-const BASE_URL = apiTest
+const BASE_URL = apiLive
 
 const renderMaritalStatus = (number) => {
     if (number == 0) {
@@ -23,14 +23,14 @@ const formatDate = (dateString) => {
     return `${day}/${month}/${year}`;
 }
 
-const formatTime = (dateTimeString) => {
+const formatTime = (dateTimeString, isShowSecond) => {
     if (!dateTimeString) return '';
     try {
         const date = new Date(dateTimeString);
         const hours = String(date.getHours()).padStart(2, '0');
         const minutes = String(date.getMinutes()).padStart(2, '0');
         const seconds = String(date.getSeconds()).padStart(2, '0'); // Thêm giây
-        return `${hours}:${minutes}:${seconds}`; // Thêm giây vào chuỗi trả về
+        return isShowSecond == true ? `${hours}:${minutes}:${seconds}` : `${hours}:${minutes}`;
     } catch (e) {
         console.error("Error formatting time:", e);
         return '---';
