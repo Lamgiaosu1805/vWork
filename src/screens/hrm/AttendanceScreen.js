@@ -378,10 +378,10 @@ export default function AttendanceScreen() {
                         }
 
                         if (minutesLate > 0) {
-                            message += `\nĐã muộn: ${minutesLate} phút 😔`;
+                            message += `\nĐã muộn: ${minutesLate} phút 😆`;
                         }
                         if (minutesEarly > 0) {
-                            message += `\nĐã về sớm: ${minutesEarly} phút 😔`;
+                            message += `\nĐã về sớm: ${minutesEarly} phút 😆`;
                         }
                     }
                 } else {

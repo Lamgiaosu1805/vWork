@@ -82,6 +82,9 @@ export default function DashboardHRMScreen() {
     const auth = useSelector(state => state.auth);
     const dispatch = useDispatch();
 
+    const [totalMinutesFail, setTotalMinutesFail] = useState(0);
+    const [totalMissAttendance, setTotalMissAttendance] = useState(0);
+
     const firstName = useMemo(() => {
         const fullName = auth.user?.full_name;
         if (!fullName) return 'Bạn';
@@ -118,7 +121,7 @@ export default function DashboardHRMScreen() {
         return { startDate: start.startOf('day'), endDate: end.endOf('day') };
     }, [today]);
 
-    // 📆 Tạo danh sách ngày (Giữ nguyên)
+    // Tạo danh sách ngày (Giữ nguyên)
     const days = useMemo(() => {
         const list = [];
         let current = startDate;
@@ -148,6 +151,32 @@ export default function DashboardHRMScreen() {
             const res = await api.get(`attendance/getLichCong`, { requiresAuth: true });
             const currentMonth = endDate.month() + 1;
             const currentYear = endDate.year();
+
+            const result = res.data?.data?.reduce(
+                (acc, cur) => {
+                    // Tổng phút đi muộn + về sớm
+                    acc.totalMinutes += (cur.minutes_late || 0) + (cur.minute_early || 0);
+
+                    // Nếu thiếu cả check_in và check_out → nghỉ không phép
+                    if (!cur.check_in && !cur.check_out) {
+                        acc.unpaidLeaveCount += 1;
+                    } else {
+                        // Nếu chỉ thiếu 1 trong 2 → quên chấm công
+                        if (!cur.check_in || !cur.check_out) {
+                            acc.forgotCount += 1;
+                        }
+                    }
+
+                    return acc;
+                },
+                { totalMinutes: 0, forgotCount: 0, unpaidLeaveCount: 0 } // Giá trị khởi tạo
+            );
+
+            // console.log("Tổng phút đi muộn + về sớm:", result.totalMinutes);
+            // console.log("Số lần quên chấm công:", result.forgotCount);
+            // console.log("Số lần nghỉ không phép:", result.unpaidLeaveCount);
+            setTotalMinutesFail(result.totalMinutes);
+            setTotalMissAttendance(result.forgotCount)
 
             const dataMap = (res.data?.data || []).reduce((acc, item) => {
                 const dateKey = dayjs(item.date).format('YYYY-MM-DD');
@@ -370,7 +399,7 @@ export default function DashboardHRMScreen() {
                     }
 
                     if (minutesLate > 0) {
-                        message += `\nĐã muộn: ${minutesLate} phút 😔`;
+                        message += `\nĐã muộn: ${minutesLate} phút 😆`;
                     }
                 }
             } else {
@@ -542,7 +571,7 @@ export default function DashboardHRMScreen() {
                                                     fontWeight: '700',
                                                 }}
                                             >
-                                                (Đã muộn {minutesLate} phút) 😔
+                                                (Đã muộn {minutesLate} phút) 😆
                                             </Text>
                                         )}
                                     </>
@@ -589,7 +618,7 @@ export default function DashboardHRMScreen() {
                     >
                         {/* <Ionicons name="people" size={32} color="#fff" /> */}
                         <Text style={{ color: '#004643', marginTop: 8, fontWeight: '600', textAlign: 'center' }}>Đi muộn / về sớm</Text>
-                        <Text style={{ color: '#004643', marginTop: 8, fontWeight: '800', textAlign: 'center', fontSize: 20 }}>15</Text>
+                        <Text style={{ color: '#004643', marginTop: 8, fontWeight: '800', textAlign: 'center', fontSize: 20 }}>{totalMinutesFail}</Text>
                         <Text style={{ color: '#004643', marginTop: 8, fontWeight: '600', textAlign: 'center' }}>phút</Text>
                     </View>
 
@@ -606,7 +635,7 @@ export default function DashboardHRMScreen() {
                     >
                         {/* <Ionicons name="people" size={32} color="#fff" /> */}
                         <Text style={{ color: '#004643', marginTop: 8, fontWeight: '600', textAlign: 'center' }}>Quên chấm công</Text>
-                        <Text style={{ color: '#004643', marginTop: 8, fontWeight: '800', textAlign: 'center', fontSize: 20 }}>10</Text>
+                        <Text style={{ color: '#004643', marginTop: 8, fontWeight: '800', textAlign: 'center', fontSize: 20 }}>{totalMissAttendance}</Text>
                         <Text style={{ color: '#004643', marginTop: 8, fontWeight: '600', textAlign: 'center' }}>lần</Text>
                     </View>
                 </View>
