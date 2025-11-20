@@ -5,6 +5,8 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useDispatch } from "react-redux";
 import { setCredentials } from "../redux/slice/authSlice";
 import api from "../api/axiosInstance";
+import dayjs from "dayjs";
+
 
 export default function SplashScreen({ navigation }) {
     const dispatch = useDispatch();
@@ -12,6 +14,8 @@ export default function SplashScreen({ navigation }) {
     useEffect(() => {
         const init = async () => {
             try {
+                const today = dayjs().format("YYYY-MM-DD");
+                await AsyncStorage.setItem("LAST_OPEN_DATE", today);
                 const accessToken = await AsyncStorage.getItem("accessToken");
                 const res = await api.get("/user/getUserInfo", { requiresAuth: true });
                 // console.log(JSON.stringify(res.data, null, 2));

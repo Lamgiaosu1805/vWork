@@ -6,10 +6,12 @@ import RootDrawerNavigator from './RootDrawerNavigator';
 import SettingsScreen from '../screens/SettingsScreen';
 import { navigationRef } from '../helpers/navigationRef';
 import SplashScreen from '../screens/SplashScreen';
+import useDailyAppRestart from '../hooks/useDailyAppRestart';
 
 const Stack = createNativeStackNavigator();
 
 export function RootStackNavigator() {
+    useDailyAppRestart()
     return (
         <NavigationContainer ref={navigationRef}>
             <StatusBar style="auto" />

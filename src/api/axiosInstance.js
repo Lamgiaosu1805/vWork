@@ -38,8 +38,8 @@ api.interceptors.request.use(
 
         // Nếu Redux chưa có token
         if (!accessToken) {
-            console.log("get AccessToken from stogare: ", accessToken)
             accessToken = await AsyncStorage.getItem("accessToken");
+            console.log("get AccessToken from stogare: ", accessToken)
         }
 
         if (accessToken) {
