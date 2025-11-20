@@ -11,7 +11,7 @@ export default function ProfileScreen({ navigation }) {
     const { auth } = store.getState()
     const { showAlert } = useCustomAlert();
     const user = auth.user
-    
+
     // console.log(JSON.stringify(auth, null, 2))
     return (
         <View style={styles.container}>
@@ -37,16 +37,16 @@ export default function ProfileScreen({ navigation }) {
                     <View style={styles.info}>
                         <Image source={{ uri: "https://thuvienvector.vn/wp-content/uploads/2025/04/logo-co-dang-vector.jpg", width: 64, height: 64 }} style={{ borderRadius: 32 }} />
                         <View style={{ marginLeft: 12 }}>
-                            <Text style={styles.titleText}>{user.full_name}</Text>
+                            <Text style={styles.titleText}>{user?.full_name}</Text>
                             {
-                                user.departments.map((item, index) => {
+                                user?.departments.map((item, index) => {
                                     return (
                                         <Text style={styles.infoText} key={index}>{item.position.position_name} - {item.department.department_name}</Text>
                                     )
                                 })
                             }
-                            <Text style={styles.infoText}>Mã NV: VNF{user.ma_nv}</Text>
-                            <Text style={styles.infoText}>Hình thức: {user.employment_type || "chưa có"}</Text>
+                            <Text style={styles.infoText}>Mã NV: VNF{user?.ma_nv}</Text>
+                            <Text style={styles.infoText}>Hình thức: {user?.employment_type || "chưa có"}</Text>
                             <Text style={styles.infoText}>Trạng thái: <Text style={{ color: "#22C55E", fontWeight: '800' }}>Đang làm việc</Text></Text>
                         </View>
                     </View>
@@ -65,21 +65,21 @@ export default function ProfileScreen({ navigation }) {
                             <Ionicons name="call-outline" size={24} color="#004643" />
                             <View style={{ marginLeft: 8 }}>
                                 <Text style={{ fontSize: 12, color: 'gray', marginBottom: 4 }}>Số điện thoại</Text>
-                                <Text style={{ color: '#004643' }}>{user.phone_number}</Text>
+                                <Text style={{ color: '#004643' }}>{user?.phone_number}</Text>
                             </View>
                         </View>
                         <View style={styles.infoItem}>
                             <Ionicons name="card-outline" size={24} color="#004643" />
                             <View style={{ marginLeft: 8 }}>
                                 <Text style={{ fontSize: 12, color: 'gray', marginBottom: 4 }}>Số CC/CCCD/CMND</Text>
-                                <Text style={{ color: '#004643' }}>{user.cccd}</Text>
+                                <Text style={{ color: '#004643' }}>{user?.cccd}</Text>
                             </View>
                         </View>
                         <View style={styles.infoItem}>
                             <Ionicons name="calendar-outline" size={24} color="#004643" />
                             <View style={{ marginLeft: 8 }}>
                                 <Text style={{ fontSize: 12, color: 'gray', marginBottom: 4 }}>Ngày sinh</Text>
-                                <Text style={{ color: '#004643' }}>{utils.formatDate(user.date_of_birth)}</Text>
+                                <Text style={{ color: '#004643' }}>{utils.formatDate(user?.date_of_birth)}</Text>
                             </View>
                         </View>
                         <View style={styles.infoItem}>
@@ -93,14 +93,14 @@ export default function ProfileScreen({ navigation }) {
                             <Ionicons name="male-female-outline" size={24} color="#004643" />
                             <View style={{ marginLeft: 8 }}>
                                 <Text style={{ fontSize: 12, color: 'gray', marginBottom: 4 }}>Giới tính</Text>
-                                <Text style={{ color: '#004643' }}>{user.sex == 0 ? "Nữ" : "Nam"}</Text>
+                                <Text style={{ color: '#004643' }}>{user?.sex == 0 ? "Nữ" : "Nam"}</Text>
                             </View>
                         </View>
                         <View style={styles.infoItem}>
                             <Ionicons name="star-outline" size={24} color="#004643" />
                             <View style={{ marginLeft: 8 }}>
                                 <Text style={{ fontSize: 12, color: 'gray', marginBottom: 4 }}>Tình trạng hôn nhân</Text>
-                                <Text style={{ color: '#004643' }}>{utils.renderMaritalStatus(user.tinh_trang_hon_nhan)}</Text>
+                                <Text style={{ color: '#004643' }}>{utils.renderMaritalStatus(user?.tinh_trang_hon_nhan)}</Text>
                             </View>
                         </View>
                     </View>
@@ -115,11 +115,11 @@ export default function ProfileScreen({ navigation }) {
                         </View>
                         <Ionicons name="chevron-forward-outline" size={24} color="#004643" />
                     </TouchableOpacity>
-                    <TouchableOpacity 
-                        style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderBottomWidth: 1, borderColor: '#E5E7EB', paddingVertical: 12 }} 
+                    <TouchableOpacity
+                        style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderBottomWidth: 1, borderColor: '#E5E7EB', paddingVertical: 12 }}
                         activeOpacity={0.7}
-                        onPress={() => (user.laborContracts && user.laborContracts?.length > 0)
-                            ? navigation.navigate('ShowFileScreen') 
+                        onPress={() => (user?.laborContracts && user?.laborContracts?.length > 0)
+                            ? navigation.navigate('ShowFileScreen')
                             : showAlert("Thông báo", "Hợp đồng của bạn chưa được tải lên !")
                         }
                     >

@@ -24,10 +24,14 @@ const authSlice = createSlice({
         },
         checkIn: (state, action) => {
             // state.currentWorkSheet  action.payload;
+        },
+        checkOut: (state, action) => {
+            state.currentWorkSheet.check_out = action.payload.checkOut
+            state.currentWorkSheet.minute_early = action.payload.minutesEarly
         }
     }
 })
 
 
-export const { setCurrentWorkSheetAttendance, pushLichCong } = authSlice.actions;
+export const { setCurrentWorkSheetAttendance, pushLichCong, checkOut } = authSlice.actions;
 export default authSlice.reducer;

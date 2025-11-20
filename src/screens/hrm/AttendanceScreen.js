@@ -1,4 +1,4 @@
-import { Alert, Image, ScrollView, StyleSheet, Text, View, TouchableOpacity } from 'react-native';
+import { Alert, Image, ScrollView, StyleSheet, Text, View, TouchableOpacity, Linking } from 'react-native';
 import React, { useState, useEffect, useMemo } from 'react';
 import Header from '../../components/Header';
 import { openDrawer } from '../../helpers/navigationRef';
@@ -127,16 +127,16 @@ const renderFullStatusSection = (currentWorkSheet) => (
         <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
             <InlineStatusBox
                 title="Giờ vào"
-                value={utils.formatTime(currentWorkSheet.check_in, false) || "-:-"}
-                statusLabel={currentWorkSheet.check_in ? 'Đã check in' : 'Chưa check in'}
-                statusColor={!currentWorkSheet.check_in ? '#FF0000' : '#00A896'}
+                value={utils.formatTime(currentWorkSheet?.check_in, false) || "-:-"}
+                statusLabel={currentWorkSheet?.check_in ? 'Đã check in' : 'Chưa check in'}
+                statusColor={!currentWorkSheet?.check_in ? '#FF0000' : '#00A896'}
             />
             <View style={{ width: 10 }} />
             <InlineStatusBox
                 title="Giờ ra"
-                value={utils.formatTime(currentWorkSheet.check_out, false) || "-:-"}
-                statusLabel={currentWorkSheet.check_out ? 'Đã check out' : 'Chưa check out'}
-                statusColor={!currentWorkSheet.check_out ? '#FF0000' : '#00A896'}
+                value={utils.formatTime(currentWorkSheet?.check_out, false) || "-:-"}
+                statusLabel={currentWorkSheet?.check_out ? 'Đã check out' : 'Chưa check out'}
+                statusColor={!currentWorkSheet?.check_out ? '#FF0000' : '#00A896'}
             />
             <View style={{ width: 10 }} />
             <InlineStatusBox
@@ -147,6 +147,12 @@ const renderFullStatusSection = (currentWorkSheet) => (
                 showClockIcon={true}
             />
         </View>
+        {
+            currentWorkSheet?.minutes_late > 0 && (<Text style={{ color: '#FF0000', marginTop: 12 }}>Bạn đã check in muộn {currentWorkSheet?.minutes_late} phút!</Text>)
+        }
+        {
+            currentWorkSheet?.minute_early > 0 && (<Text style={{ color: '#FFA500', marginTop: 8 }}>Bạn đã check out sớm {currentWorkSheet?.minute_early} phút!</Text>)
+        }
     </View>
 );
 
@@ -229,6 +235,8 @@ export default function AttendanceScreen() {
 
     const attendance = useSelector(state => state.attendance);
     const { currentWorkSheet, lichCong } = attendance
+
+    // console.log(currentWorkSheet)
 
     // console.log(JSON.stringify(lichCong, null, 2));
 
@@ -376,7 +384,7 @@ export default function AttendanceScreen() {
                         <Text style={styles.checkButtonText}>CHECK IN</Text>
                     </TouchableOpacity>
                     <View style={{ width: 16 }} />
-                    <TouchableOpacity style={styles.checkButton} activeOpacity={0.7}>
+                    <TouchableOpacity style={styles.checkButton} activeOpacity={0.7} onPress={() => attendanceApi.checkOut(dispatch, currentWorkSheet)}>
                         <Text style={styles.checkButtonText}>CHECK OUT</Text>
                     </TouchableOpacity>
                 </View>

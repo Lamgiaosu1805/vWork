@@ -38,6 +38,7 @@ api.interceptors.request.use(
 
         // Nếu Redux chưa có token
         if (!accessToken) {
+            console.log("get AccessToken from stogare: ", accessToken)
             accessToken = await AsyncStorage.getItem("accessToken");
         }
 
@@ -73,7 +74,7 @@ api.interceptors.response.use(
         // Nếu token hết hạn
         if (error.response.status === 401 && error.response.data.errorCode == "TOKEN_EXPIRED" && !originalRequest._retry && originalRequest.requiresAuth) {
             originalRequest._retry = true;
-            
+
             try {
                 const refreshToken = await AsyncStorage.getItem("refreshToken");
 
@@ -100,6 +101,7 @@ api.interceptors.response.use(
             } catch (err) {
                 store.dispatch(logoutUser());
                 await AsyncStorage.multiRemove(["accessToken", "refreshToken"]);
+                console.log("REMOVE TOKEN")
                 return Promise.reject(err);
             }
         }
