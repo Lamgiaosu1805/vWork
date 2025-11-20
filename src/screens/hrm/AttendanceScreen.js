@@ -122,6 +122,35 @@ const InlineStatusBox = ({ title, value, statusLabel, statusColor, showClockIcon
     </View>
 );
 
+const calcWorkingHours = (ws) => {
+    if (!ws?.check_in || !ws?.check_out) return "-:-";
+
+    const checkIn = dayjs(ws.check_in);
+    const checkOut = dayjs(ws.check_out);
+
+    let totalMinutes = checkOut.diff(checkIn, "minute");
+
+    // Điều kiện trừ nghỉ trưa:
+    // - mergedShift = true
+    // - checkout sau 1 giờ chiều
+    if (ws?.mergedShift === true) {
+        const lunchStart = checkIn.hour(12).minute(0).second(0);
+        const lunchEnd = checkIn.hour(13).minute(0).second(0);
+
+        // Nếu checkout sau 13:00 thì trừ 1 tiếng
+        if (checkOut.isAfter(lunchEnd)) {
+            totalMinutes -= 60;
+        }
+    }
+
+    if (totalMinutes <= 0) return "-:-";
+
+    const h = Math.floor(totalMinutes / 60).toString().padStart(2, '0');
+    const m = (totalMinutes % 60).toString().padStart(2, '0');
+
+    return `${h}:${m}`;
+};
+
 const renderFullStatusSection = (currentWorkSheet) => (
     <View style={{ marginTop: 12, backgroundColor: 'white', borderRadius: 16, padding: 16 }}>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
@@ -141,7 +170,7 @@ const renderFullStatusSection = (currentWorkSheet) => (
             <View style={{ width: 10 }} />
             <InlineStatusBox
                 title="Số giờ làm"
-                value={""}
+                value={calcWorkingHours(currentWorkSheet)}
                 statusLabel={""}
                 statusColor={'#3498DB'}
                 showClockIcon={true}
@@ -236,7 +265,7 @@ export default function AttendanceScreen() {
     const attendance = useSelector(state => state.attendance);
     const { currentWorkSheet, lichCong } = attendance
 
-    // console.log(currentWorkSheet)
+    // console.log("cws",currentWorkSheet)
 
     // console.log(JSON.stringify(lichCong, null, 2));
 
