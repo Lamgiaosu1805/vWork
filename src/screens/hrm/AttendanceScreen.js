@@ -357,6 +357,8 @@ export default function AttendanceScreen() {
                     const checkInTime = workSheet.check_in ? utils.formatTime(workSheet.check_in, true) : 'Chưa Check-in';
                     const checkOutTime = workSheet.check_out ? utils.formatTime(workSheet.check_out, true) : 'Chưa Check-out';
                     const minutesLate = workSheet.minutes_late ? parseInt(workSheet.minutes_late, 10) : 0;
+                    const minutesEarly = workSheet.minute_early ? parseInt(workSheet.minute_early, 10) : 0;
+
 
                     if (workSheet.status === 'off') {
                         message = 'Ngày nghỉ có kế hoạch (Ví dụ: Nghỉ phép, ốm...).';
@@ -377,6 +379,9 @@ export default function AttendanceScreen() {
 
                         if (minutesLate > 0) {
                             message += `\nĐã muộn: ${minutesLate} phút 😔`;
+                        }
+                        if (minutesEarly > 0) {
+                            message += `\nĐã về sớm: ${minutesEarly} phút 😔`;
                         }
                     }
                 } else {
