@@ -29,42 +29,31 @@ const mockTodayData = {
     isLate: false,
 };
 
-const getAttendanceRange = (year, month) => {
-    const start = dayjs(`${year}-${month}-01`).subtract(1, 'month').date(26);
-    const end = dayjs(`${year}-${month}-25`);
-
-    const weekdayMap = {
-        0: "CN",
-        1: "T2",
-        2: "T3",
-        3: "T4",
-        4: "T5",
-        5: "T6",
-        6: "T7",
-    };
+const getAttendanceRangePayroll = (year, month) => {
+    const start = dayjs(`${year}-${month}-01`).subtract(1, "month").date(26);
+    const end = dayjs(`${year}-${month}-01`).date(25);
 
     const days = [];
     let current = start;
 
-    while (current.isBefore(end) || current.isSame(end, 'day')) {
+    while (current.isSame(end) || current.isBefore(end)) {
         const day = current.date();
         const monthNum = current.month() + 1;
-
         days.push({
-            date: day === 1 ? `1/${monthNum}` : `${day}`, // nếu là ngày 1, thêm tháng
-            weekday: weekdayMap[current.day()],
             full: current.format("YYYY-MM-DD"),
+            date: day === 1 ? `1/${monthNum}` : `${day}`,
             dow: current.day(),
+            weekday: ["CN", "T2", "T3", "T4", "T5", "T6", "T7"][current.day()]
         });
 
-        current = current.add(1, 'day');
+        current = current.add(1, "day");
     }
 
     return days;
 };
 
 // Hàm xác định màu dấu chấm
-const getDotColor = (day, lichCongList) => {
+const getDotColor = (day, lichCongList, statMonth, statYear) => {
     const today = dayjs();
     const dayDate = dayjs(day.full);
 
@@ -73,7 +62,7 @@ const getDotColor = (day, lichCongList) => {
 
     // Tìm công tháng hiện tại
     const currentCongThang = lichCongList.find(
-        (lc) => lc.congThang === `${dayDate.month() + 1}-${dayDate.year()}`
+        (lc) => lc.congThang === `${statMonth}-${statYear}`
     );
 
     if (!currentCongThang || !currentCongThang.data) {
@@ -250,13 +239,31 @@ const checkIn = async () => {
 
 }
 
+function getCurrentPayrollMonth(today = dayjs()) {
+    const day = today.date();
+    let month = today.month() + 1; // 1-12
+    let year = today.year();
+
+    if (day >= 26) {
+        month += 1;
+        if (month === 13) {
+            month = 1;
+            year += 1;
+        }
+    }
+
+    return { statMonth: month, statYear: year };
+}
+
 export default function AttendanceScreen() {
     const IMAGE_HEIGHT = 134;
     const today = dayjs();
 
     // Tháng/ Năm thống kê hiện tại
-    const [statMonth, setStatMonth] = useState(today.month() + 1); // 1-12
-    const [statYear, setStatYear] = useState(today.year());
+    const { statMonth: initMonth, statYear: initYear } = getCurrentPayrollMonth();
+
+    const [statMonth, setStatMonth] = useState(initMonth);
+    const [statYear, setStatYear] = useState(initYear);
     const [showDetail, setShowDetail] = useState(false);
     const [days, setDays] = useState([]);
     const [period, setPeriod] = useState(0); // 0: hiện tại, -1: trước đó, 1: kế tiếp
@@ -271,7 +278,7 @@ export default function AttendanceScreen() {
 
     // Cập nhật days khi statMonth/statYear thay đổi
     useEffect(() => {
-        setDays(getAttendanceRange(statYear, statMonth));
+        setDays(getAttendanceRangePayroll(statYear, statMonth));
     }, [statMonth, statYear]);
 
     // Xác định có thể forward hay không
@@ -293,7 +300,12 @@ export default function AttendanceScreen() {
     const handleBack = () => {
         let newMonth = statMonth - 1;
         let newYear = statYear;
-        if (newMonth < 1) { newMonth = 12; newYear -= 1; }
+
+        if (newMonth === 0) {
+            newMonth = 12;
+            newYear -= 1;
+        }
+
         setStatMonth(newMonth);
         setStatYear(newYear);
         getLichCong(period - 1, newMonth, newYear);
@@ -302,9 +314,15 @@ export default function AttendanceScreen() {
     // Forward
     const handleForward = () => {
         if (!canForward()) return;
+
         let newMonth = statMonth + 1;
         let newYear = statYear;
-        if (newMonth > 12) { newMonth = 1; newYear += 1; }
+
+        if (newMonth === 13) {
+            newMonth = 1;
+            newYear += 1;
+        }
+
         setStatMonth(newMonth);
         setStatYear(newYear);
         getLichCong(period + 1, newMonth, newYear);
@@ -314,7 +332,7 @@ export default function AttendanceScreen() {
     const handleDayPress = (day) => {
         try {
             const dayDate = dayjs(day.full);
-            const congThangKey = `${dayDate.month() + 1}-${dayDate.year()}`;
+            const congThangKey = `${statMonth}-${statYear}`;
             const currentCongThang = lichCong?.find(lc => lc.congThang === congThangKey);
             const workSheet = currentCongThang?.data?.[day.full];
 
@@ -507,7 +525,7 @@ export default function AttendanceScreen() {
                             <View style={{ marginTop: 16, backgroundColor: "#FFFFFF", padding: 12, borderRadius: 12 }}>
                                 <View style={{ flexDirection: "row", flexWrap: "wrap", marginTop: 12 }}>
                                     {days.map((d, index) => {
-                                        const dotColor = getDotColor(d, lichCong);
+                                        const dotColor = getDotColor(d, lichCong, statMonth, statYear);
                                         const isToday = dayjs(d.full).isSame(dayjs(), 'day');
                                         return (
                                             <TouchableOpacity
