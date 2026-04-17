@@ -2,6 +2,7 @@
   "expo": {
     "name": "vnfite-vwork",
     "slug": "vnfite-vwork",
+    "scheme": "vwork",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -41,7 +42,9 @@
       "@config-plugins/react-native-blob-util",
       "@config-plugins/react-native-pdf",
       "react-native-wifi-reborn",
-      "expo-location"
+      "expo-location",
+      "expo-asset",
+      "expo-font"
     ],
     "extra": {
       "eas": {
