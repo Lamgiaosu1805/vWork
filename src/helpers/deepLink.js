@@ -6,7 +6,7 @@ export function initDeepLink(navigationRef) {
         const parsed = Linking.parse(url);
         console.log("DEEPLINK:", parsed);
 
-        const ref = parsed.queryParams?.ref;
+        const ref = parsed.queryParams?.ma_nv;
 
         const tryNavigate = () => {
             if (navigationRef.isReady()) {
