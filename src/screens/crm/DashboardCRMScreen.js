@@ -4,6 +4,7 @@ import QRCode from "react-native-qrcode-svg"
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons'
 import { openDrawer } from '../../helpers/navigationRef'
 import api from '../../api/axiosInstance'
+import OverviewDashboard from './components/dashboard/OverviewDashboard'
 
 const { width } = Dimensions.get('window');
 
@@ -58,9 +59,9 @@ export default function DashboardCRMScreen() {
                     <Text style={styles.qrSubTitle}>Khách hàng quét mã để mở tài khoản</Text>
 
                     <View style={styles.qrWrapper}>
-                        {dataQR?.link ? (
+                        {dataQR?.landing_url ? (
                             <QRCode
-                                value={dataQR.link}
+                                value={dataQR.landing_url}
                                 size={width * 0.6}
                                 logoBackgroundColor='transparent'
                                 color="#000"
@@ -89,6 +90,8 @@ export default function DashboardCRMScreen() {
                     </View>
                 </View>
 
+                <OverviewDashboard />
+                
                 <View style={{ height: 40 }} />
             </ScrollView>
         </View>
