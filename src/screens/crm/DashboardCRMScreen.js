@@ -5,12 +5,16 @@ import Icon from 'react-native-vector-icons/MaterialCommunityIcons'
 import { openDrawer } from '../../helpers/navigationRef'
 import api from '../../api/axiosInstance'
 import OverviewDashboard from './components/dashboard/OverviewDashboard'
+import { store } from '../../redux/store'
 
 const { width } = Dimensions.get('window');
 
 export default function DashboardCRMScreen() {
     const [dataQR, setDataQR] = useState(null);
     const [loading, setLoading] = useState(true);
+    const { auth } = store.getState()
+    // const { showAlert } = useCustomAlert();
+    const user = auth.user
 
     useEffect(() => {
         const fetchDashboardData = async () => {
@@ -55,7 +59,7 @@ export default function DashboardCRMScreen() {
 
                 {/* QR Section - Trọng tâm */}
                 <View style={styles.qrCard}>
-                    <Text style={styles.qrTitle}>Mã QR Giới Thiệu</Text>
+                    <Text style={styles.qrTitle}>Mã QR Giới Thiệu: {user?.phone_number + "-" + dataQR?.ma_nv}</Text>
                     <Text style={styles.qrSubTitle}>Khách hàng quét mã để mở tài khoản</Text>
 
                     <View style={styles.qrWrapper}>
@@ -91,7 +95,7 @@ export default function DashboardCRMScreen() {
                 </View>
 
                 <OverviewDashboard />
-                
+
                 <View style={{ height: 40 }} />
             </ScrollView>
         </View>
