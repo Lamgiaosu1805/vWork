@@ -1,4 +1,4 @@
-package com.kylanx11.vnfitevwork
+package com.vnfitevwork
 
 import android.app.Application
 import android.content.res.Configuration

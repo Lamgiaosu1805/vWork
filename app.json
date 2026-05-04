@@ -15,7 +15,7 @@
     },
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.kylanx11.vnfitevwork",
+      "bundleIdentifier": "com.vnfitevwork",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
         "NSLocationWhenInUseUsageDescription": "Ứng dụng cần quyền truy cập vị trí để xác định vị trí và thông tin Wi-Fi bạn đang kết nối."
@@ -33,7 +33,7 @@
         "android.permission.DOWNLOAD_WITHOUT_NOTIFICATION",
         "android.permission.ACCESS_NETWORK_STATE"
       ],
-      "package": "com.kylanx11.vnfitevwork"
+      "package": "com.vnfitevwork"
     },
     "web": {
       "favicon": "./assets/favicon.png"
