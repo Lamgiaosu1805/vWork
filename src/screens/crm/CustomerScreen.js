@@ -78,7 +78,6 @@ export default function CustomerScreen() {
       const res = await getCustomers();
       const apiData = res?.data?.data || [];
       setDataCustomers(apiData);
-      console.log("Loaded customers (API shape):", apiData);
     } catch (error) {
       console.log("Error loading customers:", error);
     } finally {
@@ -96,7 +95,7 @@ export default function CustomerScreen() {
   }, [totalPages]);
 
   const handlePress = useCallback(
-    (id) => navigation.navigate("UserDetail", { id }),
+    (id) => console.log("Customer ID pressed:", id),
     [navigation],
   );
 
