@@ -1,16 +1,110 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
+import { DrawerContentScrollView } from "@react-navigation/drawer";
 import {
-    DrawerContentScrollView,
-    DrawerItem,
-} from "@react-navigation/drawer";
-import { View, Text, Image, TouchableOpacity, StyleSheet } from "react-native";
+    View,
+    Text,
+    Image,
+    TouchableOpacity,
+    StyleSheet,
+    ActivityIndicator,
+} from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as ImagePicker from "expo-image-picker";
+import * as ImageManipulator from "expo-image-manipulator";
+import { store } from "../redux/store";
+import api from "../api/axiosInstance";
 
 export default function CustomDrawerContent(props) {
     const { navigation, state } = props;
+    const { auth } = store.getState();
+    const user = auth.user;
+
+    const [avatarBase64, setAvatarBase64] = useState(null);
+    const [uploading, setUploading] = useState(false);
 
     const currentRoute = state?.routeNames[state?.index];
+
+    // Fetch ảnh avatar kèm token
+    useEffect(() => {
+        const fetchAvatar = async () => {
+            if (!user?.avatar) return;
+            try {
+                const res = await api.get(
+                    `/document/getFile?filename=${user.avatar}`,
+                    {
+                        requiresAuth: true,
+                        responseType: "blob",
+                    }
+                );
+
+                // Convert blob → base64
+                const reader = new FileReader();
+                reader.onloadend = () => {
+                    setAvatarBase64(reader.result);
+                };
+                reader.readAsDataURL(res.data);
+            } catch (error) {
+                console.log("fetchAvatar error:", error.message);
+            }
+        };
+
+        fetchAvatar();
+    }, [user?.avatar]);
+
+    const handlePickAvatar = async () => {
+        // Xin quyền truy cập thư viện ảnh
+        const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (status !== "granted") {
+            alert("Cần cấp quyền truy cập thư viện ảnh để thay avatar");
+            return;
+        }
+
+        // Mở thư viện ảnh + crop vuông ngay trong picker
+        const result = await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: ImagePicker.MediaTypeOptions.Images,
+            allowsEditing: true,   // bật crop
+            aspect: [1, 1],        // crop vuông
+            quality: 0.8,
+        });
+
+        if (result.canceled) return;
+
+        const selectedUri = result.assets[0].uri;
+
+        try {
+            setUploading(true);
+
+            // Resize về 400x400 trước khi upload
+            const manipulated = await ImageManipulator.manipulateAsync(
+                selectedUri,
+                [{ resize: { width: 400, height: 400 } }],
+                { compress: 0.8, format: ImageManipulator.SaveFormat.JPEG }
+            );
+
+            // Tạo FormData upload lên server
+            const formData = new FormData();
+            formData.append("avatar", {
+                uri: manipulated.uri,
+                name: "avatar.jpg",
+                type: "image/jpeg",
+            });
+
+            await api.post("/user/uploadAvatar", formData, {
+                requiresAuth: true,
+                headers: { "Content-Type": "multipart/form-data" },
+            });
+
+            // Hiển thị ảnh mới ngay, không cần fetch lại
+            setAvatarBase64(manipulated.uri);
+
+        } catch (error) {
+            console.log("uploadAvatar error:", error.message);
+            alert("Upload avatar thất bại, vui lòng thử lại");
+        } finally {
+            setUploading(false);
+        }
+    };
 
     const handleNavigate = async (routeName) => {
         navigation.navigate(routeName);
@@ -50,17 +144,15 @@ export default function CustomDrawerContent(props) {
                 activeOpacity={0.8}
                 onPress={() => {
                     if (!routeName) return;
-
-                    if (routeName === 'Settings') {
+                    if (routeName === "Settings") {
                         const parent = navigation.getParent ? navigation.getParent() : null;
                         if (parent && parent.navigate) {
-                            parent.navigate('Settings');
+                            parent.navigate("Settings");
                         } else {
-                            navigation.navigate('Settings');
+                            navigation.navigate("Settings");
                         }
                         return;
                     }
-
                     navigation.navigate(routeName);
                 }}
             >
@@ -70,24 +162,52 @@ export default function CustomDrawerContent(props) {
                     color={"#555"}
                     style={{ marginRight: 10 }}
                 />
-                <Text style={styles.menuLabel}>
-                    {label}
-                </Text>
+                <Text style={styles.menuLabel}>{label}</Text>
             </TouchableOpacity>
-        )
-    }
+        );
+    };
 
     return (
         <DrawerContentScrollView {...props} contentContainerStyle={{ flex: 1 }}>
             {/* Header profile */}
             <View style={styles.profileContainer}>
-                <Image
-                    source={{ uri: "https://thuvienvector.vn/wp-content/uploads/2025/04/logo-co-dang-vector.jpg" }}
-                    style={styles.avatar}
-                />
-                <Text style={styles.username}>Nghiêm Khắc Lâm</Text>
-                <Text style={styles.subInfo}>Tạp vụ - VNF1999</Text>
-                <Text style={styles.subInfo}>Khối Công nghệ</Text>
+
+                {/* Avatar + nút chỉnh sửa */}
+                <TouchableOpacity
+                    onPress={handlePickAvatar}
+                    disabled={uploading}
+                    style={styles.avatarWrapper}
+                    activeOpacity={0.8}
+                >
+                    {avatarBase64 ? (
+                        <Image source={{ uri: avatarBase64 }} style={styles.avatar} />
+                    ) : (
+                        <View style={[styles.avatar, styles.avatarPlaceholder]}>
+                            <Ionicons name="person" size={36} color="#aaa" />
+                        </View>
+                    )}
+
+                    {/* Overlay loading khi đang upload */}
+                    {uploading && (
+                        <View style={styles.avatarOverlay}>
+                            <ActivityIndicator color="#fff" />
+                        </View>
+                    )}
+
+                    {/* Icon camera góc dưới phải */}
+                    {!uploading && (
+                        <View style={styles.cameraIcon}>
+                            <Ionicons name="camera" size={14} color="#fff" />
+                        </View>
+                    )}
+                </TouchableOpacity>
+
+                <Text style={styles.username}>{user?.full_name}</Text>
+                <Text style={styles.subInfo}>MNV: {user?.ma_nv}</Text>
+                <Text style={styles.subInfo}>
+                    {user?.departments[0]?.position?.position_name} -{" "}
+                    {user?.departments[0]?.department?.department_name}
+                </Text>
             </View>
 
             <View style={styles.divider} />
@@ -99,20 +219,20 @@ export default function CustomDrawerContent(props) {
                     icon="business-outline"
                     routeName="WorkPlaceStackNavigator"
                 />
-
                 <DrawerItemCustom
                     label="HRM"
                     icon="people-outline"
                     routeName="HRMStackNavigator"
                 />
-
                 <DrawerItemCustom
                     label="CRM"
                     icon="cart-outline"
                     routeName="CRMStackNavigator"
                 />
             </View>
+
             <View style={styles.divider} />
+
             <View style={styles.featureGroup}>
                 <Text style={styles.featureGroupTitle}>Tiện ích</Text>
                 <View style={styles.featureGroupItems}>
@@ -134,7 +254,6 @@ export default function CustomDrawerContent(props) {
                 </View>
             </View>
 
-
             {/* Footer logout */}
             <View style={styles.footer}>
                 <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
@@ -151,11 +270,41 @@ const styles = StyleSheet.create({
         padding: 20,
         alignItems: "center",
     },
+    avatarWrapper: {
+        position: "relative",
+        marginBottom: 10,
+    },
     avatar: {
         width: 70,
         height: 70,
         borderRadius: 35,
-        marginBottom: 10,
+    },
+    avatarPlaceholder: {
+        backgroundColor: "#f0f0f0",
+        alignItems: "center",
+        justifyContent: "center",
+    },
+    avatarOverlay: {
+        position: "absolute",
+        width: 70,
+        height: 70,
+        borderRadius: 35,
+        backgroundColor: "rgba(0,0,0,0.4)",
+        alignItems: "center",
+        justifyContent: "center",
+    },
+    cameraIcon: {
+        position: "absolute",
+        bottom: 0,
+        right: 0,
+        backgroundColor: "#004643",
+        width: 22,
+        height: 22,
+        borderRadius: 11,
+        alignItems: "center",
+        justifyContent: "center",
+        borderWidth: 2,
+        borderColor: "#fff",
     },
     username: {
         fontSize: 16,
