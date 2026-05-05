@@ -11,10 +11,10 @@ import React, { useEffect, useState, useMemo, useCallback } from "react";
 import { Feather, Ionicons } from "@expo/vector-icons";
 import Pagination from "./components/customer/Pagination";
 import CustomerCard from "./components/customer/CustomerCard";
-import FilterChip from "./components/customer/FilterChip";
 import { useNavigation } from "@react-navigation/native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import useCustomer from "../../hooks/crm/useCustomer";
+import { Dropdown } from "react-native-element-dropdown";
 
 const ITEMS_PER_PAGE = 5;
 
@@ -150,12 +150,100 @@ export default function CustomerScreen() {
         </TouchableOpacity>
       </View>
 
+      <View style={{ width: "100%", paddingHorizontal: 20, marginTop: 8 }}>
+        <View style={styles.filterBar}>
+          <View style={styles.searchWrap}>
+            <Feather
+              name="search"
+              size={16}
+              color="#9DA4B0"
+              style={styles.searchIcon}
+            />
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Tìm kiếm theo tên, số điện thoại..."
+              placeholderTextColor="#9DA4B0"
+              value={search}
+              onChangeText={(v) => {
+                setSearch(v);
+                setPage(1);
+              }}
+            />
+          </View>
+
+          <View style={styles.filtersRow}>
+            <Dropdown
+              style={styles.dropdown}
+              containerStyle={styles.dropdownContainer}
+              selectedTextStyle={{
+                fontSize: 12,
+                color: "#374151",
+              }}
+              iconStyle={{ width: 14, height: 14 }}
+              itemTextStyle={{
+                fontSize: 12,
+                color: "#374151",
+              }}
+              data={[
+                { value: "all", label: "Tất cả loại KH" },
+                { value: "vip", label: "KH VIP" },
+                { value: "potential", label: "KH Tiềm năng" },
+                { value: "normal", label: "KH Thường" },
+              ]}
+              labelField="label"
+              valueField="value"
+              value={filterType}
+              placeholder="Tất cả loại KH"
+              onChange={(item) => {
+                setFilterType(item.value);
+                setPage(1);
+              }}
+            />
+
+            <Dropdown
+              style={styles.dropdown}
+              containerStyle={styles.dropdownContainer}
+              selectedTextStyle={{
+                fontSize: 12,
+                color: "#374151",
+              }}
+              iconStyle={{ width: 14, height: 14 }}
+              itemTextStyle={{
+                fontSize: 12,
+                color: "#374151",
+              }}
+              data={[
+                { value: "all", label: "Tất cả EKYC" },
+                { value: "done", label: "Đã xác thực" },
+                { value: "not", label: "Chưa xác thực" },
+              ]}
+              labelField="label"
+              valueField="value"
+              value={filterEkyc}
+              placeholder="Tất cả EKYC"
+              onChange={(item) => {
+                setFilterEkyc(item.value);
+                setPage(1);
+              }}
+            />
+
+            <TouchableOpacity style={styles.calendarBtn}>
+              <Feather name="calendar" size={16} color="#6B7280" />
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+
+      {/* ── List header ── */}
+      <Text style={styles.listHeaderText}>
+        Danh sách khách hàng ({filtered.length})
+      </Text>
+
       <FlatList
         style={styles.container}
         contentContainerStyle={{
           paddingBottom: 40,
           paddingHorizontal: 20,
-          paddingTop: 20,
         }}
         keyboardShouldPersistTaps="handled"
         nestedScrollEnabled
@@ -164,71 +252,6 @@ export default function CustomerScreen() {
         keyExtractor={(item) => item._id}
         refreshing={refreshing}
         onRefresh={loadDataCustomers}
-        ListHeaderComponent={() => (
-          <>
-            {/* ── Search & Filters ── */}
-            <View style={styles.filterBar}>
-              <View style={styles.searchWrap}>
-                <Feather
-                  name="search"
-                  size={16}
-                  color="#9DA4B0"
-                  style={styles.searchIcon}
-                />
-                <TextInput
-                  style={styles.searchInput}
-                  placeholder="Tìm kiếm theo tên, số điện thoại..."
-                  placeholderTextColor="#9DA4B0"
-                  value={search}
-                  onChangeText={(v) => {
-                    setSearch(v);
-                    setPage(1);
-                  }}
-                />
-              </View>
-
-              <View style={styles.filtersRow}>
-                <FilterChip
-                  label="Tất cả loại KH"
-                  value={filterType}
-                  onChange={(v) => {
-                    setFilterType(v);
-                    setPage(1);
-                  }}
-                  options={[
-                    { value: "all", label: "Tất cả loại KH" },
-                    { value: "vip", label: "KH VIP" },
-                    { value: "potential", label: "KH Tiềm năng" },
-                    { value: "normal", label: "KH Thường" },
-                  ]}
-                />
-                <FilterChip
-                  label="Tất cả EKYC"
-                  value={filterEkyc}
-                  onChange={(v) => {
-                    setFilterEkyc(v);
-                    setPage(1);
-                  }}
-                  options={[
-                    { value: "all", label: "Tất cả EKYC" },
-                    { value: "done", label: "Đã xác thực" },
-                    { value: "not", label: "Chưa xác thực" },
-                  ]}
-                />
-                <TouchableOpacity style={styles.calendarBtn}>
-                  <Feather name="calendar" size={16} color="#6B7280" />
-                </TouchableOpacity>
-              </View>
-            </View>
-
-            {/* ── List header ── */}
-            <View style={styles.listHeader}>
-              <Text style={styles.listHeaderText}>
-                Danh sách khách hàng ({filtered.length})
-              </Text>
-            </View>
-          </>
-        )}
         ListEmptyComponent={() =>
           loading ? (
             <View style={styles.loadingWrap}>
@@ -308,14 +331,13 @@ const styles = StyleSheet.create({
     marginLeft: "auto",
   },
 
-  // List header
-  listHeader: {
-    marginBottom: 12,
-  },
   listHeaderText: {
     fontSize: 15,
     fontWeight: "700",
     color: "#111827",
+    marginBottom: 12,
+    alignSelf: "flex-start",
+    paddingHorizontal: 20,
   },
 
   // Empty state
@@ -332,5 +354,19 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     paddingVertical: 48,
+  },
+
+  dropdown: {
+    flex: 1,
+    height: 36,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+    paddingHorizontal: 10,
+    backgroundColor: "#FFFFFF",
+    justifyContent: "center",
+  },
+  dropdownContainer: {
+    borderRadius: 8,
   },
 });
