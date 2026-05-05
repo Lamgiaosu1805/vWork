@@ -5,6 +5,7 @@ import AttendanceScreen from "../../screens/hrm/AttendanceScreen";
 import DashboardCRMScreen from "../../screens/crm/DashboardCRMScreen";
 import CustomerScreen from "../../screens/crm/CustomerScreen";
 import CommissionScreen from "../../screens/crm/CommissionScreen";
+import ExpandCRMScreen from "../../screens/crm/ExpandCRMScreen";
 
 const Tab = createBottomTabNavigator();
 
@@ -42,7 +43,7 @@ export default function CRMBottomTab() {
       />
       <Tab.Screen
         name="ExpandScreen"
-        component={TestScreen}
+        component={ExpandCRMScreen}
         options={{ title: "Mở rộng" }}
       />
     </Tab.Navigator>
