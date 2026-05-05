@@ -1,21 +1,25 @@
-import { Alert, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View, ActivityIndicator } from 'react-native'
-import React, { useEffect, useState } from 'react'
+import { Alert, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View, ActivityIndicator, RefreshControl } from 'react-native'
+import React, { useEffect, useState, useCallback } from 'react'
 import Header from '../../components/Header'
 import { openDrawer } from '../../helpers/navigationRef'
-import { store } from '../../redux/store'
+import { useSelector, useDispatch } from 'react-redux'
 import { Ionicons } from '@expo/vector-icons';
 import utils from '../../helpers/utils'
 import { useCustomAlert } from '../../components/CustomAlertProvider'
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from '../../api/axiosInstance'
+import { setCredentials } from '../../redux/slice/authSlice'
 
 export default function ProfileScreen({ navigation }) {
-    const { auth } = store.getState()
+    const dispatch = useDispatch();
     const { showAlert } = useCustomAlert();
-    const user = auth.user
+
+    // Dùng useSelector thay vì store.getState() để tự động re-render khi redux thay đổi
+    const user = useSelector(state => state.auth.user);
+    const accessToken = useSelector(state => state.auth.accessToken);
 
     const [avatarBase64, setAvatarBase64] = useState(null);
     const [avatarLoading, setAvatarLoading] = useState(false);
+    const [refreshing, setRefreshing] = useState(false);
 
     useEffect(() => {
         fetchAvatar();
@@ -27,10 +31,7 @@ export default function ProfileScreen({ navigation }) {
             setAvatarLoading(true);
             const res = await api.get(
                 `/document/getFile?filename=${user.avatar}`,
-                {
-                    requiresAuth: true,
-                    responseType: "blob",
-                }
+                { requiresAuth: true, responseType: "blob" }
             );
             const reader = new FileReader();
             reader.onloadend = () => {
@@ -43,6 +44,25 @@ export default function ProfileScreen({ navigation }) {
             setAvatarLoading(false);
         }
     };
+
+    // Gọi lại getUserInfo và cập nhật redux
+    const fetchUserInfo = async () => {
+        try {
+            const res = await api.get("/user/getUserInfo", { requiresAuth: true });
+            const updatedUser = res.data;
+            dispatch(setCredentials({ user: updatedUser, accessToken }));
+        } catch (error) {
+            console.log("fetchUserInfo error:", error.response?.data || error.message);
+            showAlert("Thông báo", "Không thể cập nhật thông tin, vui lòng thử lại");
+        }
+    };
+
+    // Pull to refresh
+    const onRefresh = useCallback(async () => {
+        setRefreshing(true);
+        await fetchUserInfo();
+        setRefreshing(false);
+    }, [accessToken]);
 
     return (
         <View style={styles.container}>
@@ -61,19 +81,25 @@ export default function ProfileScreen({ navigation }) {
                     paddingHorizontal: 20,
                     paddingBottom: 30,
                 }}
+                refreshControl={
+                    <RefreshControl
+                        refreshing={refreshing}
+                        onRefresh={onRefresh}
+                        colors={["#004643"]}        // Android
+                        tintColor="#004643"          // iOS
+                        title="Đang cập nhật..."    // iOS
+                        titleColor="#004643"         // iOS
+                    />
+                }
             >
                 <View style={[styles.block, { flexDirection: 'row' }]}>
                     <View style={styles.info}>
-                        {/* Avatar */}
                         {avatarLoading ? (
                             <View style={styles.avatarPlaceholder}>
                                 <ActivityIndicator color="#004643" />
                             </View>
                         ) : avatarBase64 ? (
-                            <Image
-                                source={{ uri: avatarBase64 }}
-                                style={styles.avatarImage}
-                            />
+                            <Image source={{ uri: avatarBase64 }} style={styles.avatarImage} />
                         ) : (
                             <View style={styles.avatarPlaceholder}>
                                 <Ionicons name="person" size={32} color="#aaa" />
@@ -87,7 +113,7 @@ export default function ProfileScreen({ navigation }) {
                                     {item.position.position_name} - {item.department.department_name}
                                 </Text>
                             ))}
-                            <Text style={styles.infoText}>Mã NV: VNF{user?.ma_nv}</Text>
+                            <Text style={styles.infoText}>Mã NV: {user?.ma_nv}</Text>
                             <Text style={styles.infoText}>Hình thức: {user?.employment_type || "chưa có"}</Text>
                             <Text style={styles.infoText}>
                                 Trạng thái: <Text style={{ color: "#22C55E", fontWeight: '800' }}>Đang làm việc</Text>
