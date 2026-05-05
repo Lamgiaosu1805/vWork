@@ -2,13 +2,16 @@ import { StyleSheet, Text, View, ScrollView, TouchableOpacity, Switch } from 're
 import { SafeAreaView } from 'react-native-safe-area-context';
 import React, { useState } from 'react';
 import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
 
 export default function ExpandCRMScreen() {
+    const navigation = useNavigation();
+
     const [notifyNewCustomer, setNotifyNewCustomer] = useState(true);
     const [notifyInvestment, setNotifyInvestment] = useState(true);
 
-    const renderMenuItem = (title, iconName, isDestructive = false) => (
-        <TouchableOpacity style={styles.menuItem}>
+    const renderMenuItem = (title, iconName, isDestructive = false, onPress = () => { }) => (
+        <TouchableOpacity style={styles.menuItem} onPress={onPress}>
             <View style={styles.menuItemLeft}>
                 <Ionicons name={iconName} size={22} color={isDestructive ? '#FF3B30' : '#4A5568'} />
                 <Text style={[styles.menuItemText, isDestructive && { color: '#FF3B30' }]}>
@@ -44,7 +47,7 @@ export default function ExpandCRMScreen() {
     );
 
     return (
-        <SafeAreaView style={styles.safeArea}>
+        <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
             <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
 
                 {renderSection('KINH DOANH', (
@@ -65,7 +68,12 @@ export default function ExpandCRMScreen() {
 
                 {renderSection('QUẢN TRỊ HỆ THỐNG', (
                     <>
-                        {renderMenuItem('Quản lý danh sách đại lý', 'people-circle-outline')}
+                        {renderMenuItem(
+                            'Quản lý danh sách đại lý',
+                            'people-circle-outline',
+                            false,
+                            () => navigation.navigate('ListAgentScreen')
+                        )}
                         {renderMenuItem('Thống kê hoa hồng', 'pie-chart-outline')}
                         {renderMenuItem('Quản lý Team', 'briefcase-outline')}
                         {renderMenuItem('Phê duyệt yêu cầu', 'checkmark-circle-outline')}
