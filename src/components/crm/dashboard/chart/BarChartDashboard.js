@@ -1,7 +1,7 @@
 import { StyleSheet, Text, View } from "react-native";
 import React from "react";
 import { BarChart } from "react-native-gifted-charts";
-import { formatMonthLabel } from "../../../../../utils/crmUtils";
+import { formatMonthLabel } from "../../../../utils/crmUtils";
 
 const BarChartDashboard = ({ investmentTargetChart }) => {
   const dataBarChart = investmentTargetChart.labels.flatMap((label, index) => [

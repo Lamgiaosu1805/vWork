@@ -5,8 +5,8 @@ import {
   dashboardKpis,
   investmentTargetChart,
   revenueChart,
-} from "../../../../mock/dataDashboardCRM";
-import { formatMonthLabel } from "../../../../utils/crmUtils";
+} from "../../../mock/dataDashboardCRM";
+import { formatMonthLabel } from "../../../utils/crmUtils";
 import { BarChart, LineChart, PieChart } from "react-native-gifted-charts";
 import LineChartDashboard from "./chart/LineChartDashboard";
 import BarChartDashboard from "./chart/BarChartDashboard";

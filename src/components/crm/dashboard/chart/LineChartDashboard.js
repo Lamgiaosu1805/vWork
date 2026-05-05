@@ -1,7 +1,7 @@
 import { StyleSheet, Text, View } from "react-native";
 import React, { useMemo } from "react";
 import { LineChart } from "react-native-gifted-charts";
-import { formatMonthLabel } from "../../../../../utils/crmUtils";
+import { formatMonthLabel } from "../../../../utils/crmUtils";
 
 const LineChartDashboard = ({ revenueChart = { labels: [], values: [] } }) => {
   const chartData = useMemo(() => {
