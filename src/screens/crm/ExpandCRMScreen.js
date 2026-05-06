@@ -3,9 +3,11 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import React, { useState } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
+import { useSelector } from 'react-redux';
 
 export default function ExpandCRMScreen() {
     const navigation = useNavigation();
+    const user = useSelector(state => state.auth.user);
 
     const [notifyNewCustomer, setNotifyNewCustomer] = useState(true);
     const [notifyInvestment, setNotifyInvestment] = useState(true);
@@ -66,7 +68,8 @@ export default function ExpandCRMScreen() {
                     </>
                 ))}
 
-                {renderSection('QUẢN TRỊ HỆ THỐNG', (
+                {/* Chỉ hiện khi isAdmin = true */}
+                {user?.isAdmin && renderSection('QUẢN TRỊ HỆ THỐNG', (
                     <>
                         {renderMenuItem(
                             'Quản lý danh sách đại lý',
