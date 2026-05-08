@@ -14,6 +14,7 @@ import * as ImagePicker from "expo-image-picker";
 import * as ImageManipulator from "expo-image-manipulator";
 import { store } from "../redux/store";
 import api from "../api/axiosInstance";
+import { unregisterFcmTokenFromServer } from "../utils/notifications/fcmConfig";
 
 export default function CustomDrawerContent(props) {
     const { navigation, state } = props;
@@ -111,6 +112,7 @@ export default function CustomDrawerContent(props) {
     };
 
     const handleLogout = async () => {
+        await unregisterFcmTokenFromServer();
         await AsyncStorage.removeItem("lastStack");
         await AsyncStorage.removeItem("accessToken");
         navigation.replace("LoginScreen");
