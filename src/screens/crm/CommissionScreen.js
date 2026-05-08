@@ -220,7 +220,7 @@ export default function CommissionScreen() {
                                         {getCustomerName(item)}
                                     </Text>
                                     <Text style={styles.historyDesc}>
-                                        {formatAmountShort(item.amount)} - {item.term_value} {item.term_type === "month" ? "tháng" : "tuần"}
+                                        {item.product_name} • {formatAmountShort(item.amount)} • {item.term_value} {item.term_type === "month" ? "tháng" : "tuần"}
                                     </Text>
                                 </View>
                                 <View style={styles.historyRight}>
