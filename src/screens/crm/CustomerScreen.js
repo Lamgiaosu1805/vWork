@@ -8,7 +8,7 @@ import {
   ActivityIndicator,
   Dimensions,
 } from "react-native";
-import React, { useEffect, useState, useMemo, useCallback } from "react";
+import React, { useEffect, useState, useMemo, useCallback, useRef } from "react";
 import { Feather, Ionicons } from "@expo/vector-icons";
 import Pagination from "../../components/crm/customer/Pagination";
 import CustomerCard from "../../components/crm/customer/CustomerCard";
@@ -25,7 +25,7 @@ import {
 } from "react-native-reanimated";
 import CreateCustomerBottomSheet from "../../components/crm/customer/bottomsheet/CreateCustomerBottomSheet";
 
-const ITEMS_PER_PAGE = 5;
+const ITEMS_PER_PAGE = 10;
 
 export const HEIGHT_SHEET = Dimensions.get("screen").height;
 
@@ -33,13 +33,20 @@ export default function CustomerScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation();
   const { getCustomers } = useCustomer();
+  const listRef = useRef(null);
 
   const [search, setSearch] = useState("");
   const [filterType, setFilterType] = useState("all");
   const [filterEkyc, setFilterEkyc] = useState("all");
   const [page, setPage] = useState(1);
   const [dataCustomers, setDataCustomers] = useState([]);
+  const [apiPagination, setApiPagination] = useState({
+    page: 1,
+    total_pages: 1,
+    total: 0,
+  });
   const [loading, setLoading] = useState(false);
+  const [pageLoading, setPageLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
   const translateCreateCustomerY = useSharedValue(HEIGHT_SHEET);
@@ -71,41 +78,68 @@ export default function CustomerScreen() {
   }, [dataCustomers, search, filterType, filterEkyc]);
 
   const totalPages = useMemo(
-    () => Math.max(1, Math.ceil(filtered.length / ITEMS_PER_PAGE)),
-    [filtered.length],
+    () => Math.max(1, apiPagination.total_pages || 1),
+    [apiPagination.total_pages],
   );
 
-  const paginated = useMemo(() => {
-    const start = (page - 1) * ITEMS_PER_PAGE;
-    return filtered.slice(start, start + ITEMS_PER_PAGE);
-  }, [filtered, page]);
+  const paginated = useMemo(() => filtered, [filtered]);
 
   const handlePage = useCallback(
-    (n) => setPage((p) => Math.min(Math.max(1, n), totalPages)),
-    [totalPages],
+    async (n) => {
+      const nextPage = Math.min(Math.max(1, n), totalPages);
+      if (nextPage === page || loading || pageLoading) return;
+
+      setPage(nextPage);
+      listRef.current?.scrollToOffset?.({ offset: 0, animated: true });
+      await loadDataCustomers(nextPage, { pageChange: true });
+    },
+    [page, totalPages, loading, pageLoading],
   );
 
-  const loadDataCustomers = async () => {
-    setLoading(true);
+  const loadDataCustomers = async (nextPage = page, options = {}) => {
+    const { refresh = false, pageChange = false } = options;
+
+    if (pageChange) {
+      setPageLoading(true);
+    } else {
+      setLoading(true);
+    }
+    if (refresh) setRefreshing(true);
     try {
-      const res = await getCustomers();
+      const res = await getCustomers({
+        page: nextPage,
+        limit: ITEMS_PER_PAGE,
+      });
       const apiData = res?.data?.data || [];
       setDataCustomers(apiData);
+      setApiPagination(
+        res?.data?.pagination || {
+          page: nextPage,
+          total_pages: 1,
+          total: apiData.length,
+        },
+      );
     } catch (error) {
       console.log("Error loading customers:", error);
     } finally {
-      setLoading(false);
+      if (pageChange) {
+        setPageLoading(false);
+      } else {
+        setLoading(false);
+      }
+      if (refresh) setRefreshing(false);
     }
   };
 
   useEffect(() => {
-    loadDataCustomers();
+    loadDataCustomers(1);
   }, []);
 
-  // Clamp page if filters reduce total pages
   useEffect(() => {
-    if (page > totalPages) setPage(totalPages);
-  }, [totalPages]);
+    if (page > totalPages) {
+      setPage(totalPages);
+    }
+  }, [page, totalPages]);
 
   const handlePress = useCallback(
     (id) => console.log("Customer ID pressed:", id),
@@ -219,10 +253,11 @@ export default function CustomerScreen() {
 
       {/* ── List header ── */}
       <Text style={styles.listHeaderText}>
-        Danh sách khách hàng ({filtered.length})
+        Danh sách khách hàng ({apiPagination.total || filtered.length})
       </Text>
 
       <FlatList
+        ref={listRef}
         style={styles.container}
         contentContainerStyle={{
           paddingBottom: 40,
@@ -234,7 +269,15 @@ export default function CustomerScreen() {
         renderItem={renderItem}
         keyExtractor={(item) => item._id}
         refreshing={refreshing}
-        onRefresh={loadDataCustomers}
+        onRefresh={() => loadDataCustomers(page, { refresh: true })}
+        ListHeaderComponent={
+          pageLoading ? (
+            <View style={styles.pageLoadingWrap}>
+              <ActivityIndicator size="small" color="#004643" />
+              <Text style={styles.pageLoadingText}>Đang tải trang...</Text>
+            </View>
+          ) : null
+        }
         ListEmptyComponent={() =>
           loading ? (
             <View style={styles.loadingWrap}>
@@ -255,6 +298,7 @@ export default function CustomerScreen() {
               onPrev={() => handlePage(page - 1)}
               onNext={() => handlePage(page + 1)}
               onPage={handlePage}
+              loading={pageLoading}
             />
           ) : null
         }
@@ -341,6 +385,18 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     paddingVertical: 48,
+  },
+  pageLoadingWrap: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    paddingVertical: 12,
+  },
+  pageLoadingText: {
+    fontSize: 13,
+    color: "#004643",
+    fontWeight: "600",
   },
 
   dropdown: {

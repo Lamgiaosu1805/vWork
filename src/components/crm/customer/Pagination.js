@@ -19,23 +19,30 @@ const getPageItems = (current, total) => {
   return rangeWithDots;
 };
 
-const Pagination = ({ current, total, onPrev, onNext, onPage }) => {
+const Pagination = ({ current, total, onPrev, onNext, onPage, loading = false }) => {
   const items = getPageItems(current, total);
+  const isDisabled = loading;
 
   return (
     <View style={styles.pagination}>
       <TouchableOpacity
-        style={[styles.pageBtn, current === 1 && styles.pageBtnDisabled]}
+        style={[
+          styles.pageBtn,
+          (current === 1 || isDisabled) && styles.pageBtnDisabled,
+        ]}
         onPress={onPrev}
-        disabled={current === 1}
+        disabled={current === 1 || isDisabled}
       >
         <Feather
           name="chevron-left"
           size={16}
-          color={current === 1 ? "#D1D5DB" : "#374151"}
+          color={current === 1 || isDisabled ? "#D1D5DB" : "#374151"}
         />
         <Text
-          style={[styles.pageBtnText, current === 1 && { color: "#D1D5DB" }]}
+          style={[
+            styles.pageBtnText,
+            (current === 1 || isDisabled) && { color: "#D1D5DB" },
+          ]}
         >
           Trước
         </Text>
@@ -55,6 +62,7 @@ const Pagination = ({ current, total, onPrev, onNext, onPage }) => {
                 styles.pageNumWrap,
                 item === current && styles.pageNumWrapActive,
               ]}
+              disabled={isDisabled || item === current}
             >
               <Text
                 style={[
@@ -70,14 +78,17 @@ const Pagination = ({ current, total, onPrev, onNext, onPage }) => {
       </View>
 
       <TouchableOpacity
-        style={[styles.pageBtn, current === total && styles.pageBtnDisabled]}
+        style={[
+          styles.pageBtn,
+          (current === total || isDisabled) && styles.pageBtnDisabled,
+        ]}
         onPress={onNext}
-        disabled={current === total}
+        disabled={current === total || isDisabled}
       >
         <Text
           style={[
             styles.pageBtnText,
-            current === total && { color: "#D1D5DB" },
+            (current === total || isDisabled) && { color: "#D1D5DB" },
           ]}
         >
           Kế tiếp
@@ -85,7 +96,7 @@ const Pagination = ({ current, total, onPrev, onNext, onPage }) => {
         <Feather
           name="chevron-right"
           size={16}
-          color={current === total ? "#D1D5DB" : "#374151"}
+          color={current === total || isDisabled ? "#D1D5DB" : "#374151"}
         />
       </TouchableOpacity>
     </View>
