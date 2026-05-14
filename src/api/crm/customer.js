@@ -6,4 +6,11 @@ const getListCustomers = async () => {
   });
 };
 
-export { getListCustomers };
+const getAllCustomers = async (params = {}) => {
+  return api.get("/customer/all", {
+    requiresAuth: true,
+    params,
+  });
+};
+
+export { getListCustomers, getAllCustomers };
