@@ -6,27 +6,37 @@ import {
   ScrollView,
   ActivityIndicator,
   Dimensions,
-  SafeAreaView,
 } from "react-native";
 import React, { useEffect, useRef, useState } from "react";
+import { SafeAreaView } from "react-native-safe-area-context";
 import QRCode from "react-native-qrcode-svg";
 import Icon from "react-native-vector-icons/MaterialCommunityIcons";
+import { useSelector } from "react-redux";
+import dayjs from "dayjs";
+import "dayjs/locale/vi";
 import { openDrawer } from "../../helpers/navigationRef";
 import api from "../../api/axiosInstance";
+import Header from "../../components/Header";
 import OverviewDashboard from "../../components/crm/dashboard/OverviewDashboard";
-import { store } from "../../redux/store";
 import ViewShot from "react-native-view-shot";
 import Share from "react-native-share";
+
+dayjs.locale("vi");
+
+const getGreeting = (fullName) => {
+  const h = new Date().getHours();
+  const time = h < 12 ? "buổi sáng" : h < 18 ? "buổi chiều" : "buổi tối";
+  const name = fullName?.trim().split(/\s+/).pop() ?? "";
+  return `Chào ${time}, ${name}!`;
+};
 
 const { width } = Dimensions.get("window");
 
 export default function DashboardCRMScreen() {
   const [dataQR, setDataQR] = useState(null);
   const [loading, setLoading] = useState(true);
-  const { auth } = store.getState();
-  // const { showAlert } = useCustomAlert();
+  const user = useSelector((state) => state.auth.user);
   const viewShotRef = useRef(null);
-  const user = auth.user;
 
   const handleShare = async () => {
     try {
@@ -72,24 +82,20 @@ export default function DashboardCRMScreen() {
   }
 
   return (
-    <View style={styles.container}>
-      {/* Header - Đưa ra ngoài ScrollView để cố định */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => openDrawer()}>
-          <Icon name="menu" size={28} color="#fff" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>CRM Dashboard</Text>
-        <View style={{ width: 28 }} />
-      </View>
+    <SafeAreaView style={styles.container} edges={["bottom"]}>
+      <Header
+        title="CRM"
+        leftIconName="menu"
+        onLeftPress={() => openDrawer()}
+      />
 
       <ScrollView showsVerticalScrollIndicator={false}>
-        {/* Welcome Section */}
-        <View style={styles.welcomeBox}>
-          <Text style={styles.welcomeText}>Xin chào,</Text>
-          <Text style={styles.saleName}>
-            {dataQR?.sale_name || "Nhân viên Sales"}
+        {/* Greeting */}
+        <View style={styles.greetingBox}>
+          <Text style={styles.greetingTitle}>{getGreeting(user?.full_name)}</Text>
+          <Text style={styles.greetingDate}>
+            {dayjs().format("dddd, DD/MM/YYYY").replace(/^\w/, (c) => c.toUpperCase())} · CRM
           </Text>
-          <Text style={styles.saleId}>Mã nhân viên: {dataQR?.ma_nv}</Text>
         </View>
 
         {/* QR Section - Trọng tâm */}
@@ -149,7 +155,7 @@ export default function DashboardCRMScreen() {
 
         <View style={{ height: 40 }} />
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 }
 
@@ -163,50 +169,16 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-  header: {
-    backgroundColor: "#0055ba",
-    height: 100,
-    paddingTop: 45, // Tăng nhẹ để tránh tai thỏ iPhone
-    paddingHorizontal: 20,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    zIndex: 10, // Đảm bảo header luôn nằm trên các thành phần khác
-  },
-  headerTitle: {
-    color: "#fff",
-    fontSize: 18,
-    fontWeight: "bold",
-  },
-  welcomeBox: {
-    padding: 20,
-    backgroundColor: "#0055ba",
-    borderBottomLeftRadius: 30,
-    borderBottomRightRadius: 30,
-    paddingBottom: 50,
-  },
-  welcomeText: {
-    color: "#e0e0e0",
-    fontSize: 16,
-  },
-  saleName: {
-    color: "#fff",
-    fontSize: 24,
-    fontWeight: "bold",
-    marginTop: 5,
-  },
-  saleId: {
-    color: "#bbdefb",
-    fontSize: 14,
-    marginTop: 5,
-  },
+  greetingBox: { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 8 },
+  greetingTitle: { fontSize: 20, fontWeight: "700", color: "#111827" },
+  greetingDate: { fontSize: 13, color: "#6B7280", marginTop: 2, textTransform: "capitalize" },
   qrCard: {
     backgroundColor: "#fff",
     marginHorizontal: 20,
     borderRadius: 20,
     paddingBottom: 25,
     alignItems: "center",
-    marginTop: -30,
+    marginTop: 8,
     elevation: 5,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
