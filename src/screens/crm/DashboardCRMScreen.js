@@ -13,7 +13,7 @@ import QRCode from "react-native-qrcode-svg";
 import Icon from "react-native-vector-icons/MaterialCommunityIcons";
 import { openDrawer } from "../../helpers/navigationRef";
 import api from "../../api/axiosInstance";
-import OverviewDashboard from "./components/dashboard/OverviewDashboard";
+import OverviewDashboard from "../../components/crm/dashboard/OverviewDashboard";
 import { store } from "../../redux/store";
 import ViewShot from "react-native-view-shot";
 import Share from "react-native-share";
