@@ -1,5 +1,5 @@
 const apiLive = "https://vWork.vnfite.com.vn"
-const apiTest = "http://192.168.100.92:2345"
+const apiTest = "https://vWork-uat.vnfite.com.vn"
 
 const BASE_URL = apiLive
 
