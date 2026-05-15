@@ -6,6 +6,7 @@ import DocumentUserDetail from "../../screens/hrm/DocumentUserDetail";
 import ShowFileScreen from "../../screens/hrm/ShowFileScreen";
 import DepartmentScreen from "../../screens/hrm/DepartmentScreen";
 import BranchScreen from "../../screens/hrm/BranchScreen";
+import PrintScreen from "../../screens/hrm/PrintScreen";
 
 const Stack = createNativeStackNavigator();
 
@@ -19,6 +20,7 @@ export default function HRMStackNavigator() {
       <Stack.Screen name="ShowFileScreen" component={ShowFileScreen} />
       <Stack.Screen name="DepartmentScreen" component={DepartmentScreen} />
       <Stack.Screen name="BranchScreen" component={BranchScreen} />
+      <Stack.Screen name="PrintScreen" component={PrintScreen} />
 
     </Stack.Navigator>
   );

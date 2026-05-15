@@ -33,6 +33,18 @@ export default function ExpandScreen({ navigation }) {
       />
       <ScrollView contentContainerStyle={styles.scroll}>
 
+        {/* In tài liệu — tất cả mọi người */}
+        <Text style={styles.sectionLabel}>Tiện ích</Text>
+        <View style={styles.group}>
+          <MenuItem
+            icon="print-outline"
+            label="In tài liệu"
+            description="Gửi file đến máy in văn phòng"
+            onPress={() => navigation.navigate('PrintScreen')}
+            color="#2563EB"
+          />
+        </View>
+
         {/* Quản lý tổ chức — hiển thị nếu có quyền HRM */}
         {perms.showDepartmentList && (
           <>

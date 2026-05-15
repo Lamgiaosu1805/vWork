@@ -24,11 +24,12 @@ import workplaceApi from '../../api/workplaceApi';
 dayjs.locale('vi');
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
-const getGreeting = (fullName) => {
+const getGreeting = (fullName, sex) => {
     const h = new Date().getHours();
-    const time = h < 12 ? 'buổi sáng' : h < 18 ? 'buổi chiều' : 'buổi tối';
-    const firstName = fullName?.trim().split(/\s+/).pop() ?? '';
-    return `Chào ${time}, ${firstName}!`;
+    const time    = h < 12 ? 'buổi sáng' : h < 18 ? 'buổi chiều' : 'buổi tối';
+    const pronoun = sex === 1 ? 'anh' : sex === 2 ? 'chị' : 'bạn';
+    const name    = fullName?.trim().split(/\s+/).pop() ?? '';
+    return `Chào ${time}, ${pronoun} ${name}!`;
 };
 
 const STATUS_LABEL = {
@@ -178,7 +179,7 @@ export default function WorkplaceDashboardScreen() {
             >
                 {/* ── Greeting ── */}
                 <View style={styles.greetingBox}>
-                    <Text style={styles.greetingTitle}>{getGreeting(user?.full_name)}</Text>
+                    <Text style={styles.greetingTitle}>{getGreeting(user?.full_name, user?.sex)}</Text>
                     <Text style={styles.greetingDate}>
                         {dayjs().format('dddd, DD/MM/YYYY').replace(/^\w/, (c) => c.toUpperCase())} · Workplace
                     </Text>

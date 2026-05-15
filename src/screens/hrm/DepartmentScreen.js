@@ -12,6 +12,7 @@ import Header from '../../components/Header';
 import { openDrawer } from '../../helpers/navigationRef';
 import { getPermissions } from '../../helpers/permissions';
 import departmentApi from '../../api/departmentApi';
+import positionApi from '../../api/positionApi';
 
 const DEPT_TYPE_OPTIONS = [
   { value: 'holding',    label: 'Tập đoàn' },
@@ -126,11 +127,196 @@ const TreeNode = ({ node, depth = 0, canManage, onEdit, onDelete }) => {
   );
 };
 
+// ── Tab chức vụ ───────────────────────────────────────────────────────────────
+const PositionTab = ({ canManage }) => {
+  const [positions, setPositions] = useState([]);
+  const [loading, setLoading]     = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [modalVisible, setModalVisible] = useState(false);
+  const [editTarget, setEditTarget]     = useState(null);
+  const [saving, setSaving]             = useState(false);
+  const [form, setForm] = useState({ position_name: '', description: '' });
+
+  const fetchPositions = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true);
+    try {
+      const res = await positionApi.getAll();
+      setPositions(res.data?.data ?? []);
+    } catch {
+      Toast.show({ type: 'error', text1: 'Không thể tải danh sách chức vụ' });
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { fetchPositions(); }, []);
+
+  const openAdd = () => {
+    setEditTarget(null);
+    setForm({ position_name: '', description: '' });
+    setModalVisible(true);
+  };
+
+  const openEdit = (pos) => {
+    setEditTarget(pos);
+    setForm({ position_name: pos.position_name, description: pos.description || '' });
+    setModalVisible(true);
+  };
+
+  const confirmDelete = (pos) => {
+    Alert.alert(
+      'Xoá chức vụ',
+      `Bạn có chắc muốn xoá chức vụ "${pos.position_name}"?\nKhông thể xoá nếu đang có nhân viên đảm nhiệm.`,
+      [
+        { text: 'Huỷ', style: 'cancel' },
+        {
+          text: 'Xoá', style: 'destructive',
+          onPress: async () => {
+            try {
+              await positionApi.delete(pos._id);
+              Toast.show({ type: 'success', text1: 'Xoá chức vụ thành công' });
+              fetchPositions(true);
+            } catch (e) {
+              Toast.show({ type: 'error', text1: e.response?.data?.message ?? 'Xoá thất bại' });
+            }
+          },
+        },
+      ],
+    );
+  };
+
+  const handleSave = async () => {
+    if (!form.position_name.trim())
+      return Toast.show({ type: 'error', text1: 'Vui lòng nhập tên chức vụ' });
+
+    setSaving(true);
+    try {
+      if (editTarget) {
+        await positionApi.update(editTarget._id, form);
+        Toast.show({ type: 'success', text1: 'Cập nhật chức vụ thành công' });
+      } else {
+        await positionApi.create(form);
+        Toast.show({ type: 'success', text1: 'Thêm chức vụ thành công' });
+      }
+      setModalVisible(false);
+      fetchPositions(true);
+    } catch (e) {
+      Toast.show({ type: 'error', text1: e.response?.data?.message ?? 'Có lỗi xảy ra' });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <View style={styles.center}>
+        <ActivityIndicator size="large" color="#ED2E30" />
+      </View>
+    );
+  }
+
+  return (
+    <>
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={async () => { setRefreshing(true); await fetchPositions(true); setRefreshing(false); }} tintColor="#ED2E30" />}
+      >
+        {canManage && (
+          <TouchableOpacity style={styles.addPositionBtn} onPress={openAdd}>
+            <Ionicons name="add-circle-outline" size={18} color="#ED2E30" />
+            <Text style={styles.addPositionBtnText}>Thêm chức vụ mới</Text>
+          </TouchableOpacity>
+        )}
+
+        {positions.length === 0 ? (
+          <View style={[styles.center, { paddingTop: 40 }]}>
+            <Ionicons name="medal-outline" size={48} color="#D1D5DB" />
+            <Text style={styles.emptyTitle}>Chưa có chức vụ nào</Text>
+            <Text style={styles.emptySubtitle}>Thêm chức vụ để gán cho nhân viên khi tạo hồ sơ</Text>
+          </View>
+        ) : (
+          <View style={styles.treeCard}>
+            {positions.map((pos, idx) => (
+              <View key={pos._id} style={[styles.positionRow, idx === 0 && { borderTopWidth: 0 }]}>
+                <View style={styles.positionInfo}>
+                  <Text style={styles.positionName}>{pos.position_name}</Text>
+                  {pos.description ? (
+                    <Text style={styles.positionDesc} numberOfLines={2}>{pos.description}</Text>
+                  ) : (
+                    <Text style={styles.positionDescEmpty}>Chưa có mô tả</Text>
+                  )}
+                </View>
+                {canManage && (
+                  <View style={styles.rowActions}>
+                    <TouchableOpacity style={styles.iconBtn} onPress={() => openEdit(pos)}>
+                      <Ionicons name="pencil" size={13} color="#ED2E30" />
+                    </TouchableOpacity>
+                    <TouchableOpacity style={[styles.iconBtn, styles.iconBtnDanger]} onPress={() => confirmDelete(pos)}>
+                      <Ionicons name="trash" size={13} color="#DC2626" />
+                    </TouchableOpacity>
+                  </View>
+                )}
+              </View>
+            ))}
+          </View>
+        )}
+      </ScrollView>
+
+      {/* Modal thêm / sửa chức vụ */}
+      <Modal visible={modalVisible} animationType="slide" transparent onRequestClose={() => setModalVisible(false)}>
+        <View style={styles.overlay}>
+          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.overlayInner}>
+            <View style={styles.modal}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>{editTarget ? 'Sửa chức vụ' : 'Thêm chức vụ'}</Text>
+                <TouchableOpacity onPress={() => setModalVisible(false)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                  <Ionicons name="close" size={22} color="#6B7280" />
+                </TouchableOpacity>
+              </View>
+
+              <Text style={styles.fieldLabel}>Tên chức vụ *</Text>
+              <TextInput
+                style={styles.input}
+                value={form.position_name}
+                onChangeText={v => setForm(prev => ({ ...prev, position_name: v }))}
+                placeholder="VD: Tổng giám đốc"
+                placeholderTextColor="#9CA3AF"
+              />
+
+              <Text style={[styles.fieldLabel, { marginTop: 14 }]}>Mô tả</Text>
+              <TextInput
+                style={[styles.input, { height: 80, textAlignVertical: 'top' }]}
+                value={form.description}
+                onChangeText={v => setForm(prev => ({ ...prev, description: v }))}
+                placeholder="Mô tả ngắn về chức vụ (tuỳ chọn)"
+                placeholderTextColor="#9CA3AF"
+                multiline
+              />
+
+              <View style={styles.modalActions}>
+                <TouchableOpacity style={styles.btnCancel} onPress={() => setModalVisible(false)}>
+                  <Text style={styles.btnCancelText}>Huỷ</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.btnSave} onPress={handleSave} disabled={saving}>
+                  {saving
+                    ? <ActivityIndicator size="small" color="#fff" />
+                    : <Text style={styles.btnSaveText}>{editTarget ? 'Cập nhật' : 'Thêm mới'}</Text>}
+                </TouchableOpacity>
+              </View>
+            </View>
+          </KeyboardAvoidingView>
+        </View>
+      </Modal>
+    </>
+  );
+};
+
 // ── Màn hình chính ────────────────────────────────────────────────────────────
 export default function DepartmentScreen() {
   const user = useSelector(s => s.auth.user);
   const perms = getPermissions(user);
 
+  const [activeTab, setActiveTab] = useState('structure');
   const [treeData, setTreeData] = useState([]);
   const [flatList, setFlatList] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -139,11 +325,7 @@ export default function DepartmentScreen() {
   const [editTarget, setEditTarget] = useState(null);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
-    type: 'department',
-    parent_id: '',
-    department_name: '',
-    department_code: '',
-    address: '',
+    type: 'department', parent_id: '', department_name: '', department_code: '', address: '',
   });
 
   const fetchTree = useCallback(async (silent = false) => {
@@ -211,12 +393,9 @@ export default function DepartmentScreen() {
   };
 
   const handleSave = async () => {
-    if (!form.type)
-      return Toast.show({ type: 'error', text1: 'Vui lòng chọn loại' });
-    if (!form.department_name.trim())
-      return Toast.show({ type: 'error', text1: 'Vui lòng nhập tên' });
-    if (!editTarget && !form.department_code.trim())
-      return Toast.show({ type: 'error', text1: 'Vui lòng nhập mã' });
+    if (!form.type) return Toast.show({ type: 'error', text1: 'Vui lòng chọn loại' });
+    if (!form.department_name.trim()) return Toast.show({ type: 'error', text1: 'Vui lòng nhập tên' });
+    if (!editTarget && !form.department_code.trim()) return Toast.show({ type: 'error', text1: 'Vui lòng nhập mã' });
 
     setSaving(true);
     try {
@@ -247,71 +426,96 @@ export default function DepartmentScreen() {
     }
   };
 
-  // Dropdown phòng ban cha: tất cả node trừ chính nó
   const parentSelectOptions = flatList
     .filter(d => !editTarget || d._id !== editTarget._id)
-    .map(d => ({
-      value: d._id,
-      label: `${d.department_name} (${d.department_code})`,
-    }));
+    .map(d => ({ value: d._id, label: `${d.department_name} (${d.department_code})` }));
+
+  const showAddOnHeader = perms.showHrmMgmt && activeTab === 'structure';
 
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>
       <Header
-        title="Cơ cấu tổ chức"
+        title="Cơ cấu & Chức vụ"
         leftIconName="menu"
         onLeftPress={openDrawer}
-        {...(perms.showHrmMgmt ? { rightIconName: 'add', onRightPress: openAdd } : {})}
+        {...(showAddOnHeader ? { rightIconName: 'add', onRightPress: openAdd } : {})}
       />
 
-      {loading ? (
-        <View style={styles.center}>
-          <ActivityIndicator size="large" color="#ED2E30" />
-        </View>
-      ) : (
-        <ScrollView
-          contentContainerStyle={styles.scrollContent}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#ED2E30" />}
+      {/* Tab bar */}
+      <View style={styles.tabBar}>
+        <TouchableOpacity
+          style={[styles.tabBtn, activeTab === 'structure' && styles.tabBtnActive]}
+          onPress={() => setActiveTab('structure')}
         >
-          {treeData.length === 0 ? (
-            <View style={[styles.center, { paddingTop: 60 }]}>
-              <Ionicons name="business-outline" size={52} color="#D1D5DB" />
-              <Text style={styles.emptyTitle}>Chưa có cơ cấu tổ chức</Text>
-              <Text style={styles.emptySubtitle}>Chạy seed script hoặc thêm node đầu tiên</Text>
-            </View>
-          ) : (
-            <View style={styles.treeCard}>
-              {treeData.map(root => (
-                <TreeNode
-                  key={root._id}
-                  node={root}
-                  depth={0}
-                  canManage={perms.showHrmMgmt}
-                  onEdit={openEdit}
-                  onDelete={confirmDelete}
-                />
-              ))}
-            </View>
-          )}
-        </ScrollView>
+          <Ionicons name="git-branch-outline" size={15} color={activeTab === 'structure' ? '#ED2E30' : '#9CA3AF'} />
+          <Text style={[styles.tabBtnText, activeTab === 'structure' && styles.tabBtnTextActive]}>
+            Cơ cấu tổ chức
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.tabBtn, activeTab === 'positions' && styles.tabBtnActive]}
+          onPress={() => setActiveTab('positions')}
+        >
+          <Ionicons name="medal-outline" size={15} color={activeTab === 'positions' ? '#ED2E30' : '#9CA3AF'} />
+          <Text style={[styles.tabBtnText, activeTab === 'positions' && styles.tabBtnTextActive]}>
+            Chức vụ
+          </Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Tab: Cơ cấu tổ chức */}
+      {activeTab === 'structure' && (
+        loading ? (
+          <View style={styles.center}>
+            <ActivityIndicator size="large" color="#ED2E30" />
+          </View>
+        ) : (
+          <ScrollView
+            contentContainerStyle={styles.scrollContent}
+            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#ED2E30" />}
+          >
+            {treeData.length === 0 ? (
+              <View style={[styles.center, { paddingTop: 60 }]}>
+                <Ionicons name="business-outline" size={52} color="#D1D5DB" />
+                <Text style={styles.emptyTitle}>Chưa có cơ cấu tổ chức</Text>
+                <Text style={styles.emptySubtitle}>Chạy seed script hoặc thêm node đầu tiên</Text>
+              </View>
+            ) : (
+              <View style={styles.treeCard}>
+                {treeData.map(root => (
+                  <TreeNode
+                    key={root._id}
+                    node={root}
+                    depth={0}
+                    canManage={perms.showHrmMgmt}
+                    onEdit={openEdit}
+                    onDelete={confirmDelete}
+                  />
+                ))}
+              </View>
+            )}
+          </ScrollView>
+        )
       )}
 
-      {/* ── Modal thêm / sửa ── */}
+      {/* Tab: Chức vụ */}
+      {activeTab === 'positions' && (
+        <PositionTab canManage={perms.showHrmMgmt} />
+      )}
+
+      {/* Modal thêm / sửa node tổ chức */}
       <Modal visible={modalVisible} animationType="slide" transparent onRequestClose={() => setModalVisible(false)}>
         <View style={styles.overlay}>
           <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.overlayInner}>
             <View style={styles.modal}>
               <View style={styles.modalHeader}>
-                <Text style={styles.modalTitle}>
-                  {editTarget ? 'Chỉnh sửa' : 'Thêm node tổ chức'}
-                </Text>
+                <Text style={styles.modalTitle}>{editTarget ? 'Chỉnh sửa' : 'Thêm node tổ chức'}</Text>
                 <TouchableOpacity onPress={() => setModalVisible(false)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
                   <Ionicons name="close" size={22} color="#6B7280" />
                 </TouchableOpacity>
               </View>
 
               <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
-                {/* Loại */}
                 <Text style={styles.fieldLabel}>Loại *</Text>
                 <InlineSelect
                   label="loại"
@@ -320,10 +524,7 @@ export default function DepartmentScreen() {
                   onSelect={v => setForm(prev => ({ ...prev, type: v }))}
                 />
 
-                {/* Thuộc (node cha) */}
-                <Text style={[styles.fieldLabel, { marginTop: 14 }]}>
-                  Thuộc (để trống nếu là node gốc)
-                </Text>
+                <Text style={[styles.fieldLabel, { marginTop: 14 }]}>Thuộc (để trống nếu là node gốc)</Text>
                 <InlineSelect
                   label="node cha"
                   value={form.parent_id}
@@ -332,7 +533,6 @@ export default function DepartmentScreen() {
                   onSelect={v => setForm(prev => ({ ...prev, parent_id: v }))}
                 />
 
-                {/* Mã — chỉ khi tạo mới */}
                 {!editTarget && (
                   <>
                     <Text style={[styles.fieldLabel, { marginTop: 14 }]}>Mã *</Text>
@@ -347,7 +547,6 @@ export default function DepartmentScreen() {
                   </>
                 )}
 
-                {/* Tên */}
                 <Text style={[styles.fieldLabel, { marginTop: 14 }]}>Tên *</Text>
                 <TextInput
                   style={styles.input}
@@ -357,7 +556,6 @@ export default function DepartmentScreen() {
                   placeholderTextColor="#9CA3AF"
                 />
 
-                {/* Địa chỉ — chỉ hiện khi type = branch */}
                 {form.type === 'branch' && (
                   <>
                     <Text style={[styles.fieldLabel, { marginTop: 14 }]}>Địa chỉ</Text>
@@ -396,6 +594,28 @@ const styles = StyleSheet.create({
   scrollContent: { padding: 12, paddingBottom: 32 },
   emptyTitle: { fontSize: 16, fontWeight: '700', color: '#374151', marginTop: 12 },
   emptySubtitle: { fontSize: 13, color: '#9CA3AF', marginTop: 4, textAlign: 'center' },
+
+  // Tab bar
+  tabBar: {
+    flexDirection: 'row',
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+    paddingHorizontal: 12,
+  },
+  tabBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    borderBottomWidth: 2,
+    borderBottomColor: 'transparent',
+    marginRight: 4,
+  },
+  tabBtnActive: { borderBottomColor: '#ED2E30' },
+  tabBtnText: { fontSize: 13, fontWeight: '600', color: '#9CA3AF' },
+  tabBtnTextActive: { color: '#ED2E30' },
 
   treeCard: {
     backgroundColor: '#fff',
@@ -439,6 +659,36 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
   },
   iconBtnDanger: { backgroundColor: '#FEE2E2' },
+
+  // Position list
+  positionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#F3F4F6',
+    gap: 10,
+  },
+  positionInfo: { flex: 1 },
+  positionName: { fontSize: 14, fontWeight: '700', color: '#111827' },
+  positionDesc: { fontSize: 12, color: '#6B7280', marginTop: 2 },
+  positionDescEmpty: { fontSize: 12, color: '#D1D5DB', marginTop: 2, fontStyle: 'italic' },
+
+  addPositionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    alignSelf: 'flex-end',
+    marginBottom: 10,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#FECACA',
+    backgroundColor: '#FFF5F5',
+  },
+  addPositionBtnText: { fontSize: 13, fontWeight: '600', color: '#ED2E30' },
 
   // Modal
   overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' },

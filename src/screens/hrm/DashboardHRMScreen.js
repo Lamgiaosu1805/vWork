@@ -29,11 +29,12 @@ import utils from '../../helpers/utils';
 import { useDispatch, useSelector } from 'react-redux';
 import { pushLichCong, setCurrentWorkSheetAttendance } from '../../redux/slice/attendanceSlice';
 
-const getGreeting = (fullName) => {
+const getGreeting = (fullName, sex) => {
     const h = new Date().getHours();
-    const time = h < 12 ? 'buổi sáng' : h < 18 ? 'buổi chiều' : 'buổi tối';
-    const name = fullName?.trim().split(/\s+/).pop() ?? '';
-    return `Chào ${time}, ${name}!`;
+    const time    = h < 12 ? 'buổi sáng' : h < 18 ? 'buổi chiều' : 'buổi tối';
+    const pronoun = sex === 1 ? 'anh' : sex === 2 ? 'chị' : 'bạn';
+    const name    = fullName?.trim().split(/\s+/).pop() ?? '';
+    return `Chào ${time}, ${pronoun} ${name}!`;
 };
 
 // Dùng mảng tra cứu dựa trên chỉ số ngày (0=CN, 1=T2, ...)
@@ -93,12 +94,6 @@ export default function DashboardHRMScreen() {
     const [totalMinutesFail, setTotalMinutesFail] = useState(0);
     const [totalMissAttendance, setTotalMissAttendance] = useState(0);
 
-    const firstName = useMemo(() => {
-        const fullName = auth.user?.full_name;
-        if (!fullName) return 'Bạn';
-        const parts = fullName.trim().split(/\s+/);
-        return parts[parts.length - 1];
-    }, [auth.user?.full_name]);
 
     const [currentWorkSheet, setCurrentWorkSheet] = useState(null);
     const [isLoading, setIsLoading] = useState(false);
@@ -440,7 +435,7 @@ export default function DashboardHRMScreen() {
                 }}
             >
                 <View style={styles.greetingBox}>
-                    <Text style={styles.greetingTitle}>{getGreeting(auth.user?.full_name)}</Text>
+                    <Text style={styles.greetingTitle}>{getGreeting(auth.user?.full_name, auth.user?.sex)}</Text>
                     <Text style={styles.greetingDate}>
                         {dayjs().format('dddd, DD/MM/YYYY').replace(/^\w/, (c) => c.toUpperCase())} · HRM
                     </Text>
@@ -612,7 +607,7 @@ export default function DashboardHRMScreen() {
                     >
                         {/* <Ionicons name="people" size={32} color="red" /> */}
                         <Text style={{ color: '#004643', marginTop: 8, fontWeight: '600', textAlign: 'center' }}>Ngày phép còn lại</Text>
-                        <Text style={{ color: '#004643', marginTop: 8, fontWeight: '800', textAlign: 'center', fontSize: 20 }}>{auth.user?.leave_balance.annual || 0}</Text>
+                        <Text style={{ color: '#004643', marginTop: 8, fontWeight: '800', textAlign: 'center', fontSize: 20 }}>{auth.user?.leave_balance?.annual ?? 0}</Text>
                         <Text style={{ color: '#004643', marginTop: 8, fontWeight: '600', textAlign: 'center' }}>ngày</Text>
                     </View>
 
