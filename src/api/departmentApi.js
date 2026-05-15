@@ -5,7 +5,7 @@ const departmentApi = {
     return api.get("/department/getAll", { params, requiresAuth: true });
   },
   create(data) {
-    return api.post("/department/create", data, { requiresAuth: true });
+    return api.post("/department/createDepartment", data, { requiresAuth: true });
   },
   update(id, data) {
     return api.put(`/department/update/${id}`, data, { requiresAuth: true });
