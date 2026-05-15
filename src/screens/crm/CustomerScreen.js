@@ -6,22 +6,37 @@ import {
   TouchableOpacity,
   View,
   ActivityIndicator,
+  Dimensions,
 } from "react-native";
 import React, { useEffect, useState, useMemo, useCallback } from "react";
 import { Feather, Ionicons } from "@expo/vector-icons";
-import Pagination from "./components/customer/Pagination";
-import CustomerCard from "./components/customer/CustomerCard";
+import Pagination from "../../components/crm/customer/Pagination";
+import CustomerCard from "../../components/crm/customer/CustomerCard";
 import { useNavigation } from "@react-navigation/native";
+import { useSelector } from "react-redux";
+import { canMgr } from "../../helpers/permissions";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import useCustomer from "../../hooks/crm/useCustomer";
 import { Dropdown } from "react-native-element-dropdown";
+import Header from "../../components/Header";
+import BottomSheet from "../../components/crm/BottomSheet";
+import {
+  cancelAnimation,
+  useSharedValue,
+  withTiming,
+} from "react-native-reanimated";
+import CreateCustomerBottomSheet from "../../components/crm/customer/bottomsheet/CreateCustomerBottomSheet";
 
 const ITEMS_PER_PAGE = 5;
+
+export const HEIGHT_SHEET = Dimensions.get("screen").height;
 
 export default function CustomerScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation();
   const { getCustomers } = useCustomer();
+  const user = useSelector((state) => state.auth.user);
+  const canAddCustomer = canMgr(user, "crm");
 
   const [search, setSearch] = useState("");
   const [filterType, setFilterType] = useState("all");
@@ -30,6 +45,8 @@ export default function CustomerScreen() {
   const [dataCustomers, setDataCustomers] = useState([]);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+
+  const translateCreateCustomerY = useSharedValue(HEIGHT_SHEET);
 
   const filtered = useMemo(() => {
     return dataCustomers.filter((r) => {
@@ -112,43 +129,11 @@ export default function CustomerScreen() {
 
   return (
     <View style={{ flex: 1, alignItems: "center" }}>
-      <View
-        style={{
-          flexDirection: "row",
-          alignItems: "center",
-          backgroundColor: "#fff",
-          borderBottomWidth: 1,
-          borderBottomColor: "#eee",
-          paddingBottom: 16,
-          paddingTop: insets.top + 12,
-        }}
-      >
-        <View
-          style={{
-            width: 40,
-            alignItems: "center",
-            justifyContent: "center",
-            marginLeft: 20,
-          }}
-        />
-
-        <View
-          style={{
-            flex: 1,
-            alignItems: "center",
-            justifyContent: "center",
-            paddingHorizontal: 20,
-          }}
-        >
-          <Text style={{ fontSize: 18, fontWeight: "bold", color: "#004643" }}>
-            Danh sách khách hàng
-          </Text>
-        </View>
-
-        <TouchableOpacity style={{ paddingRight: 20 }} activeOpacity={0.6}>
-          <Ionicons name="person-add" size={24} color="#ED2E30" />
-        </TouchableOpacity>
-      </View>
+      <Header
+        title="Danh sách khách hàng"
+        rightIconName={canAddCustomer ? "person-add" : undefined}
+        onRightPress={canAddCustomer ? () => { translateCreateCustomerY.value = withTiming(0); } : undefined}
+      />
 
       <View style={{ width: "100%", paddingHorizontal: 20, marginTop: 8 }}>
         <View style={styles.filterBar}>
@@ -275,6 +260,10 @@ export default function CustomerScreen() {
             />
           ) : null
         }
+      />
+
+      <CreateCustomerBottomSheet
+        translateCreateCustomerY={translateCreateCustomerY}
       />
     </View>
   );

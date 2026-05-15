@@ -4,10 +4,12 @@ import React, { useState } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useSelector } from 'react-redux';
+import { getPermissions } from '../../helpers/permissions';
 
 export default function ExpandCRMScreen() {
     const navigation = useNavigation();
     const user = useSelector(state => state.auth.user);
+    const perms = getPermissions(user);
 
     const [notifyNewCustomer, setNotifyNewCustomer] = useState(true);
     const [notifyInvestment, setNotifyInvestment] = useState(true);
@@ -68,8 +70,7 @@ export default function ExpandCRMScreen() {
                     </>
                 ))}
 
-                {/* Chỉ hiện khi isAdmin = true */}
-                {user?.isAdmin && renderSection('QUẢN TRỊ HỆ THỐNG', (
+                {perms.showCustomerAll && renderSection('QUẢN TRỊ HỆ THỐNG', (
                     <>
                         {renderMenuItem(
                             'Quản lý danh sách đại lý',
