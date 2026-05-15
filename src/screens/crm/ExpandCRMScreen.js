@@ -72,7 +72,7 @@ export default function ExpandCRMScreen() {
 
                 {perms.showCustomerAll && renderSection('QUẢN TRỊ HỆ THỐNG', (
                     <>
-                        {renderMenuItem(
+                        {perms.isAdminRole && renderMenuItem(
                             'Quản lý khách hàng',
                             'person-outline',
                             false,
