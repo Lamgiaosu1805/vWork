@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "823137471921",
+    "project_id": "vnfite-vwork",
+    "storage_bucket": "vnfite-vwork.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:823137471921:android:5b7c282fd6db07bbba4190",
+        "android_client_info": {
+          "package_name": "com.vnfitevwork"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBSuzaFkXERVi0DTp9Dq_zQW6w2Quwq4fo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

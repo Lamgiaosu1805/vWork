@@ -13,6 +13,8 @@ import { Feather, Ionicons } from "@expo/vector-icons";
 import Pagination from "../../components/crm/customer/Pagination";
 import CustomerCard from "../../components/crm/customer/CustomerCard";
 import { useNavigation } from "@react-navigation/native";
+import { useSelector } from "react-redux";
+import { canMgr } from "../../helpers/permissions";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import useCustomer from "../../hooks/crm/useCustomer";
 import { Dropdown } from "react-native-element-dropdown";
@@ -33,6 +35,8 @@ export default function CustomerScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation();
   const { getCustomers } = useCustomer();
+  const user = useSelector((state) => state.auth.user);
+  const canAddCustomer = canMgr(user, "crm");
 
   const [search, setSearch] = useState("");
   const [filterType, setFilterType] = useState("all");
@@ -127,10 +131,8 @@ export default function CustomerScreen() {
     <View style={{ flex: 1, alignItems: "center" }}>
       <Header
         title="Danh sách khách hàng"
-        rightIconName={"person-add"}
-        onRightPress={() => {
-          translateCreateCustomerY.value = withTiming(0);
-        }}
+        rightIconName={canAddCustomer ? "person-add" : undefined}
+        onRightPress={canAddCustomer ? () => { translateCreateCustomerY.value = withTiming(0); } : undefined}
       />
 
       <View style={{ width: "100%", paddingHorizontal: 20, marginTop: 8 }}>

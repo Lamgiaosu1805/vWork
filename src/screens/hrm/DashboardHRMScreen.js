@@ -19,6 +19,7 @@ import dayjs from 'dayjs';
 import 'dayjs/locale/vi';
 import localeData from 'dayjs/plugin/localeData';
 dayjs.extend(localeData);
+dayjs.locale('vi');
 
 import api from '../../api/axiosInstance';
 import WifiManager from 'react-native-wifi-reborn';
@@ -27,6 +28,13 @@ import Toast from 'react-native-toast-message';
 import utils from '../../helpers/utils';
 import { useDispatch, useSelector } from 'react-redux';
 import { pushLichCong, setCurrentWorkSheetAttendance } from '../../redux/slice/attendanceSlice';
+
+const getGreeting = (fullName) => {
+    const h = new Date().getHours();
+    const time = h < 12 ? 'buổi sáng' : h < 18 ? 'buổi chiều' : 'buổi tối';
+    const name = fullName?.trim().split(/\s+/).pop() ?? '';
+    return `Chào ${time}, ${name}!`;
+};
 
 // Dùng mảng tra cứu dựa trên chỉ số ngày (0=CN, 1=T2, ...)
 const weekdayAbbreviations = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
@@ -415,11 +423,9 @@ export default function DashboardHRMScreen() {
     return (
         <View style={styles.container}>
             <Header
-                title={`Xin chào, ${firstName} !`}
+                title="HRM"
                 leftIconName="menu"
-                onLeftPress={() => {
-                    openDrawer();
-                }}
+                onLeftPress={() => { openDrawer(); }}
                 rightIconName="notifications"
                 onRightPress={() => Alert.alert('Notifications Pressed')}
             />
@@ -433,7 +439,12 @@ export default function DashboardHRMScreen() {
                     paddingBottom: 30,
                 }}
             >
-                <TimeDisplay style={{ dateText: styles.dateText }} />
+                <View style={styles.greetingBox}>
+                    <Text style={styles.greetingTitle}>{getGreeting(auth.user?.full_name)}</Text>
+                    <Text style={styles.greetingDate}>
+                        {dayjs().format('dddd, DD/MM/YYYY').replace(/^\w/, (c) => c.toUpperCase())} · HRM
+                    </Text>
+                </View>
 
                 <TouchableOpacity
                     activeOpacity={0.85}
@@ -692,6 +703,9 @@ const styles = StyleSheet.create({
         flex: 1,
         backgroundColor: '#f5f5f5',
     },
+    greetingBox: { paddingVertical: 16 },
+    greetingTitle: { fontSize: 20, fontWeight: '700', color: '#111827' },
+    greetingDate: { fontSize: 13, color: '#6B7280', marginTop: 2, textTransform: 'capitalize' },
     dateText: { // Style cho Text hiển thị ngày
         fontSize: 18,
         fontWeight: '600',

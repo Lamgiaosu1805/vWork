@@ -12,13 +12,14 @@ import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as ImagePicker from "expo-image-picker";
 import * as ImageManipulator from "expo-image-manipulator";
-import { store } from "../redux/store";
+import { useSelector } from "react-redux";
 import api from "../api/axiosInstance";
+import { unregisterFcmTokenFromServer } from "../utils/notifications/fcmConfig";
+import { has } from "../helpers/permissions";
 
 export default function CustomDrawerContent(props) {
     const { navigation, state } = props;
-    const { auth } = store.getState();
-    const user = auth.user;
+    const user = useSelector((state) => state.auth.user);
 
     const [avatarBase64, setAvatarBase64] = useState(null);
     const [uploading, setUploading] = useState(false);
@@ -111,6 +112,7 @@ export default function CustomDrawerContent(props) {
     };
 
     const handleLogout = async () => {
+        await unregisterFcmTokenFromServer();
         await AsyncStorage.removeItem("lastStack");
         await AsyncStorage.removeItem("accessToken");
         navigation.replace("LoginScreen");
@@ -224,11 +226,13 @@ export default function CustomDrawerContent(props) {
                     icon="people-outline"
                     routeName="HRMStackNavigator"
                 />
-                <DrawerItemCustom
-                    label="CRM"
-                    icon="cart-outline"
-                    routeName="CRMStackNavigator"
-                />
+                {has(user, "crm") && (
+                    <DrawerItemCustom
+                        label="CRM"
+                        icon="cart-outline"
+                        routeName="CRMStackNavigator"
+                    />
+                )}
             </View>
 
             <View style={styles.divider} />
