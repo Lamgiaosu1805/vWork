@@ -41,12 +41,6 @@ export default function ExpandScreen() {
             isToggle: false,
           },
           {
-            label: "Phòng ban",
-            icon: "swap-horizontal-outline",
-            onPress: () => console.log("Navigate to Departments"),
-            isToggle: false,
-          },
-          {
             label: "Chấm công",
             icon: "time-outline",
             onPress: () => navigation.navigate("AttendanceScreen"),
@@ -178,7 +172,7 @@ export default function ExpandScreen() {
           </View>
         ))}
 
-        {user.isAdmin && (
+        {user.role.includes("admin") && (
           <View style={styles.sectionCard}>
             <Text style={styles.sectionTitle}>Hệ thống</Text>
             <View style={styles.sectionBody}>
@@ -202,7 +196,7 @@ export default function ExpandScreen() {
                           label: "Vị trí / chức vụ",
                           icon: "briefcase-outline",
                           onPress: () =>
-                            console.log("Navigate to Positions/Roles"),
+                            console.log("Navigate to Position Management"),
                         },
                         1,
                         true,
