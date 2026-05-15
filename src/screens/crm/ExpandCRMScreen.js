@@ -72,6 +72,12 @@ export default function ExpandCRMScreen() {
 
                 {perms.showCustomerAll && renderSection('QUẢN TRỊ HỆ THỐNG', (
                     <>
+                        {perms.isAdminRole && renderMenuItem(
+                            'Quản lý khách hàng',
+                            'person-outline',
+                            false,
+                            () => navigation.navigate('AdminCustomerScreen')
+                        )}
                         {renderMenuItem(
                             'Quản lý danh sách đại lý',
                             'people-circle-outline',

@@ -10,7 +10,7 @@ import {
     Linking,
     ActivityIndicator,
 } from 'react-native';
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Header from '../../components/Header';
 import { openDrawer } from '../../helpers/navigationRef';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -28,6 +28,8 @@ import Toast from 'react-native-toast-message';
 import utils from '../../helpers/utils';
 import { useDispatch, useSelector } from 'react-redux';
 import { pushLichCong, setCurrentWorkSheetAttendance } from '../../redux/slice/attendanceSlice';
+import BirthdayPanel from '../../components/hrm/BirthdayPanel';
+import useUser from '../../hooks/useUser';
 
 const getGreeting = (fullName, sex) => {
     const h = new Date().getHours();
@@ -89,10 +91,12 @@ const TimeDisplay = ({ style }) => {
 
 export default function DashboardHRMScreen() {
     const auth = useSelector(state => state.auth);
+    const { getBirthdayThisMonth } = useUser();
     const dispatch = useDispatch();
 
     const [totalMinutesFail, setTotalMinutesFail] = useState(0);
     const [totalMissAttendance, setTotalMissAttendance] = useState(0);
+    const [birthdayData, setBirthdayData] = useState([]);
 
 
     const [currentWorkSheet, setCurrentWorkSheet] = useState(null);
@@ -135,6 +139,26 @@ export default function DashboardHRMScreen() {
         return list;
     }, [startDate, endDate]);
 
+    const loadBirthdays = useCallback(
+     async () => {
+        setIsLoading(true);
+         try {
+            const res = await getBirthdayThisMonth();
+            
+            setBirthdayData(res?.data?.data || []);
+         } catch (error) {
+            console.log("Load birthdays error:", error?.message || error);
+         } finally {
+            setIsLoading(false);
+         }
+      },
+      [],
+    )
+    
+    useEffect(() => {
+      loadBirthdays();
+    }, [])
+    
     // Lấy WorkSheet của ngày hôm nay (Dùng cho nút chấm công)
     const getCurrentWorkSheet = async () => {
         try {
@@ -227,7 +251,7 @@ export default function DashboardHRMScreen() {
         );
     };
 
-    const hasCheckedIn = currentWorkSheet && currentWorkSheet.check_in;
+    const hasCheckedIn = Boolean(currentWorkSheet?.check_in);
     const minutesLate = currentWorkSheet && currentWorkSheet.minutes_late ? parseInt(currentWorkSheet.minutes_late, 10) : 0;
 
     const getShiftName = (workSheet) => {
@@ -304,7 +328,7 @@ export default function DashboardHRMScreen() {
         }
     }
 
-    const buttonDisabled = isLoading || hasCheckedIn;
+    const buttonDisabled = Boolean(isLoading || hasCheckedIn);
     const shiftNameToday = currentWorkSheet ? getShiftName(currentWorkSheet) : 'Đang tải ca...';
 
     const getAttendanceStatus = (day) => {
@@ -688,6 +712,8 @@ export default function DashboardHRMScreen() {
                         );
                     })}
                 </View>
+
+                <BirthdayPanel birthdays={birthdayData} isLoading={isLoading}  style={{marginTop: 16}}/>
             </ScrollView>
         </View>
     )

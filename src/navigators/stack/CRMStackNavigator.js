@@ -4,6 +4,7 @@ import CRMBottomTab from "../bottomtabs/CRMBottomTab";
 // import WorkDetailScreen from "../screens/workplace/WorkDetailScreen";
 // import WorkSettingsScreen from "../screens/workplace/WorkSettingsScreen";
 import ListAgentScreen from "../../screens/crm/ListAgentScreen";
+import AdminCustomerScreen from "../../screens/crm/AdminCustomerScreen";
 
 const Stack = createNativeStackNavigator();
 
@@ -12,7 +13,7 @@ export default function CRMStackNavigator() {
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="CRMBottomTab" component={CRMBottomTab} />
       <Stack.Screen name="ListAgentScreen" component={ListAgentScreen} />
-
+      <Stack.Screen name="AdminCustomerScreen" component={AdminCustomerScreen} />
     </Stack.Navigator>
   );
 }

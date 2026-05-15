@@ -8,13 +8,24 @@ import { CustomAlertProvider } from './src/components/CustomAlertProvider';
 import Toast from 'react-native-toast-message';
 import { initDeepLink } from './src/helpers/deepLink';
 import { navigationRef } from './src/helpers/navigationRef';
+import {
+  initNotifications,
+  registerNotificationListeners,
+} from './src/utils/notifications/fcmConfig';
 
 // export const navigationRef = React.createRef();
 
 export default function App() {
   useEffect(() => {
     initDeepLink(navigationRef);
+    initNotifications();
   }, []);
+
+  useEffect(() => {
+    const unsubscribe = registerNotificationListeners();
+    return unsubscribe;
+  }, []);
+
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <CustomAlertProvider>
