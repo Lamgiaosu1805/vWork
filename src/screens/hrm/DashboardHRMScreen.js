@@ -224,7 +224,7 @@ export default function DashboardHRMScreen() {
         );
     };
 
-    const hasCheckedIn = currentWorkSheet && currentWorkSheet.check_in;
+    const hasCheckedIn = Boolean(currentWorkSheet?.check_in);
     const minutesLate = currentWorkSheet && currentWorkSheet.minutes_late ? parseInt(currentWorkSheet.minutes_late, 10) : 0;
 
     const getShiftName = (workSheet) => {
@@ -301,7 +301,7 @@ export default function DashboardHRMScreen() {
         }
     }
 
-    const buttonDisabled = isLoading || hasCheckedIn;
+    const buttonDisabled = Boolean(isLoading || hasCheckedIn);
     const shiftNameToday = currentWorkSheet ? getShiftName(currentWorkSheet) : 'Đang tải ca...';
 
     const getAttendanceStatus = (day) => {

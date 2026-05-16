@@ -1,83 +1,82 @@
-const apiLive = "https://vWork.vnfite.com.vn"
-const apiTest = "https://vWork-uat.vnfite.com.vn"
+const apiLive = "https://vWork.vnfite.com.vn";
+const apiTest = "https://vWork-uat.vnfite.com.vn";
 
-const BASE_URL = apiLive
+const BASE_URL = apiLive;
 
 const renderMaritalStatus = (number) => {
-    if (number == 0) {
-        return "Độc thân"
-    }
-    else if (number == 1) {
-        return "Đã kết hôn"
-    }
-    else {
-        return "Khác"
-    }
-}
+  if (number == 0) {
+    return "Độc thân";
+  } else if (number == 1) {
+    return "Đã kết hôn";
+  } else {
+    return "Khác";
+  }
+};
 
 const formatDate = (dateString) => {
-    const date = new Date(dateString);
-    const day = String(date.getDate()).padStart(2, "0");
-    const month = String(date.getMonth() + 1).padStart(2, "0");
-    const year = date.getFullYear();
-    return `${day}/${month}/${year}`;
-}
+  const date = new Date(dateString);
+  const day = String(date.getDate()).padStart(2, "0");
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const year = date.getFullYear();
+  return `${day}/${month}/${year}`;
+};
 
 const formatTime = (dateTimeString, isShowSecond) => {
-    if (!dateTimeString) return '';
-    try {
-        const date = new Date(dateTimeString);
-        const hours = String(date.getHours()).padStart(2, '0');
-        const minutes = String(date.getMinutes()).padStart(2, '0');
-        const seconds = String(date.getSeconds()).padStart(2, '0'); // Thêm giây
-        return isShowSecond == true ? `${hours}:${minutes}:${seconds}` : `${hours}:${minutes}`;
-    } catch (e) {
-        console.error("Error formatting time:", e);
-        return '---';
-    }
-}
+  if (!dateTimeString) return "";
+  try {
+    const date = new Date(dateTimeString);
+    const hours = String(date.getHours()).padStart(2, "0");
+    const minutes = String(date.getMinutes()).padStart(2, "0");
+    const seconds = String(date.getSeconds()).padStart(2, "0"); // Thêm giây
+    return isShowSecond == true
+      ? `${hours}:${minutes}:${seconds}`
+      : `${hours}:${minutes}`;
+  } catch (e) {
+    console.error("Error formatting time:", e);
+    return "---";
+  }
+};
 
 const getFileExtension = (fileURL) => {
-    return {
-        extension: fileURL?.split('.').pop(),
-        fileName: fileURL?.split('/').pop()
-    }
-}
+  return {
+    extension: fileURL?.split(".").pop(),
+    fileName: fileURL?.split("/").pop(),
+  };
+};
 
 const getTypeLaborContract = (type) => {
-    switch (type) {
-        case "probation":
-            return "Thử việc";
-        case "fixed_term":
-            return "Chính thức xác định thời hạn";
-        case "indefinite_term":
-            return "Chính thức không định thời hạn";
+  switch (type) {
+    case "probation":
+      return "Thử việc";
+    case "fixed_term":
+      return "Chính thức xác định thời hạn";
+    case "indefinite_term":
+      return "Chính thức không định thời hạn";
 
-        default:
-            return "Khác";
-    }
-}
+    default:
+      return "Khác";
+  }
+};
 
 const getStatusLaborContract = (status) => {
-    switch (status) {
-        case "active":
-            return "Còn hiệu lực";
-        case "expired":
-            return "Đã hết hạn";
-        case "terminated":
-            return "Đã thanh lý";
-        default:
-            return "Không rõ";
-    }
-}
-
+  switch (status) {
+    case "active":
+      return "Còn hiệu lực";
+    case "expired":
+      return "Đã hết hạn";
+    case "terminated":
+      return "Đã thanh lý";
+    default:
+      return "Không rõ";
+  }
+};
 
 export default {
-    BASE_URL,
-    renderMaritalStatus,
-    formatDate,
-    formatTime,
-    getFileExtension,
-    getStatusLaborContract,
-    getTypeLaborContract
-}
+  BASE_URL,
+  renderMaritalStatus,
+  formatDate,
+  formatTime,
+  getFileExtension,
+  getStatusLaborContract,
+  getTypeLaborContract,
+};
