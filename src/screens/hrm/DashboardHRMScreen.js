@@ -10,7 +10,7 @@ import {
     Linking,
     ActivityIndicator,
 } from 'react-native';
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Header from '../../components/Header';
 import { openDrawer } from '../../helpers/navigationRef';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -19,6 +19,7 @@ import dayjs from 'dayjs';
 import 'dayjs/locale/vi';
 import localeData from 'dayjs/plugin/localeData';
 dayjs.extend(localeData);
+dayjs.locale('vi');
 
 import api from '../../api/axiosInstance';
 import WifiManager from 'react-native-wifi-reborn';
@@ -27,6 +28,16 @@ import Toast from 'react-native-toast-message';
 import utils from '../../helpers/utils';
 import { useDispatch, useSelector } from 'react-redux';
 import { pushLichCong, setCurrentWorkSheetAttendance } from '../../redux/slice/attendanceSlice';
+import BirthdayPanel from '../../components/hrm/BirthdayPanel';
+import useUser from '../../hooks/useUser';
+
+const getGreeting = (fullName, sex) => {
+    const h = new Date().getHours();
+    const time    = h < 12 ? 'buổi sáng' : h < 18 ? 'buổi chiều' : 'buổi tối';
+    const pronoun = sex === 1 ? 'anh' : sex === 2 ? 'chị' : 'bạn';
+    const name    = fullName?.trim().split(/\s+/).pop() ?? '';
+    return `Chào ${time}, ${pronoun} ${name}!`;
+};
 
 // Dùng mảng tra cứu dựa trên chỉ số ngày (0=CN, 1=T2, ...)
 const weekdayAbbreviations = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
@@ -80,17 +91,13 @@ const TimeDisplay = ({ style }) => {
 
 export default function DashboardHRMScreen() {
     const auth = useSelector(state => state.auth);
+    const { getBirthdayThisMonth } = useUser();
     const dispatch = useDispatch();
 
     const [totalMinutesFail, setTotalMinutesFail] = useState(0);
     const [totalMissAttendance, setTotalMissAttendance] = useState(0);
+    const [birthdayData, setBirthdayData] = useState([]);
 
-    const firstName = useMemo(() => {
-        const fullName = auth.user?.full_name;
-        if (!fullName) return 'Bạn';
-        const parts = fullName.trim().split(/\s+/);
-        return parts[parts.length - 1];
-    }, [auth.user?.full_name]);
 
     const [currentWorkSheet, setCurrentWorkSheet] = useState(null);
     const [isLoading, setIsLoading] = useState(false);
@@ -132,6 +139,26 @@ export default function DashboardHRMScreen() {
         return list;
     }, [startDate, endDate]);
 
+    const loadBirthdays = useCallback(
+     async () => {
+        setIsLoading(true);
+         try {
+            const res = await getBirthdayThisMonth();
+            
+            setBirthdayData(res?.data?.data || []);
+         } catch (error) {
+            console.log("Load birthdays error:", error?.message || error);
+         } finally {
+            setIsLoading(false);
+         }
+      },
+      [],
+    )
+    
+    useEffect(() => {
+      loadBirthdays();
+    }, [])
+    
     // Lấy WorkSheet của ngày hôm nay (Dùng cho nút chấm công)
     const getCurrentWorkSheet = async () => {
         try {
@@ -415,11 +442,9 @@ export default function DashboardHRMScreen() {
     return (
         <View style={styles.container}>
             <Header
-                title={`Xin chào, ${firstName} !`}
+                title="HRM"
                 leftIconName="menu"
-                onLeftPress={() => {
-                    openDrawer();
-                }}
+                onLeftPress={() => { openDrawer(); }}
                 rightIconName="notifications"
                 onRightPress={() => Alert.alert('Notifications Pressed')}
             />
@@ -433,7 +458,12 @@ export default function DashboardHRMScreen() {
                     paddingBottom: 30,
                 }}
             >
-                <TimeDisplay style={{ dateText: styles.dateText }} />
+                <View style={styles.greetingBox}>
+                    <Text style={styles.greetingTitle}>{getGreeting(auth.user?.full_name, auth.user?.sex)}</Text>
+                    <Text style={styles.greetingDate}>
+                        {dayjs().format('dddd, DD/MM/YYYY').replace(/^\w/, (c) => c.toUpperCase())} · HRM
+                    </Text>
+                </View>
 
                 <TouchableOpacity
                     activeOpacity={0.85}
@@ -601,7 +631,7 @@ export default function DashboardHRMScreen() {
                     >
                         {/* <Ionicons name="people" size={32} color="red" /> */}
                         <Text style={{ color: '#004643', marginTop: 8, fontWeight: '600', textAlign: 'center' }}>Ngày phép còn lại</Text>
-                        <Text style={{ color: '#004643', marginTop: 8, fontWeight: '800', textAlign: 'center', fontSize: 20 }}>{auth.user?.leave_balance.annual || 0}</Text>
+                        <Text style={{ color: '#004643', marginTop: 8, fontWeight: '800', textAlign: 'center', fontSize: 20 }}>{auth.user?.leave_balance?.annual ?? 0}</Text>
                         <Text style={{ color: '#004643', marginTop: 8, fontWeight: '600', textAlign: 'center' }}>ngày</Text>
                     </View>
 
@@ -682,6 +712,8 @@ export default function DashboardHRMScreen() {
                         );
                     })}
                 </View>
+
+                <BirthdayPanel birthdays={birthdayData} isLoading={isLoading}  style={{marginTop: 16}}/>
             </ScrollView>
         </View>
     )
@@ -692,6 +724,9 @@ const styles = StyleSheet.create({
         flex: 1,
         backgroundColor: '#f5f5f5',
     },
+    greetingBox: { paddingVertical: 16 },
+    greetingTitle: { fontSize: 20, fontWeight: '700', color: '#111827' },
+    greetingDate: { fontSize: 13, color: '#6B7280', marginTop: 2, textTransform: 'capitalize' },
     dateText: { // Style cho Text hiển thị ngày
         fontSize: 18,
         fontWeight: '600',

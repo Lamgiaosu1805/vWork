@@ -1,11 +1,9 @@
 import React from "react";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { Ionicons } from "@expo/vector-icons";
-import TestScreen from "../../screens/TestScreen";
-import WorkScreen from "../../screens/workplace/WorkScreen";
-// import WorkDashboardScreen from "../screens/workplace/WorkDashboardScreen";
-// import WorkTaskScreen from "../screens/workplace/WorkTaskScreen";
-// import WorkProfileScreen from "../screens/workplace/WorkProfileScreen";
+import WorkplaceDashboardScreen from "../../screens/workplace/WorkplaceDashboardScreen";
+import WeeklyReportScreen from "../../screens/workplace/WeeklyReportScreen";
+import InternalFilesScreen from "../../screens/workplace/InternalFilesScreen";
 
 const Tab = createBottomTabNavigator();
 
@@ -18,27 +16,27 @@ export default function WorkPlaceBottomTab() {
         tabBarInactiveTintColor: "gray",
         tabBarIcon: ({ color, size }) => {
           let iconName = "home-outline";
-          if (route.name === "Dashboard") iconName = "business-outline";
-          else if (route.name === "Tasks") iconName = "briefcase-outline";
-          else if (route.name === "Profile") iconName = "person-outline";
+          if (route.name === "WorkplaceDashboard") iconName = "business-outline";
+          else if (route.name === "WeeklyReportScreen") iconName = "calendar-outline";
+          else if (route.name === "InternalFilesScreen") iconName = "folder-open-outline";
           return <Ionicons name={iconName} size={size} color={color} />;
         },
       })}
     >
       <Tab.Screen
-        name="Dashboard"
-        component={TestScreen}
-        options={{ title: "WorkPlace" }}
+        name="WorkplaceDashboard"
+        component={WorkplaceDashboardScreen}
+        options={{ title: "Workplace" }}
       />
       <Tab.Screen
-        name="Tasks"
-        component={WorkScreen}
-        options={{ title: "Công việc" }}
+        name="WeeklyReportScreen"
+        component={WeeklyReportScreen}
+        options={{ title: "Báo cáo tuần" }}
       />
       <Tab.Screen
-        name="Profile"
-        component={TestScreen}
-        options={{ title: "Hồ sơ" }}
+        name="InternalFilesScreen"
+        component={InternalFilesScreen}
+        options={{ title: "Ổ File" }}
       />
     </Tab.Navigator>
   );

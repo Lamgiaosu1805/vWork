@@ -21,6 +21,7 @@ import Toast from "react-native-toast-message";
 import ChangeFirstPasswordModal from "../components/ChangeFirstPasswordModal";
 import { useDispatch } from "react-redux";
 import { setCredentials } from "../redux/slice/authSlice";
+import { syncFcmTokenWithServer } from "../utils/notifications/fcmConfig";
 
 export default function LoginScreen({ navigation }) {
     const [visible, setVisible] = useState(false);
@@ -58,7 +59,7 @@ export default function LoginScreen({ navigation }) {
                     headers: { Authorization: `Bearer ${accessToken}` }
                 });
                 const user = resUserInfo.data
-                dispatch(setCredentials({ user, accessToken }));
+                dispatch(setCredentials({ user, accessToken, refreshToken }));
 
                 if (remember) {
                     await AsyncStorage.setItem("accessToken", accessToken);
@@ -67,6 +68,7 @@ export default function LoginScreen({ navigation }) {
                     await AsyncStorage.multiRemove(["accessToken"]);
                 }
                 await AsyncStorage.setItem("refreshToken", refreshToken);
+                syncFcmTokenWithServer();
 
                 const lastStack = (await AsyncStorage.getItem("lastStack")) || "WorkPlaceStackNavigator";
                 navigation.reset({

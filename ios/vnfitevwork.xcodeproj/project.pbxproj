@@ -13,6 +13,7 @@
 		BB2F792D24A3F905000567C9 /* Expo.plist in Resources */ = {isa = PBXBuildFile; fileRef = BB2F792C24A3F905000567C9 /* Expo.plist */; };
 		C3C523F19ADAB05C11507CA3 /* libPods-vnfitevwork.a in Frameworks */ = {isa = PBXBuildFile; fileRef = A52D838D6196347D9402488C /* libPods-vnfitevwork.a */; };
 		F11748422D0307B40044C1D9 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = F11748412D0307B40044C1D9 /* AppDelegate.swift */; };
+		FA4A2E422FAC6F500010A640 /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = FA4A2E412FAC6F500010A640 /* GoogleService-Info.plist */; };
 		FC716737CB7008BC30EF431A /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 767E85997C827D4FF8157170 /* PrivacyInfo.xcprivacy */; };
 /* End PBXBuildFile section */
 
@@ -30,6 +31,7 @@
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
 		F11748412D0307B40044C1D9 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppDelegate.swift; path = vnfitevwork/AppDelegate.swift; sourceTree = "<group>"; };
 		F11748442D0722820044C1D9 /* vnfitevwork-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = "vnfitevwork-Bridging-Header.h"; path = "vnfitevwork/vnfitevwork-Bridging-Header.h"; sourceTree = "<group>"; };
+		FA4A2E412FAC6F500010A640 /* GoogleService-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -85,6 +87,7 @@
 		83CBB9F61A601CBA00E9B192 = {
 			isa = PBXGroup;
 			children = (
+				FA4A2E412FAC6F500010A640 /* GoogleService-Info.plist */,
 				13B07FAE1A68108700A75B9A /* vnfitevwork */,
 				832341AE1AAA6A7D00B99B32 /* Libraries */,
 				83CBBA001A601CBA00E9B192 /* Products */,
@@ -194,6 +197,7 @@
 			files = (
 				BB2F792D24A3F905000567C9 /* Expo.plist in Resources */,
 				13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */,
+				FA4A2E422FAC6F500010A640 /* GoogleService-Info.plist in Resources */,
 				3E461D99554A48A4959DE609 /* SplashScreen.storyboard in Resources */,
 				FC716737CB7008BC30EF431A /* PrivacyInfo.xcprivacy in Resources */,
 			);

@@ -1,5 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
+import { useSelector } from "react-redux";
 import { createDrawerNavigator } from "@react-navigation/drawer";
+import { getPermissions } from "../helpers/permissions";
 import WorkPlaceStackNavigator from "./stack/WorkPlaceStackNavigator";
 import HRMStackNavigator from "./stack/HRMStackNavigator";
 import CRMStackNavigator from "./stack/CRMStackNavigator";
@@ -16,14 +18,21 @@ const Drawer = createDrawerNavigator();
 export default function RootDrawerNavigator({ route }) {
     const [initialRoute, setInitialRoute] = useState(null);
     const lastSavedRoute = useRef(null);
+    const user = useSelector((state) => state.auth.user);
+    const perms = getPermissions(user);
+    const hasCrm = perms.showCRM;
 
     useEffect(() => {
         const loadInitialRoute = async () => {
             try {
                 const paramRoute = route?.params?.initialRoute;
                 if (paramRoute) {
-                    setInitialRoute(paramRoute);
-                    lastSavedRoute.current = paramRoute;
+                    const resolved =
+                        paramRoute === "CRMStackNavigator" && !hasCrm
+                            ? "WorkPlaceStackNavigator"
+                            : paramRoute;
+                    setInitialRoute(resolved);
+                    lastSavedRoute.current = resolved;
                     return;
                 }
 
@@ -31,7 +40,7 @@ export default function RootDrawerNavigator({ route }) {
                 if (
                     lastStack === "HRMStackNavigator" ||
                     lastStack === "WorkPlaceStackNavigator" ||
-                    lastStack === "CRMStackNavigator"
+                    (lastStack === "CRMStackNavigator" && hasCrm)
                 ) {
                     setInitialRoute(lastStack);
                     lastSavedRoute.current = lastStack;
@@ -46,7 +55,7 @@ export default function RootDrawerNavigator({ route }) {
         };
 
         loadInitialRoute();
-    }, [route?.params?.initialRoute]);
+    }, [route?.params?.initialRoute, hasCrm]);
 
     if (!initialRoute) {
         return (
@@ -105,11 +114,13 @@ export default function RootDrawerNavigator({ route }) {
                     component={HRMStackNavigator}
                     options={{ title: "HRM" }}
                 />
-                <Drawer.Screen
-                    name="CRMStackNavigator"
-                    component={CRMStackNavigator}
-                    options={{ title: "CRM" }}
-                />
+                {hasCrm && (
+                    <Drawer.Screen
+                        name="CRMStackNavigator"
+                        component={CRMStackNavigator}
+                        options={{ title: "CRM" }}
+                    />
+                )}
 
             </Drawer.Navigator>
         </TwoFingerDrawerGestureWrapper>
