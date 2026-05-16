@@ -15,6 +15,7 @@ import { useNavigation } from "@react-navigation/native";
 import useAuth from "../../hooks/useAuth";
 import Header from "../../components/Header";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { unregisterFcmTokenFromServer } from "../../utils/notifications/fcmConfig";
 
 const ChangePasswordScreen = () => {
   const navigation = useNavigation();
@@ -67,6 +68,7 @@ const ChangePasswordScreen = () => {
     try {
       await changePassword(currentPassword, newPassword);
       if (navigation.canGoBack()) {
+        await unregisterFcmTokenFromServer();
         await AsyncStorage.removeItem("lastStack");
         await AsyncStorage.removeItem("accessToken");
         navigation.replace("LoginScreen");
