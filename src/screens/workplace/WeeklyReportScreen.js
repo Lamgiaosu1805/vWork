@@ -17,6 +17,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSelector } from 'react-redux';
 import Toast from 'react-native-toast-message';
 import * as ImagePicker from 'expo-image-picker';
+import * as DocumentPicker from 'expo-document-picker';
 import dayjs from 'dayjs';
 import 'dayjs/locale/vi';
 
@@ -121,17 +122,40 @@ export default function WeeklyReportScreen() {
     const onRefresh = () => { setRefreshing(true); fetchData(); };
 
     const handlePickFile = async () => {
-        const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-        if (status !== 'granted') {
-            Toast.show({ type: 'error', text1: 'Cần quyền truy cập thư viện' });
-            return;
-        }
-        const result = await ImagePicker.launchImageLibraryAsync({
-            mediaTypes: ImagePicker.MediaTypeOptions.All,
-            allowsMultipleSelection: false,
-            copyToCacheDirectory: true,
+        const picked = await new Promise((resolve) => {
+            Alert.alert('Chọn nguồn tệp', null, [
+                {
+                    text: 'Thư viện ảnh',
+                    onPress: async () => {
+                        const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+                        if (status !== 'granted') {
+                            Toast.show({ type: 'error', text1: 'Cần quyền truy cập thư viện ảnh' });
+                            return resolve(null);
+                        }
+                        const result = await ImagePicker.launchImageLibraryAsync({
+                            mediaTypes: ImagePicker.MediaTypeOptions.All,
+                            allowsMultipleSelection: false,
+                            copyToCacheDirectory: true,
+                        });
+                        resolve(result.canceled ? null : result.assets[0]);
+                    },
+                },
+                {
+                    text: 'Tệp',
+                    onPress: async () => {
+                        const result = await DocumentPicker.getDocumentAsync({
+                            copyToCacheDirectory: true,
+                            multiple: false,
+                        });
+                        if (result.canceled) return resolve(null);
+                        const asset = result.assets[0];
+                        resolve({ uri: asset.uri, name: asset.name, mimeType: asset.mimeType });
+                    },
+                },
+                { text: 'Huỷ', style: 'cancel', onPress: () => resolve(null) },
+            ]);
         });
-        if (!result.canceled) setPickedFile(result.assets[0]);
+        if (picked) setPickedFile(picked);
     };
 
     const handleSubmit = async () => {

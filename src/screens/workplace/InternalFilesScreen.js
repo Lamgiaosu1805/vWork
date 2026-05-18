@@ -16,6 +16,7 @@ import { useNavigation } from '@react-navigation/native';
 import { useSelector } from 'react-redux';
 import Toast from 'react-native-toast-message';
 import * as ImagePicker from 'expo-image-picker';
+import * as DocumentPicker from 'expo-document-picker';
 import dayjs from 'dayjs';
 import 'dayjs/locale/vi';
 
@@ -172,26 +173,57 @@ export default function InternalFilesScreen() {
         });
     };
 
-    const handleUpload = async () => {
-        if (!selectedDept?._id) return;
+    const pickFromLibrary = async () => {
         const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
         if (status !== 'granted') {
             Toast.show({ type: 'error', text1: 'Cần quyền truy cập thư viện ảnh' });
-            return;
+            return null;
         }
         const result = await ImagePicker.launchImageLibraryAsync({
             mediaTypes: ImagePicker.MediaTypeOptions.All,
             allowsMultipleSelection: false,
             copyToCacheDirectory: true,
         });
-        if (result.canceled) return;
-
+        if (result.canceled) return null;
         const asset = result.assets[0];
-        const formData = new FormData();
-        formData.append('file', {
+        return {
             uri: asset.uri,
             name: asset.fileName ?? asset.uri.split('/').pop(),
             type: asset.mimeType ?? 'application/octet-stream',
+        };
+    };
+
+    const pickFromFiles = async () => {
+        const result = await DocumentPicker.getDocumentAsync({
+            copyToCacheDirectory: true,
+            multiple: false,
+        });
+        if (result.canceled) return null;
+        const asset = result.assets[0];
+        return {
+            uri: asset.uri,
+            name: asset.name,
+            type: asset.mimeType ?? 'application/octet-stream',
+        };
+    };
+
+    const handleUpload = async () => {
+        if (!selectedDept?._id) return;
+
+        const picked = await new Promise((resolve) => {
+            Alert.alert('Chọn nguồn tệp', null, [
+                { text: 'Thư viện ảnh', onPress: () => pickFromLibrary().then(resolve) },
+                { text: 'Tệp', onPress: () => pickFromFiles().then(resolve) },
+                { text: 'Huỷ', style: 'cancel', onPress: () => resolve(null) },
+            ]);
+        });
+        if (!picked) return;
+
+        const formData = new FormData();
+        formData.append('file', {
+            uri: picked.uri,
+            name: picked.name,
+            type: picked.type,
         });
 
         setUploading(true);
@@ -305,23 +337,21 @@ export default function InternalFilesScreen() {
                                             <Text style={styles.deptHeaderName}>{selectedDept.department_name}</Text>
                                             <Text style={styles.deptHeaderCount}>{files.length} file</Text>
                                         </View>
-                                        {perms.showFilesMgmt && (
-                                            <TouchableOpacity
-                                                style={[styles.uploadBtn, uploading && styles.uploadBtnDisabled]}
-                                                onPress={handleUpload}
-                                                disabled={uploading}
-                                                activeOpacity={0.7}
-                                            >
-                                                {uploading ? (
-                                                    <ActivityIndicator size="small" color="#fff" />
-                                                ) : (
-                                                    <Ionicons name="cloud-upload-outline" size={16} color="#fff" />
-                                                )}
-                                                <Text style={styles.uploadBtnText}>
-                                                    {uploading ? 'Đang tải...' : 'Tải lên'}
-                                                </Text>
-                                            </TouchableOpacity>
-                                        )}
+                                        <TouchableOpacity
+                                            style={[styles.uploadBtn, uploading && styles.uploadBtnDisabled]}
+                                            onPress={handleUpload}
+                                            disabled={uploading}
+                                            activeOpacity={0.7}
+                                        >
+                                            {uploading ? (
+                                                <ActivityIndicator size="small" color="#fff" />
+                                            ) : (
+                                                <Ionicons name="cloud-upload-outline" size={16} color="#fff" />
+                                            )}
+                                            <Text style={styles.uploadBtnText}>
+                                                {uploading ? 'Đang tải...' : 'Tải lên'}
+                                            </Text>
+                                        </TouchableOpacity>
                                     </View>
                                 ) : null
                             }

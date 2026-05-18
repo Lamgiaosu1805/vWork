@@ -8,10 +8,12 @@ import {
     TextInput,
     ActivityIndicator,
     RefreshControl,
+    Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as DocumentPicker from 'expo-document-picker';
+import * as ImagePicker from 'expo-image-picker';
 import { useSelector } from 'react-redux';
 import Toast from 'react-native-toast-message';
 import Header from '../../components/Header';
@@ -100,19 +102,47 @@ export default function PrintScreen({ navigation }) {
     }, [checkStatus, loadStatsAndHistory]);
 
     const pickFile = async () => {
-        const result = await DocumentPicker.getDocumentAsync({
-            type: '*/*',
-            copyToCacheDirectory: true,
-            multiple: false,
+        const picked = await new Promise((resolve) => {
+            Alert.alert('Chọn nguồn tệp', null, [
+                {
+                    text: 'Thư viện ảnh',
+                    onPress: async () => {
+                        const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+                        if (status !== 'granted') {
+                            Toast.show({ type: 'error', text1: 'Cần quyền truy cập thư viện ảnh' });
+                            return resolve(null);
+                        }
+                        const result = await ImagePicker.launchImageLibraryAsync({
+                            mediaTypes: ImagePicker.MediaTypeOptions.All,
+                            allowsMultipleSelection: false,
+                            copyToCacheDirectory: true,
+                        });
+                        if (result.canceled) return resolve(null);
+                        const asset = result.assets[0];
+                        resolve({ uri: asset.uri, name: asset.fileName ?? asset.uri.split('/').pop(), mimeType: asset.mimeType, size: asset.fileSize });
+                    },
+                },
+                {
+                    text: 'Tệp',
+                    onPress: async () => {
+                        const result = await DocumentPicker.getDocumentAsync({
+                            type: '*/*',
+                            copyToCacheDirectory: true,
+                            multiple: false,
+                        });
+                        if (result.canceled) return resolve(null);
+                        resolve(result.assets?.[0] ?? null);
+                    },
+                },
+                { text: 'Huỷ', style: 'cancel', onPress: () => resolve(null) },
+            ]);
         });
-        if (result.canceled) return;
-        const asset = result.assets?.[0];
-        if (!asset) return;
-        if (asset.size > 50 * 1024 * 1024) {
+        if (!picked) return;
+        if (picked.size > 50 * 1024 * 1024) {
             Toast.show({ type: 'error', text1: 'File không được vượt quá 50MB' });
             return;
         }
-        setSelectedImage(asset);
+        setSelectedImage(picked);
     };
 
     const handlePrint = async () => {
