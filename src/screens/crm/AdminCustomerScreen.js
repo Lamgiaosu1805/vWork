@@ -41,7 +41,7 @@ function AssignModal({ customer, isAdmin, onClose, onSuccess }) {
     setLoadingUsers(true);
     try {
       const res = await api.get("/user", {
-        params: { search: q, limit: 30, page: 1 },
+        params: { search: q, limit: 30, page: 1, module: "crm" },
         requiresAuth: true,
       });
       setUsers(res.data?.data ?? []);
