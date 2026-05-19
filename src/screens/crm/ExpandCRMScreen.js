@@ -52,7 +52,7 @@ const MANAGER_FEATURES = [
     },
     {
         id: 'approve',
-        label: 'Phê duyệt\nyêu cầu',
+        label: 'Phê duyệt\nyêu cầu KH',
         icon: 'checkmark-circle',
         iconBg: '#FCE7F3',
         iconColor: '#DB2777',
@@ -90,13 +90,13 @@ const PERSONAL_FEATURES = [
         available: false,
     },
     {
-        id: 'support',
-        label: 'Hỗ trợ\n(Ticket)',
-        icon: 'headset',
+        id: 'claim-request',
+        label: 'Yêu cầu\nnhận KH',
+        icon: 'hand-right',
         iconBg: '#FEF3C7',
         iconColor: '#D97706',
-        screen: null,
-        available: false,
+        screen: 'ClaimRequestScreen',
+        available: true,
     },
     {
         id: 'my-report',

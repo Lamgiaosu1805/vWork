@@ -20,6 +20,8 @@ export default function CommissionScreen() {
     const [refreshing, setRefreshing] = useState(false);
     const [summary, setSummary] = useState(null);
     const [commissions, setCommissions] = useState([]);
+    const [ccSummary, setCcSummary] = useState(null);
+    const [customerCommissions, setCustomerCommissions] = useState([]);
 
     const months = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
     const years = [2025, 2026, 2027];
@@ -33,6 +35,8 @@ export default function CommissionScreen() {
             );
             setSummary(res.data?.summary ?? null);
             setCommissions(res.data?.data ?? []);
+            setCcSummary(res.data?.customer_commission_summary ?? null);
+            setCustomerCommissions(res.data?.customer_commissions ?? []);
         } catch (error) {
             console.log("fetchCommission error:", error.response?.data || error.message);
         }
@@ -196,9 +200,62 @@ export default function CommissionScreen() {
                     </View>
                 </View>
 
+                {/* HH CIF / eKYC mini-cards */}
+                {!loading && (
+                    <View style={styles.ccRow}>
+                        <View style={[styles.ccCard, { borderLeftColor: '#2563EB' }]}>
+                            <Ionicons name="person-add-outline" size={20} color="#2563EB" />
+                            <Text style={styles.ccLabel}>HH mở CIF</Text>
+                            <Text style={[styles.ccAmount, { color: '#2563EB' }]}>
+                                {formatMoney(ccSummary?.cif_amount ?? 0)}
+                            </Text>
+                            <Text style={styles.ccCount}>{ccSummary?.cif_count ?? 0} khách</Text>
+                        </View>
+                        <View style={[styles.ccCard, { borderLeftColor: '#059669' }]}>
+                            <Ionicons name="finger-print-outline" size={20} color="#059669" />
+                            <Text style={styles.ccLabel}>HH eKYC</Text>
+                            <Text style={[styles.ccAmount, { color: '#059669' }]}>
+                                {formatMoney(ccSummary?.ekyc_amount ?? 0)}
+                            </Text>
+                            <Text style={styles.ccCount}>{ccSummary?.ekyc_count ?? 0} khách</Text>
+                        </View>
+                    </View>
+                )}
+
                 {/* Lịch sử ghi nhận */}
                 <View style={styles.historyContainer}>
-                    <Text style={styles.sectionTitle}>Lịch sử ghi nhận</Text>
+                    {customerCommissions.length > 0 && (
+                        <>
+                            <Text style={styles.sectionTitle}>Hoa hồng CIF / eKYC</Text>
+                            {customerCommissions.map((c) => (
+                                <View key={c._id} style={styles.historyItem}>
+                                    <View style={[styles.historyIcon, { backgroundColor: '#EFF6FF' }]}>
+                                        <Ionicons name="person-add-outline" size={22} color="#2563EB" />
+                                    </View>
+                                    <View style={styles.historyContent}>
+                                        <Text style={styles.historyCustomer}>
+                                            {c?.identity?.full_name || 'Chưa eKYC'}
+                                        </Text>
+                                        <Text style={styles.historyDesc}>{c.phone_number}</Text>
+                                    </View>
+                                    <View style={styles.historyRight}>
+                                        {c.cif_commission?.status === 'pending' && (
+                                            <Text style={[styles.historyAmount, { color: '#2563EB' }]}>
+                                                CIF +{formatMoney(c.cif_commission.amount)}
+                                            </Text>
+                                        )}
+                                        {c.ekyc_commission?.status === 'pending' && (
+                                            <Text style={[styles.historyAmount, { color: '#059669' }]}>
+                                                eKYC +{formatMoney(c.ekyc_commission.amount)}
+                                            </Text>
+                                        )}
+                                    </View>
+                                </View>
+                            ))}
+                            <View style={{ height: 1, backgroundColor: '#E2E8F0', marginVertical: 16 }} />
+                        </>
+                    )}
+                    <Text style={styles.sectionTitle}>Hoa hồng đầu tư</Text>
 
                     {loading ? (
                         <ActivityIndicator color="#0052CC" style={{ marginTop: 20 }} />
@@ -315,4 +372,13 @@ const styles = StyleSheet.create({
         backgroundColor: '#0052CC', marginLeft: 8, alignItems: 'center'
     },
     btnApplyText: { color: '#FFFFFF', fontSize: 16, fontWeight: '600' },
+    ccRow: { flexDirection: 'row', paddingHorizontal: 20, paddingBottom: 12, gap: 10 },
+    ccCard: {
+        flex: 1, backgroundColor: '#fff', borderRadius: 12, padding: 14,
+        borderLeftWidth: 3, shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.06, shadowRadius: 4, elevation: 2,
+    },
+    ccLabel: { fontSize: 11, color: '#718096', fontWeight: '600', marginTop: 6, marginBottom: 2 },
+    ccAmount: { fontSize: 16, fontWeight: '800' },
+    ccCount: { fontSize: 11, color: '#A0AEC0', marginTop: 2 },
 });
