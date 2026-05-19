@@ -45,6 +45,34 @@ export default function ExpandScreen({ navigation }) {
           />
         </View>
 
+        {/* Chấm công — nhân sự, quản lý, admin */}
+        {perms.showEmployeeList && (
+          <>
+            <Text style={styles.sectionLabel}>Chấm công</Text>
+            <View style={styles.group}>
+              <MenuItem
+                icon="clipboard-outline"
+                label="Tình trạng chấm công"
+                description="Xem tình trạng check-in toàn bộ CBNV"
+                onPress={() => navigation.navigate('AttendanceOverviewScreen')}
+                color="#ED2E30"
+              />
+              {perms.isAdminRole && (
+                <>
+                  <View style={styles.divider} />
+                  <MenuItem
+                    icon="finger-print-outline"
+                    label="Cấu hình chấm công"
+                    description="Điểm WiFi và ca làm việc"
+                    onPress={() => navigation.navigate('AttendanceConfigScreen')}
+                    color="#059669"
+                  />
+                </>
+              )}
+            </View>
+          </>
+        )}
+
         {/* Quản lý tổ chức — hiển thị nếu có quyền HRM */}
         {perms.showDepartmentList && (
           <>

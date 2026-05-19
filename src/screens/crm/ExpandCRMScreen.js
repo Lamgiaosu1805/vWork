@@ -1,106 +1,205 @@
-import { StyleSheet, Text, View, ScrollView, TouchableOpacity, Switch } from 'react-native';
+import React from 'react';
+import {
+    StyleSheet, Text, View, ScrollView,
+    TouchableOpacity, Dimensions,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import React, { useState } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useSelector } from 'react-redux';
 import { getPermissions } from '../../helpers/permissions';
 
+const { width } = Dimensions.get('window');
+const CARD_WIDTH = (width - 48 - 12) / 2;
+
+// ── Cấu hình tính năng ─────────────────────────────────────────────────────
+const MANAGER_FEATURES = [
+    {
+        id: 'all-customers',
+        label: 'Tất cả\nkhách hàng',
+        icon: 'people',
+        iconBg: '#DBEAFE',
+        iconColor: '#2563EB',
+        screen: 'AdminCustomerScreen',
+        available: true,
+    },
+    {
+        id: 'agents',
+        label: 'Quản lý\nđại lý',
+        icon: 'briefcase',
+        iconBg: '#EDE9FE',
+        iconColor: '#7C3AED',
+        screen: 'ListAgentScreen',
+        available: true,
+    },
+    {
+        id: 'team-commission',
+        label: 'Thống kê\nhoa hồng',
+        icon: 'pie-chart',
+        iconBg: '#D1FAE5',
+        iconColor: '#059669',
+        screen: null,
+        available: false,
+    },
+    {
+        id: 'team-manage',
+        label: 'Quản lý\nTeam',
+        icon: 'git-network',
+        iconBg: '#FEF3C7',
+        iconColor: '#D97706',
+        screen: null,
+        available: false,
+    },
+    {
+        id: 'approve',
+        label: 'Phê duyệt\nyêu cầu',
+        icon: 'checkmark-circle',
+        iconBg: '#FCE7F3',
+        iconColor: '#DB2777',
+        screen: null,
+        available: false,
+    },
+    {
+        id: 'reports',
+        label: 'Báo cáo\nbán hàng',
+        icon: 'bar-chart',
+        iconBg: '#FEE2E2',
+        iconColor: '#DC2626',
+        screen: null,
+        available: false,
+    },
+];
+
+const PERSONAL_FEATURES = [
+    {
+        id: 'sales-kit',
+        label: 'Kho tài liệu\n(Sales Kit)',
+        icon: 'folder-open',
+        iconBg: '#DBEAFE',
+        iconColor: '#2563EB',
+        screen: null,
+        available: false,
+    },
+    {
+        id: 'schedule',
+        label: 'Lịch hẹn\n& Nhắc việc',
+        icon: 'calendar',
+        iconBg: '#D1FAE5',
+        iconColor: '#059669',
+        screen: null,
+        available: false,
+    },
+    {
+        id: 'support',
+        label: 'Hỗ trợ\n(Ticket)',
+        icon: 'headset',
+        iconBg: '#FEF3C7',
+        iconColor: '#D97706',
+        screen: null,
+        available: false,
+    },
+    {
+        id: 'my-report',
+        label: 'Báo cáo\ncá nhân',
+        icon: 'stats-chart',
+        iconBg: '#FCE7F3',
+        iconColor: '#DB2777',
+        screen: null,
+        available: false,
+    },
+];
+
+// ── Sub-components ─────────────────────────────────────────────────────────
+const SectionHeader = ({ title }) => (
+    <Text style={styles.sectionTitle}>{title}</Text>
+);
+
+const FeatureCard = ({ item, onPress }) => {
+    const disabled = !item.available;
+    return (
+        <TouchableOpacity
+            style={[styles.card, disabled && styles.cardDisabled]}
+            onPress={disabled ? undefined : onPress}
+            activeOpacity={disabled ? 1 : 0.7}
+        >
+            <View style={[styles.cardIconBox, { backgroundColor: disabled ? '#F3F4F6' : item.iconBg }]}>
+                <Ionicons
+                    name={item.icon}
+                    size={24}
+                    color={disabled ? '#D1D5DB' : item.iconColor}
+                />
+            </View>
+            <Text style={[styles.cardLabel, disabled && styles.cardLabelDisabled]} numberOfLines={2}>
+                {item.label}
+            </Text>
+            {disabled && (
+                <View style={styles.comingSoonBadge}>
+                    <Text style={styles.comingSoonText}>Sắp có</Text>
+                </View>
+            )}
+        </TouchableOpacity>
+    );
+};
+
+// ── Main ────────────────────────────────────────────────────────────────────
 export default function ExpandCRMScreen() {
     const navigation = useNavigation();
     const user = useSelector(state => state.auth.user);
     const perms = getPermissions(user);
+    const isManager = perms.showCustomerAll;
 
-    const [notifyNewCustomer, setNotifyNewCustomer] = useState(true);
-    const [notifyInvestment, setNotifyInvestment] = useState(true);
-
-    const renderMenuItem = (title, iconName, isDestructive = false, onPress = () => { }) => (
-        <TouchableOpacity style={styles.menuItem} onPress={onPress}>
-            <View style={styles.menuItemLeft}>
-                <Ionicons name={iconName} size={22} color={isDestructive ? '#FF3B30' : '#4A5568'} />
-                <Text style={[styles.menuItemText, isDestructive && { color: '#FF3B30' }]}>
-                    {title}
-                </Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color="#CBD5E0" />
-        </TouchableOpacity>
-    );
-
-    const renderSwitchItem = (title, iconName, value, onValueChange) => (
-        <View style={styles.menuItem}>
-            <View style={styles.menuItemLeft}>
-                <Ionicons name={iconName} size={22} color="#4A5568" />
-                <Text style={styles.menuItemText}>{title}</Text>
-            </View>
-            <Switch
-                value={value}
-                onValueChange={onValueChange}
-                trackColor={{ false: "#CBD5E0", true: "#0052CC" }}
-                thumbColor="#FFFFFF"
-            />
-        </View>
-    );
-
-    const renderSection = (title, children) => (
-        <View style={styles.sectionContainer}>
-            <Text style={styles.sectionTitle}>{title}</Text>
-            <View style={styles.sectionContent}>
-                {children}
-            </View>
-        </View>
-    );
+    const handlePress = (screen) => {
+        if (screen) navigation.navigate(screen);
+    };
 
     return (
         <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
-            <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+            <View style={styles.header}>
+                <Text style={styles.headerTitle}>Mở rộng</Text>
+                <Text style={styles.headerSub}>CRM · {isManager ? 'Quản lý' : 'Nhân viên'}</Text>
+            </View>
 
-                {renderSection('KINH DOANH', (
-                    <>
-                        {renderMenuItem('Lịch hẹn & Nhắc lịch', 'calendar-outline')}
-                        {renderMenuItem('Kho tài liệu (Sales Kit)', 'folder-open-outline')}
-                        {renderMenuItem('Báo cáo cá nhân', 'bar-chart-outline')}
-                    </>
-                ))}
+            <ScrollView
+                style={styles.scroll}
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={styles.scrollContent}
+            >
+                {/* ── Tính năng quản lý ── */}
+                {isManager && (
+                    <View style={styles.section}>
+                        <SectionHeader title="QUẢN LÝ" />
+                        <View style={styles.grid}>
+                            {MANAGER_FEATURES.map((item) => (
+                                <FeatureCard
+                                    key={item.id}
+                                    item={item}
+                                    onPress={() => handlePress(item.screen)}
+                                />
+                            ))}
+                        </View>
+                    </View>
+                )}
 
-                {renderSection('CÔNG CỤ & TIỆN ÍCH', (
-                    <>
-                        {renderMenuItem('Ghi chú nhanh', 'document-text-outline')}
-                        {renderMenuItem('Hỗ trợ (Ticket)', 'headset-outline')}
-                        {renderMenuItem('Danh bạ nội bộ', 'people-outline')}
-                    </>
-                ))}
+                {/* ── Công cụ cá nhân ── */}
+                <View style={styles.section}>
+                    <SectionHeader title="CÔNG CỤ CÁ NHÂN" />
+                    <View style={styles.grid}>
+                        {PERSONAL_FEATURES.map((item) => (
+                            <FeatureCard
+                                key={item.id}
+                                item={item}
+                                onPress={() => handlePress(item.screen)}
+                            />
+                        ))}
+                    </View>
+                </View>
 
-                {perms.showCustomerAll && renderSection('QUẢN TRỊ HỆ THỐNG', (
-                    <>
-                        {perms.isAdminRole && renderMenuItem(
-                            'Quản lý khách hàng',
-                            'person-outline',
-                            false,
-                            () => navigation.navigate('AdminCustomerScreen')
-                        )}
-                        {renderMenuItem(
-                            'Quản lý danh sách đại lý',
-                            'people-circle-outline',
-                            false,
-                            () => navigation.navigate('ListAgentScreen')
-                        )}
-                        {renderMenuItem('Thống kê hoa hồng', 'pie-chart-outline')}
-                        {renderMenuItem('Quản lý Team', 'briefcase-outline')}
-                        {renderMenuItem('Phê duyệt yêu cầu', 'checkmark-circle-outline')}
-                        {renderMenuItem('Cấu hình CRM', 'settings-outline')}
-                        {renderMenuItem('Lịch sử hoạt động', 'time-outline')}
-                    </>
-                ))}
-
-                {renderSection('CÀI ĐẶT THÔNG BÁO', (
-                    <>
-                        {renderSwitchItem('Khách hàng mới', 'person-add-outline', notifyNewCustomer, setNotifyNewCustomer)}
-                        {renderSwitchItem('Khách hàng đầu tư', 'cash-outline', notifyInvestment, setNotifyInvestment)}
-                    </>
-                ))}
-
+                {/* ── Thông tin phiên bản ── */}
                 <View style={styles.footer}>
-                    <Text style={styles.versionText}>Phiên bản 1.0.0</Text>
+                    <Ionicons name="information-circle-outline" size={16} color="#9CA3AF" />
+                    <Text style={styles.footerText}>
+                        Các tính năng "Sắp có" đang được phát triển và sẽ sớm khả dụng.
+                    </Text>
                 </View>
             </ScrollView>
         </SafeAreaView>
@@ -108,56 +207,86 @@ export default function ExpandCRMScreen() {
 }
 
 const styles = StyleSheet.create({
-    safeArea: {
-        flex: 1,
-        backgroundColor: '#F7FAFC',
+    safeArea: { flex: 1, backgroundColor: '#F5F7FA' },
+
+    header: {
+        paddingHorizontal: 20,
+        paddingTop: 16,
+        paddingBottom: 12,
+        backgroundColor: '#F5F7FA',
     },
-    container: {
-        flex: 1,
-        backgroundColor: '#F7FAFC',
-    },
-    sectionContainer: {
-        marginTop: 20,
-    },
+    headerTitle: { fontSize: 26, fontWeight: '800', color: '#111827' },
+    headerSub: { fontSize: 13, color: '#6B7280', marginTop: 2 },
+
+    scroll: { flex: 1 },
+    scrollContent: { paddingBottom: 40 },
+
+    section: { marginTop: 20, paddingHorizontal: 16 },
     sectionTitle: {
-        fontSize: 13,
-        fontWeight: '600',
-        color: '#718096',
-        marginLeft: 15,
-        marginBottom: 8,
-        letterSpacing: 0.5,
+        fontSize: 12, fontWeight: '700', color: '#9CA3AF',
+        letterSpacing: 0.8, marginBottom: 12, marginLeft: 2,
     },
-    sectionContent: {
-        backgroundColor: '#FFFFFF',
-        borderTopWidth: 1,
-        borderBottomWidth: 1,
-        borderColor: '#E2E8F0',
+
+    grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
+
+    card: {
+        width: CARD_WIDTH,
+        backgroundColor: '#fff',
+        borderRadius: 16,
+        padding: 16,
+        shadowColor: '#000',
+        shadowOpacity: 0.05,
+        shadowOffset: { width: 0, height: 2 },
+        shadowRadius: 8,
+        elevation: 2,
+        position: 'relative',
+        overflow: 'hidden',
     },
-    menuItem: {
-        flexDirection: 'row',
+    cardDisabled: {
+        backgroundColor: '#FAFAFA',
+        shadowOpacity: 0,
+        elevation: 0,
+        borderWidth: 1,
+        borderColor: '#F3F4F6',
+    },
+    cardIconBox: {
+        width: 48,
+        height: 48,
+        borderRadius: 12,
+        justifyContent: 'center',
         alignItems: 'center',
-        justifyContent: 'space-between',
-        paddingVertical: 16,
-        paddingHorizontal: 15,
-        borderBottomWidth: 1,
-        borderBottomColor: '#F7FAFC',
+        marginBottom: 12,
     },
-    menuItemLeft: {
-        flexDirection: 'row',
-        alignItems: 'center',
+    cardLabel: {
+        fontSize: 14,
+        fontWeight: '700',
+        color: '#111827',
+        lineHeight: 20,
     },
-    menuItemText: {
-        fontSize: 16,
-        color: '#2D3748',
-        marginLeft: 15,
+    cardLabelDisabled: { color: '#9CA3AF' },
+
+    comingSoonBadge: {
+        position: 'absolute',
+        top: 10,
+        right: 10,
+        backgroundColor: '#F3F4F6',
+        borderRadius: 6,
+        paddingHorizontal: 6,
+        paddingVertical: 2,
     },
+    comingSoonText: { fontSize: 10, fontWeight: '600', color: '#9CA3AF' },
+
     footer: {
-        marginTop: 30,
-        marginBottom: 40,
-        alignItems: 'center',
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+        gap: 8,
+        marginHorizontal: 20,
+        marginTop: 28,
+        padding: 14,
+        backgroundColor: '#F9FAFB',
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
     },
-    versionText: {
-        color: '#A0AEC0',
-        fontSize: 13,
-    }
+    footerText: { flex: 1, fontSize: 12, color: '#9CA3AF', lineHeight: 18 },
 });

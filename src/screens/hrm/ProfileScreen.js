@@ -164,7 +164,7 @@ export default function ProfileScreen({ navigation }) {
                             <Ionicons name="male-female-outline" size={24} color="#004643" />
                             <View style={{ marginLeft: 8 }}>
                                 <Text style={{ fontSize: 12, color: 'gray', marginBottom: 4 }}>Giới tính</Text>
-                                <Text style={{ color: '#004643' }}>{user?.sex == 0 ? "Nữ" : "Nam"}</Text>
+                                <Text style={{ color: '#004643' }}>{user?.sex === 0 ? "Nữ" : user?.sex === 1 ? "Nam" : "—"}</Text>
                             </View>
                         </View>
                         <View style={styles.infoItem}>
