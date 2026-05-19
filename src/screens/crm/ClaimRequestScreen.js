@@ -261,10 +261,7 @@ function AdminRequestsTab() {
                     onPress: async () => {
                         setActionLoading(true);
                         try {
-                            await api.patch(`/customer-claim-request/${item._id}/approve`, {
-                                include_cif_hh: true,
-                                include_ekyc_hh: false,
-                            }, { requiresAuth: true });
+                            await api.patch(`/customer-claim-request/${item._id}/approve`, {}, { requiresAuth: true });
                             Toast.show({ type: 'success', text1: 'Đã duyệt yêu cầu' });
                             fetchRequests(1, true);
                         } catch (err) {

@@ -85,9 +85,6 @@ function AssignModal({ customer, isAdmin, onClose, onSuccess }) {
       } else {
         await api.post(`/customer/${customer._id}/assign`, {
           sale_user_info_id: selectedUser._id,
-          confirm_sale_source: false,
-          include_cif_hh: true,
-          include_ekyc_hh: false,
         }, { requiresAuth: true });
         Toast.show({ type: "success", text1: "Phân khách thành công" });
       }
