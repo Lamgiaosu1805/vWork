@@ -1,8 +1,9 @@
 import api from "../axiosInstance";
 
-const getListCustomers = async () => {
+const getListCustomers = async (params = {}) => {
   return api.get("/customer/my-customers", {
     requiresAuth: true,
+    params,
   });
 };
 

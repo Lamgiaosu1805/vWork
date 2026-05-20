@@ -8,23 +8,17 @@ import {
   ActivityIndicator,
   Dimensions,
 } from "react-native";
-import React, { useEffect, useState, useMemo, useCallback } from "react";
-import { Feather, Ionicons } from "@expo/vector-icons";
+import React, { useEffect, useState, useRef, useCallback } from "react";
+import { Feather } from "@expo/vector-icons";
 import Pagination from "../../components/crm/customer/Pagination";
 import CustomerCard from "../../components/crm/customer/CustomerCard";
 import { useNavigation } from "@react-navigation/native";
 import { useSelector } from "react-redux";
 import { canMgr } from "../../helpers/permissions";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import useCustomer from "../../hooks/crm/useCustomer";
 import { Dropdown } from "react-native-element-dropdown";
 import Header from "../../components/Header";
-import BottomSheet from "../../components/crm/BottomSheet";
-import {
-  cancelAnimation,
-  useSharedValue,
-  withTiming,
-} from "react-native-reanimated";
+import { useSharedValue, withTiming } from "react-native-reanimated";
 import CreateCustomerBottomSheet from "../../components/crm/customer/bottomsheet/CreateCustomerBottomSheet";
 
 const ITEMS_PER_PAGE = 5;
@@ -32,84 +26,81 @@ const ITEMS_PER_PAGE = 5;
 export const HEIGHT_SHEET = Dimensions.get("screen").height;
 
 export default function CustomerScreen() {
-  const insets = useSafeAreaInsets();
   const navigation = useNavigation();
   const { getCustomers } = useCustomer();
   const user = useSelector((state) => state.auth.user);
   const canAddCustomer = canMgr(user, "crm");
 
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [filterType, setFilterType] = useState("all");
-  const [filterEkyc, setFilterEkyc] = useState("all");
   const [page, setPage] = useState(1);
   const [dataCustomers, setDataCustomers] = useState([]);
+  const [total, setTotal] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
 
+  const searchTimerRef = useRef(null);
   const translateCreateCustomerY = useSharedValue(HEIGHT_SHEET);
 
-  const filtered = useMemo(() => {
-    return dataCustomers.filter((r) => {
-      const name = r.identity?.full_name || r.phone_number || "";
-      const matchSearch =
-        !search ||
-        name.toLowerCase().includes(search.toLowerCase()) ||
-        (r.phone_number || "").includes(search);
-
-      const custType =
-        r.status === "registered"
-          ? "potential"
-          : r.status === "kyc_verified"
-            ? "normal"
-            : "vip";
-
-      const matchType = filterType === "all" || custType === filterType;
-
-      const matchEkyc =
-        filterEkyc === "all" ||
-        (filterEkyc === "done" && Boolean(r.identity?.verified_at)) ||
-        (filterEkyc === "not" && !r.identity?.verified_at);
-
-      return matchSearch && matchType && matchEkyc;
-    });
-  }, [dataCustomers, search, filterType, filterEkyc]);
-
-  const totalPages = useMemo(
-    () => Math.max(1, Math.ceil(filtered.length / ITEMS_PER_PAGE)),
-    [filtered.length],
-  );
-
-  const paginated = useMemo(() => {
-    const start = (page - 1) * ITEMS_PER_PAGE;
-    return filtered.slice(start, start + ITEMS_PER_PAGE);
-  }, [filtered, page]);
-
   const handlePage = useCallback(
-    (n) => setPage((p) => Math.min(Math.max(1, n), totalPages)),
+    (n) => setPage(Math.min(Math.max(1, n), totalPages)),
     [totalPages],
   );
 
-  const loadDataCustomers = async () => {
-    setLoading(true);
-    try {
-      const res = await getCustomers();
-      const apiData = res?.data?.data || [];
-      setDataCustomers(apiData);
-    } catch (error) {
-      console.log("Error loading customers:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
-    loadDataCustomers();
+    const statusVal =
+      filterType === "potential" ? "registered" :
+      filterType === "normal" ? "kyc_verified" :
+      undefined;
+
+    const params = {
+      page,
+      limit: ITEMS_PER_PAGE,
+      ...(debouncedSearch && { q: debouncedSearch }),
+      ...(statusVal && { status: statusVal }),
+    };
+
+    const doFetch = async () => {
+      setLoading(true);
+      try {
+        const res = await getCustomers(params);
+        setDataCustomers(res?.data?.data || []);
+        const pg = res?.data?.pagination || {};
+        setTotal(pg.total || 0);
+        setTotalPages(Math.max(1, pg.total_pages || 1));
+      } catch (error) {
+        console.log("Error loading customers:", error);
+      } finally {
+        setLoading(false);
+        setRefreshing(false);
+      }
+    };
+
+    doFetch();
+  }, [page, debouncedSearch, filterType, refreshKey]);
+
+  const handleSearchChange = useCallback((v) => {
+    setSearch(v);
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    searchTimerRef.current = setTimeout(() => {
+      setPage(1);
+      setDebouncedSearch(v);
+    }, 400);
   }, []);
 
-  // Clamp page if filters reduce total pages
-  useEffect(() => {
-    if (page > totalPages) setPage(totalPages);
-  }, [totalPages]);
+  const handleFilterTypeChange = useCallback((val) => {
+    setFilterType(val);
+    setPage(1);
+  }, []);
+
+  const handleRefresh = useCallback(() => {
+    setRefreshing(true);
+    setPage(1);
+    setRefreshKey((k) => k + 1);
+  }, []);
 
   const handlePress = useCallback(
     (id) => console.log("Customer ID pressed:", id),
@@ -149,10 +140,7 @@ export default function CustomerScreen() {
               placeholder="Tìm kiếm theo tên, số điện thoại..."
               placeholderTextColor="#9DA4B0"
               value={search}
-              onChangeText={(v) => {
-                setSearch(v);
-                setPage(1);
-              }}
+              onChangeText={handleSearchChange}
             />
           </View>
 
@@ -179,37 +167,7 @@ export default function CustomerScreen() {
               valueField="value"
               value={filterType}
               placeholder="Tất cả loại KH"
-              onChange={(item) => {
-                setFilterType(item.value);
-                setPage(1);
-              }}
-            />
-
-            <Dropdown
-              style={styles.dropdown}
-              containerStyle={styles.dropdownContainer}
-              selectedTextStyle={{
-                fontSize: 12,
-                color: "#374151",
-              }}
-              iconStyle={{ width: 14, height: 14 }}
-              itemTextStyle={{
-                fontSize: 12,
-                color: "#374151",
-              }}
-              data={[
-                { value: "all", label: "Tất cả EKYC" },
-                { value: "done", label: "Đã xác thực" },
-                { value: "not", label: "Chưa xác thực" },
-              ]}
-              labelField="label"
-              valueField="value"
-              value={filterEkyc}
-              placeholder="Tất cả EKYC"
-              onChange={(item) => {
-                setFilterEkyc(item.value);
-                setPage(1);
-              }}
+              onChange={(item) => handleFilterTypeChange(item.value)}
             />
 
             <TouchableOpacity style={styles.calendarBtn}>
@@ -221,7 +179,7 @@ export default function CustomerScreen() {
 
       {/* ── List header ── */}
       <Text style={styles.listHeaderText}>
-        Danh sách khách hàng ({filtered.length})
+        Danh sách khách hàng ({total})
       </Text>
 
       <FlatList
@@ -232,11 +190,11 @@ export default function CustomerScreen() {
         }}
         keyboardShouldPersistTaps="handled"
         nestedScrollEnabled
-        data={paginated}
+        data={dataCustomers}
         renderItem={renderItem}
         keyExtractor={(item) => item._id}
         refreshing={refreshing}
-        onRefresh={loadDataCustomers}
+        onRefresh={handleRefresh}
         ListEmptyComponent={() =>
           loading ? (
             <View style={styles.loadingWrap}>
