@@ -12,6 +12,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import api from '../../api/axiosInstance';
+import Header from '../../components/Header';
 
 export default function ListAgentScreen() {
     const navigation = useNavigation();
@@ -66,13 +67,7 @@ export default function ListAgentScreen() {
     };
 
     const renderHeader = () => (
-        <View style={styles.header}>
-            <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-                <Ionicons name="arrow-back" size={24} color="#2D3748" />
-            </TouchableOpacity>
-            <Text style={styles.headerTitle}>Danh sách đại lý</Text>
-            <View style={{ width: 24 }} />
-        </View>
+        <Header title="Danh sách đại lý" leftIconName="arrow-back" onLeftPress={() => navigation.goBack()} />
     );
 
     const renderAgentItem = ({ item }) => (
@@ -154,24 +149,6 @@ const styles = StyleSheet.create({
     safeArea: {
         flex: 1,
         backgroundColor: '#F7FAFC',
-    },
-    header: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        paddingHorizontal: 16,
-        paddingVertical: 12,
-        backgroundColor: '#FFFFFF',
-        borderBottomWidth: 1,
-        borderBottomColor: '#E2E8F0',
-    },
-    backButton: {
-        padding: 4,
-    },
-    headerTitle: {
-        fontSize: 18,
-        fontWeight: '700',
-        color: '#2D3748',
     },
     listContainer: {
         padding: 16,

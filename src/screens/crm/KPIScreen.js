@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { StyleSheet, Text, View, ScrollView, TouchableOpacity } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import Header from '../../components/Header';
 
 export default function KPIScreen() {
     const [currentMonth] = useState(5);
@@ -16,14 +16,8 @@ export default function KPIScreen() {
     };
 
     return (
-        <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
-            <View style={styles.header}>
-                <Text style={styles.headerTitle}>KPI & Hiệu suất</Text>
-                <TouchableOpacity style={styles.monthBadge}>
-                    <Text style={styles.monthBadgeText}>Tháng {currentMonth}</Text>
-                    <Ionicons name="chevron-down" size={14} color="#0052CC" style={{ marginLeft: 4 }} />
-                </TouchableOpacity>
-            </View>
+        <View style={styles.safeArea}>
+            <Header title="KPI & Hiệu suất" />
 
             <ScrollView
                 style={styles.container}
@@ -107,14 +101,12 @@ export default function KPIScreen() {
                 </View>
 
             </ScrollView>
-        </SafeAreaView>
+        </View>
     );
 }
 
 const styles = StyleSheet.create({
     safeArea: { flex: 1, backgroundColor: '#F7FAFC' },
-    header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 20, backgroundColor: '#FFFFFF' },
-    headerTitle: { fontSize: 20, fontWeight: 'bold', color: '#2D3748' },
     monthBadge: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#EBF4FF', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20 },
     monthBadgeText: { color: '#0052CC', fontWeight: '600', fontSize: 14 },
     container: { flex: 1 },

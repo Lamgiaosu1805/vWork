@@ -9,7 +9,6 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useSelector } from 'react-redux';
@@ -154,17 +153,17 @@ export default function WorkplaceDashboardScreen() {
 
     if (loading) {
         return (
-            <SafeAreaView style={styles.safeArea} edges={['bottom']}>
+            <View style={styles.safeArea}>
                 <Header title="Workplace" leftIconName="menu" onLeftPress={() => openDrawer()} />
                 <View style={styles.centered}>
                     <ActivityIndicator size="large" color="#007AFF" />
                 </View>
-            </SafeAreaView>
+            </View>
         );
     }
 
     return (
-        <SafeAreaView style={styles.safeArea} edges={['bottom']}>
+        <View style={styles.safeArea}>
             <Header
                 title="Workplace"
                 leftIconName="menu"
@@ -320,7 +319,7 @@ export default function WorkplaceDashboardScreen() {
 
                 <View style={{ height: 30 }} />
             </ScrollView>
-        </SafeAreaView>
+        </View>
     );
 }
 

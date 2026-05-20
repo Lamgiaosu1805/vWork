@@ -12,6 +12,7 @@ import {
 } from "react-native";
 import React, { useEffect, useState, useCallback, useRef } from "react";
 import { Feather, Ionicons } from "@expo/vector-icons";
+import { useNavigation } from "@react-navigation/native";
 import { Dropdown } from "react-native-element-dropdown";
 import Header from "../../components/Header";
 import { getAllCustomers } from "../../api/crm/customer";
@@ -236,6 +237,7 @@ function AssignModal({ customer, isAdmin, onClose, onSuccess }) {
 // ── Main screen ────────────────────────────────────────────────────────────
 
 export default function AdminCustomerScreen() {
+  const navigation = useNavigation();
   const user = useSelector((state) => state.auth.user);
   const perms = getPermissions(user);
   const isAdmin = perms.isAdminRole;
@@ -330,7 +332,7 @@ export default function AdminCustomerScreen() {
 
   return (
     <View style={{ flex: 1, alignItems: "center" }}>
-      <Header title="Quản lý khách hàng" />
+      <Header title="Quản lý khách hàng" leftIconName="arrow-back" onLeftPress={() => navigation.goBack()} />
 
       <View style={{ width: "100%", paddingHorizontal: 20, marginTop: 8 }}>
         <View style={styles.filterBar}>

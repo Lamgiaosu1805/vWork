@@ -9,7 +9,6 @@ import {
   RefreshControl,
 } from "react-native";
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { SafeAreaView } from "react-native-safe-area-context";
 import QRCode from "react-native-qrcode-svg";
 import { Ionicons } from "@expo/vector-icons";
 import { useSelector } from "react-redux";
@@ -126,7 +125,7 @@ export default function DashboardCRMScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container} edges={["bottom"]}>
+    <View style={styles.container}>
       <Header title="CRM" leftIconName="menu" onLeftPress={() => openDrawer()} />
 
       <ScrollView
@@ -233,7 +232,7 @@ export default function DashboardCRMScreen() {
 
         <View style={{ height: 40 }} />
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 

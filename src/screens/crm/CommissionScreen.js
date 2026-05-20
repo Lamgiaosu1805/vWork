@@ -3,9 +3,9 @@ import {
     StyleSheet, Text, View, ScrollView, TouchableOpacity,
     Modal, Pressable, ActivityIndicator, RefreshControl
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import api from '../../api/axiosInstance';
+import Header from '../../components/Header';
 import dayjs from 'dayjs';
 
 const TYPE_CONFIG = {
@@ -125,7 +125,7 @@ export default function CommissionScreen() {
         });
         commissions.forEach((item) => {
             const termLabel = item.term_value
-                ? `${item.term_value} ${item.term_type === 'month' ? 'tháng' : 'tuần'}`
+                ? `${item.term_value} ${item.term_type === 'month' ? 'tháng' : 'ngày'}`
                 : null;
             items.push({
                 key: `inv-${item._id}`,
@@ -141,17 +141,11 @@ export default function CommissionScreen() {
     }, [customerCommissions, commissions]);
 
     const renderHeader = () => (
-        <View style={styles.header}>
-            <View>
-                <Text style={styles.headerTitle}>Thu nhập & Hoa hồng</Text>
-                <Text style={styles.headerSubtitle}>
-                    Kỳ đối soát: Tháng {appliedMonth}/{appliedYear}
-                </Text>
-            </View>
-            <TouchableOpacity onPress={openFilter} style={styles.filterButton}>
-                <Ionicons name="calendar-outline" size={20} color="#0052CC" />
-            </TouchableOpacity>
-        </View>
+        <Header
+            title="Thu nhập & Hoa hồng"
+            rightIconName="calendar-outline"
+            onRightPress={openFilter}
+        />
     );
 
     const renderFilterModal = () => (
@@ -212,7 +206,7 @@ export default function CommissionScreen() {
     );
 
     return (
-        <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
+        <View style={styles.safeArea}>
             {renderHeader()}
             <ScrollView
                 style={styles.container}
@@ -304,18 +298,12 @@ export default function CommissionScreen() {
                 </View>
             </ScrollView>
             {renderFilterModal()}
-        </SafeAreaView>
+        </View>
     );
 }
 
 const styles = StyleSheet.create({
     safeArea: { flex: 1, backgroundColor: '#F7FAFC' },
-    header: {
-        flexDirection: 'row', justifyContent: 'space-between',
-        alignItems: 'center', padding: 20, backgroundColor: '#FFFFFF'
-    },
-    headerTitle: { fontSize: 20, fontWeight: 'bold', color: '#2D3748' },
-    headerSubtitle: { fontSize: 14, color: '#718096', marginTop: 4 },
     filterButton: { backgroundColor: '#EBF4FF', padding: 10, borderRadius: 10 },
     container: { flex: 1 },
     walletSection: { padding: 20, paddingBottom: 10 },

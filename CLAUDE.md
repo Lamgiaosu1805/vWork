@@ -256,6 +256,20 @@ Format chuẩn qua `src/helpers/utils.js`: `formatDate()`, `formatTime()`.
 
 Chỉ comment khi WHY không rõ ràng (ràng buộc ẩn, workaround, bất biến tinh tế).
 
+### Tên file từ URI — luôn decode
+
+`expo-image-picker` và nhiều API native trả về URI có tên file bị URL-encode (`%20` thay khoảng trắng, `%C3%A9` thay ký tự có dấu...). Luôn decode trước khi hiển thị hoặc gửi lên server:
+
+```js
+// Hiển thị
+decodeURIComponent(file.originalName ?? '')
+
+// Lấy tên từ URI khi pick ảnh
+name: decodeURIComponent(a.fileName ?? a.uri.split('/').pop())
+```
+
+Áp dụng cho mọi chỗ render tên file và mọi chỗ tạo object file từ `ImagePicker.launchImageLibraryAsync`.
+
 ---
 
 ## Thư viện đáng chú ý

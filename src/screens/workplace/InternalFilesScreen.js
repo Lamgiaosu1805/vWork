@@ -4,6 +4,7 @@ import {
     Alert,
     BackHandler,
     FlatList,
+    Image,
     KeyboardAvoidingView,
     Modal,
     Platform,
@@ -15,7 +16,6 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useSelector } from 'react-redux';
@@ -29,6 +29,7 @@ import Header from '../../components/Header';
 import { openDrawer } from '../../helpers/navigationRef';
 import { getPermissions } from '../../helpers/permissions';
 import workplaceApi from '../../api/workplaceApi';
+import utils from '../../helpers/utils';
 
 dayjs.locale('vi');
 
@@ -38,6 +39,10 @@ const MIME_EXT = {
     'image/png': 'PNG',
     'image/jpeg': 'JPG',
     'image/jpg': 'JPG',
+    'image/heic': 'HEIC',
+    'image/heif': 'HEIF',
+    'image/gif': 'GIF',
+    'image/webp': 'WEBP',
     'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'DOCX',
     'application/msword': 'DOC',
     'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': 'XLSX',
@@ -46,6 +51,7 @@ const MIME_EXT = {
 const getExt = (mime) => MIME_EXT[mime] ?? mime?.split('/')[1]?.toUpperCase() ?? 'FILE';
 const EXT_COLOR = {
     PDF: '#E53935', PNG: '#1E88E5', JPG: '#1E88E5', JPEG: '#1E88E5',
+    HEIC: '#1E88E5', HEIF: '#1E88E5', GIF: '#1E88E5', WEBP: '#1E88E5',
     DOCX: '#1565C0', DOC: '#1565C0', XLSX: '#2E7D32', XLS: '#2E7D32',
 };
 const formatSize = (bytes) => {
@@ -53,6 +59,43 @@ const formatSize = (bytes) => {
     if (bytes < 1024) return `${bytes} B`;
     if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+};
+
+const IMAGE_MIMES = new Set([
+    'image/jpeg', 'image/jpg', 'image/png',
+    'image/heic', 'image/heif', 'image/gif', 'image/webp',
+]);
+
+// Thumbnail cho ảnh — fetch với auth header rồi hiển thị dưới dạng base64
+const ImageThumbnail = ({ fileId, authToken, size = 56 }) => {
+    const [uri, setUri] = useState(null);
+
+    useEffect(() => {
+        if (!fileId || !authToken) return;
+        let cancelled = false;
+        const url = `${utils.BASE_URL}/internal-files/file/${fileId}/view`;
+        fetch(url, { headers: { Authorization: `Bearer ${authToken}` } })
+            .then((r) => r.blob())
+            .then((blob) => new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = reject;
+                reader.readAsDataURL(blob);
+            }))
+            .then((dataUri) => { if (!cancelled) setUri(dataUri); })
+            .catch(() => {});
+        return () => { cancelled = true; };
+    }, [fileId, authToken]);
+
+    return (
+        <View style={[styles.thumbBox, { width: size, height: size }]}>
+            {uri ? (
+                <Image source={{ uri }} style={styles.thumbImage} resizeMode="cover" />
+            ) : (
+                <ActivityIndicator size="small" color="#9CA3AF" />
+            )}
+        </View>
+    );
 };
 
 // ── Sub-components ────────────────────────────────────────────────────────────
@@ -93,18 +136,23 @@ const FolderItem = ({ folder, onOpen, onDelete, canDelete }) => (
     </TouchableOpacity>
 );
 
-const FileItem = ({ file, onView, onDelete, isAdmin, currentUserId }) => {
+const FileItem = ({ file, onView, onDelete, isAdmin, currentUserId, authToken }) => {
     const ext = getExt(file.mimeType);
     const extColor = EXT_COLOR[ext] ?? '#6B7280';
     const canDelete = isAdmin || file.uploadedBy?._id === currentUserId;
+    const isImage = IMAGE_MIMES.has(file.mimeType);
 
     return (
         <TouchableOpacity style={styles.fileCard} onPress={() => onView(file)} activeOpacity={0.7}>
-            <View style={[styles.extBox, { backgroundColor: `${extColor}18` }]}>
-                <Text style={[styles.extText, { color: extColor }]}>{ext}</Text>
-            </View>
+            {isImage ? (
+                <ImageThumbnail fileId={file._id} authToken={authToken} size={56} />
+            ) : (
+                <View style={[styles.extBox, { backgroundColor: `${extColor}18` }]}>
+                    <Text style={[styles.extText, { color: extColor }]}>{ext}</Text>
+                </View>
+            )}
             <View style={styles.fileInfo}>
-                <Text style={styles.fileName} numberOfLines={2}>{file.originalName}</Text>
+                <Text style={styles.fileName} numberOfLines={2}>{decodeURIComponent(file.originalName ?? '')}</Text>
                 <Text style={styles.fileMeta}>
                     {file.uploadedBy?.full_name ?? file.uploadedBy?.username ?? '—'} · {dayjs(file.createdAt).format('DD/MM/YYYY')}
                     {file.size ? ` · ${formatSize(file.size)}` : ''}
@@ -274,7 +322,12 @@ export default function InternalFilesScreen() {
     };
 
     const handleViewFile = (file) => {
-        navigation.navigate('WorkplaceFileViewerScreen', { file, authToken: accessToken });
+        const initialIndex = files.findIndex((f) => f._id === file._id);
+        navigation.navigate('WorkplaceFileViewerScreen', {
+            files,
+            initialIndex: initialIndex >= 0 ? initialIndex : 0,
+            authToken: accessToken,
+        });
     };
 
     // ── Upload ────────────────────────────────────────────────────────────────
@@ -292,7 +345,7 @@ export default function InternalFilesScreen() {
         if (result.canceled) return [];
         return result.assets.map((a) => ({
             uri: a.uri,
-            name: a.fileName ?? a.uri.split('/').pop(),
+            name: decodeURIComponent(a.fileName ?? a.uri.split('/').pop()),
             type: a.mimeType ?? 'application/octet-stream',
         }));
     };
@@ -426,6 +479,7 @@ export default function InternalFilesScreen() {
                 onDelete={handleDeleteFile}
                 isAdmin={perms.showFilesMgmt}
                 currentUserId={currentUserId}
+                authToken={accessToken}
             />
         );
     };
@@ -454,7 +508,7 @@ export default function InternalFilesScreen() {
     );
 
     return (
-        <SafeAreaView style={styles.safeArea} edges={['bottom']}>
+        <View style={styles.safeArea}>
             <Header
                 title="Ổ File Nội Bộ"
                 leftIconName={folderStack.length > 0 ? 'arrow-back' : 'menu'}
@@ -556,7 +610,7 @@ export default function InternalFilesScreen() {
                 onCreate={handleCreateFolder}
                 creating={creatingFolder}
             />
-        </SafeAreaView>
+        </View>
     );
 }
 
@@ -597,8 +651,10 @@ const styles = StyleSheet.create({
     folderMeta: { fontSize: 11, color: '#9CA3AF', marginTop: 2 },
 
     fileCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', borderRadius: 12, padding: 12, marginBottom: 8, shadowColor: '#000', shadowOpacity: 0.04, shadowOffset: { width: 0, height: 1 }, elevation: 1 },
-    extBox: { width: 44, height: 44, borderRadius: 8, justifyContent: 'center', alignItems: 'center', marginRight: 12 },
+    extBox: { width: 56, height: 56, borderRadius: 8, justifyContent: 'center', alignItems: 'center', marginRight: 12 },
     extText: { fontSize: 10, fontWeight: '700' },
+    thumbBox: { borderRadius: 8, overflow: 'hidden', marginRight: 12, backgroundColor: '#F3F4F6', justifyContent: 'center', alignItems: 'center' },
+    thumbImage: { width: '100%', height: '100%' },
     fileInfo: { flex: 1 },
     fileName: { fontSize: 13, fontWeight: '600', color: '#111827', lineHeight: 18 },
     fileMeta: { fontSize: 11, color: '#9CA3AF', marginTop: 2 },

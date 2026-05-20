@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import {
     View, Text, TextInput, TouchableOpacity, ScrollView,
     StyleSheet, ActivityIndicator, FlatList, Alert, Modal,
@@ -9,6 +9,7 @@ import { useSelector } from 'react-redux';
 import { useNavigation } from '@react-navigation/native';
 import { canMgr } from '../../helpers/permissions';
 import api from '../../api/axiosInstance';
+import Header from '../../components/Header';
 import Toast from 'react-native-toast-message';
 
 const APP_CODE = 'tikluy';
@@ -134,12 +135,13 @@ function SubmitTab() {
 function MyRequestsTab() {
     const [requests, setRequests] = useState([]);
     const [loading, setLoading] = useState(false);
-    const [loaded, setLoaded] = useState(false);
     const [page, setPage] = useState(1);
     const [hasMore, setHasMore] = useState(true);
+    const loadingRef = useRef(false);
 
     const fetchRequests = useCallback(async (p = 1, reset = false) => {
-        if (loading) return;
+        if (loadingRef.current) return;
+        loadingRef.current = true;
         setLoading(true);
         try {
             const res = await api.get('/customer-claim-request/mine', {
@@ -147,31 +149,28 @@ function MyRequestsTab() {
                 requiresAuth: true,
             });
             const items = res.data?.data ?? [];
-            setRequests(prev => reset ? items : [...prev, ...items]);
+            setRequests((prev) => {
+                if (reset) return items;
+                const ids = new Set(prev.map((i) => i._id));
+                return [...prev, ...items.filter((i) => !ids.has(i._id))];
+            });
             setHasMore(p < (res.data?.pagination?.total_pages ?? 1));
             setPage(p);
-            setLoaded(true);
         } catch (err) {
             Toast.show({ type: 'error', text1: 'Không thể tải danh sách' });
         } finally {
+            loadingRef.current = false;
             setLoading(false);
         }
-    }, [loading]);
+    }, []);
+
+    useEffect(() => {
+        fetchRequests(1, true);
+    }, []);
 
     const handleLoadMore = () => {
         if (hasMore && !loading) fetchRequests(page + 1);
     };
-
-    if (!loaded) {
-        return (
-            <View style={styles.centerBox}>
-                <TouchableOpacity style={styles.loadBtn} onPress={() => fetchRequests(1, true)}>
-                    <Ionicons name="refresh" size={18} color="#2563EB" />
-                    <Text style={styles.loadBtnText}>Tải danh sách yêu cầu</Text>
-                </TouchableOpacity>
-            </View>
-        );
-    }
 
     const renderItem = ({ item }) => {
         const cfg = STATUS_CFG[item.status] || STATUS_CFG.pending;
@@ -223,15 +222,16 @@ function MyRequestsTab() {
 function AdminRequestsTab() {
     const [requests, setRequests] = useState([]);
     const [loading, setLoading] = useState(false);
-    const [loaded, setLoaded] = useState(false);
     const [page, setPage] = useState(1);
     const [hasMore, setHasMore] = useState(true);
     const [actionLoading, setActionLoading] = useState(false);
     const [rejectTarget, setRejectTarget] = useState(null);
     const [rejectReason, setRejectReason] = useState('');
+    const loadingRef = useRef(false);
 
     const fetchRequests = useCallback(async (p = 1, reset = false) => {
-        if (loading) return;
+        if (loadingRef.current) return;
+        loadingRef.current = true;
         setLoading(true);
         try {
             const res = await api.get('/customer-claim-request', {
@@ -239,16 +239,24 @@ function AdminRequestsTab() {
                 requiresAuth: true,
             });
             const items = res.data?.data ?? [];
-            setRequests(prev => reset ? items : [...prev, ...items]);
+            setRequests((prev) => {
+                if (reset) return items;
+                const ids = new Set(prev.map((i) => i._id));
+                return [...prev, ...items.filter((i) => !ids.has(i._id))];
+            });
             setHasMore(p < (res.data?.pagination?.total_pages ?? 1));
             setPage(p);
-            setLoaded(true);
         } catch (err) {
             Toast.show({ type: 'error', text1: 'Không thể tải danh sách' });
         } finally {
+            loadingRef.current = false;
             setLoading(false);
         }
-    }, [loading]);
+    }, []);
+
+    useEffect(() => {
+        fetchRequests(1, true);
+    }, []);
 
     const handleApprove = (item) => {
         Alert.alert(
@@ -297,13 +305,10 @@ function AdminRequestsTab() {
         }
     };
 
-    if (!loaded) {
+    if (loading && requests.length === 0) {
         return (
             <View style={styles.centerBox}>
-                <TouchableOpacity style={styles.loadBtn} onPress={() => fetchRequests(1, true)}>
-                    <Ionicons name="refresh" size={18} color="#2563EB" />
-                    <Text style={styles.loadBtnText}>Tải danh sách yêu cầu</Text>
-                </TouchableOpacity>
+                <ActivityIndicator size="large" color="#2563EB" />
             </View>
         );
     }
@@ -448,18 +453,12 @@ export default function ClaimRequestScreen() {
     ];
 
     return (
-        <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
-            <View style={styles.header}>
-                <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-                    <Ionicons name="arrow-back" size={22} color="#111827" />
-                </TouchableOpacity>
-                <View>
-                    <Text style={styles.headerTitle}>Yêu cầu nhận KH</Text>
-                    <Text style={styles.headerSub}>
-                        {isManager ? 'Gửi & xét duyệt yêu cầu' : 'Gửi & theo dõi yêu cầu'}
-                    </Text>
-                </View>
-            </View>
+        <SafeAreaView style={styles.safe} edges={['bottom']}>
+            <Header
+                title="Yêu cầu nhận KH"
+                leftIconName="arrow-back"
+                onLeftPress={() => navigation.goBack()}
+            />
 
             <View style={styles.tabBar}>
                 {tabs.map((tab) => (
@@ -485,10 +484,6 @@ export default function ClaimRequestScreen() {
 const styles = StyleSheet.create({
     safe: { flex: 1, backgroundColor: '#F5F7FA' },
 
-    header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#F3F4F6', gap: 12 },
-    backBtn: { padding: 4 },
-    headerTitle: { fontSize: 18, fontWeight: '800', color: '#111827' },
-    headerSub: { fontSize: 12, color: '#6B7280', marginTop: 1 },
 
     tabBar: { flexDirection: 'row', backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#E5E7EB' },
     tab: { flex: 1, paddingVertical: 13, alignItems: 'center', borderBottomWidth: 2, borderBottomColor: 'transparent' },
@@ -549,7 +544,5 @@ const styles = StyleSheet.create({
     modalRejectText: { fontSize: 14, fontWeight: '700', color: '#fff' },
 
     centerBox: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32 },
-    loadBtn: { flexDirection: 'row', alignItems: 'center', gap: 8, padding: 14, backgroundColor: '#EFF6FF', borderRadius: 12 },
-    loadBtnText: { fontSize: 14, fontWeight: '600', color: '#2563EB' },
     emptyText: { fontSize: 14, color: '#9CA3AF' },
 });

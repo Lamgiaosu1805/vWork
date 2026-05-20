@@ -3,10 +3,10 @@ import {
     StyleSheet, Text, View, ScrollView,
     TouchableOpacity, Dimensions,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useSelector } from 'react-redux';
+import Header from '../../components/Header';
 import { getPermissions } from '../../helpers/permissions';
 
 const { width } = Dimensions.get('window');
@@ -99,6 +99,15 @@ const PERSONAL_FEATURES = [
         available: true,
     },
     {
+        id: 'investment',
+        label: 'Quản lý\nđầu tư',
+        icon: 'trending-up',
+        iconBg: '#D1FAE5',
+        iconColor: '#059669',
+        screen: 'InvestmentScreen',
+        available: true,
+    },
+    {
         id: 'my-report',
         label: 'Báo cáo\ncá nhân',
         icon: 'stats-chart',
@@ -153,11 +162,8 @@ export default function ExpandCRMScreen() {
     };
 
     return (
-        <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
-            <View style={styles.header}>
-                <Text style={styles.headerTitle}>Mở rộng</Text>
-                <Text style={styles.headerSub}>CRM · {isManager ? 'Quản lý' : 'Nhân viên'}</Text>
-            </View>
+        <View style={styles.safeArea}>
+            <Header title="Mở rộng" />
 
             <ScrollView
                 style={styles.scroll}
@@ -202,24 +208,16 @@ export default function ExpandCRMScreen() {
                     </Text>
                 </View>
             </ScrollView>
-        </SafeAreaView>
+        </View>
     );
 }
 
 const styles = StyleSheet.create({
     safeArea: { flex: 1, backgroundColor: '#F5F7FA' },
 
-    header: {
-        paddingHorizontal: 20,
-        paddingTop: 16,
-        paddingBottom: 12,
-        backgroundColor: '#F5F7FA',
-    },
-    headerTitle: { fontSize: 26, fontWeight: '800', color: '#111827' },
-    headerSub: { fontSize: 13, color: '#6B7280', marginTop: 2 },
 
     scroll: { flex: 1 },
-    scrollContent: { paddingBottom: 40 },
+    scrollContent: { paddingBottom: 80 },
 
     section: { marginTop: 20, paddingHorizontal: 16 },
     sectionTitle: {

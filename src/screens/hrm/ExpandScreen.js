@@ -1,6 +1,5 @@
 import React from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useSelector } from 'react-redux';
 import Header from '../../components/Header';
@@ -25,7 +24,7 @@ export default function ExpandScreen({ navigation }) {
   const perms = getPermissions(user);
 
   return (
-    <SafeAreaView style={styles.container} edges={['bottom']}>
+    <View style={styles.container}>
       <Header
         title="Mở rộng"
         leftIconName="menu"
@@ -96,7 +95,7 @@ export default function ExpandScreen({ navigation }) {
         )}
 
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 
