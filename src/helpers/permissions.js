@@ -33,7 +33,7 @@ export const getPermissions = (user) => {
     showCRM: has(user, "crm"),
 
     // HRM
-    showEmployeeList: has(user, "hrm"),
+    showEmployeeList: true,
     showAddEmployee: canMgr(user, "hrm"),
     showDepartmentList: has(user, "hrm"),
     showHrmMgmt: canMgr(user, "hrm"),

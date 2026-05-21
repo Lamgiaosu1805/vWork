@@ -32,6 +32,18 @@ export default function ExpandScreen({ navigation }) {
       />
       <ScrollView contentContainerStyle={styles.scroll}>
 
+        {/* Nhân viên — tất cả mọi người (API tự lọc theo phòng ban) */}
+        <Text style={styles.sectionLabel}>Nhân viên</Text>
+        <View style={styles.group}>
+          <MenuItem
+            icon="people-outline"
+            label="Cán bộ Nhân viên"
+            description="Danh sách nhân viên trong phòng ban của bạn"
+            onPress={() => navigation.navigate('EmployeeListScreen')}
+            color="#2563EB"
+          />
+        </View>
+
         {/* In tài liệu — tất cả mọi người */}
         <Text style={styles.sectionLabel}>Tiện ích</Text>
         <View style={styles.group}>
@@ -44,8 +56,8 @@ export default function ExpandScreen({ navigation }) {
           />
         </View>
 
-        {/* Chấm công — nhân sự, quản lý, admin */}
-        {perms.showEmployeeList && (
+        {/* Chấm công — có module hrm (has hrm) */}
+        {perms.showDepartmentList && (
           <>
             <Text style={styles.sectionLabel}>Chấm công</Text>
             <View style={styles.group}>

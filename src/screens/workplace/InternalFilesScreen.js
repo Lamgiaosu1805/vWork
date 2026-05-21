@@ -66,12 +66,16 @@ const IMAGE_MIMES = new Set([
     'image/heic', 'image/heif', 'image/gif', 'image/webp',
 ]);
 
+// Cache ảnh thumbnail theo session — tránh re-fetch khi scroll lên xuống
+const _thumbCache = new Map(); // fileId → dataUri
+
 // Thumbnail cho ảnh — fetch với auth header rồi hiển thị dưới dạng base64
 const ImageThumbnail = ({ fileId, authToken, size = 56 }) => {
-    const [uri, setUri] = useState(null);
+    const [uri, setUri] = useState(() => _thumbCache.get(fileId) ?? null);
 
     useEffect(() => {
         if (!fileId || !authToken) return;
+        if (_thumbCache.has(fileId)) { setUri(_thumbCache.get(fileId)); return; }
         let cancelled = false;
         const url = `${utils.BASE_URL}/internal-files/file/${fileId}/view`;
         fetch(url, { headers: { Authorization: `Bearer ${authToken}` } })
@@ -82,7 +86,12 @@ const ImageThumbnail = ({ fileId, authToken, size = 56 }) => {
                 reader.onerror = reject;
                 reader.readAsDataURL(blob);
             }))
-            .then((dataUri) => { if (!cancelled) setUri(dataUri); })
+            .then((dataUri) => {
+                if (!cancelled) {
+                    _thumbCache.set(fileId, dataUri);
+                    setUri(dataUri);
+                }
+            })
             .catch(() => {});
         return () => { cancelled = true; };
     }, [fileId, authToken]);
@@ -279,9 +288,9 @@ export default function InternalFilesScreen() {
         }
     }, []);
 
-    const fetchContent = useCallback(async (dept, folderId) => {
+    const fetchContent = useCallback(async (dept, folderId, { silent = false } = {}) => {
         if (!dept?._id) return;
-        setLoadingContent(true);
+        if (!silent) setLoadingContent(true);
         try {
             const [foldersRes, filesRes] = await Promise.all([
                 workplaceApi.getDeptFolders(dept._id, folderId),
@@ -291,10 +300,9 @@ export default function InternalFilesScreen() {
             setFiles(filesRes.data?.data ?? []);
         } catch (err) {
             console.log('fetchContent error:', err?.message);
-            setFolders([]);
-            setFiles([]);
+            if (!silent) { setFolders([]); setFiles([]); }
         } finally {
-            setLoadingContent(false);
+            if (!silent) setLoadingContent(false);
         }
     }, []);
 
@@ -375,20 +383,27 @@ export default function InternalFilesScreen() {
         });
         if (!picked.length) return;
 
-        const formData = new FormData();
-        picked.forEach((f) => formData.append('files', { uri: f.uri, name: f.name, type: f.type }));
-        if (currentFolderId) formData.append('folder_id', currentFolderId);
-
         setUploading(true);
-        try {
-            await workplaceApi.uploadDeptFile(selectedDept._id, formData);
-            Toast.show({ type: 'success', text1: `Tải lên thành công ${picked.length} file` });
-            fetchContent(selectedDept, currentFolderId);
-        } catch {
-            Toast.show({ type: 'error', text1: 'Tải lên thất bại' });
-        } finally {
-            setUploading(false);
+        let successCount = 0;
+        let failCount = 0;
+        for (const file of picked) {
+            const fd = new FormData();
+            fd.append('files', { uri: file.uri, name: file.name, type: file.type });
+            if (currentFolderId) fd.append('folder_id', currentFolderId);
+            try {
+                await workplaceApi.uploadDeptFile(selectedDept._id, fd);
+                successCount++;
+                // Refresh ngay sau mỗi file → file xuất hiện lần lượt
+                fetchContent(selectedDept, currentFolderId, { silent: true });
+            } catch {
+                failCount++;
+            }
         }
+        setUploading(false);
+        if (successCount > 0)
+            Toast.show({ type: 'success', text1: `Tải lên thành công ${successCount} file` });
+        if (failCount > 0)
+            Toast.show({ type: 'error', text1: `${failCount} file tải lên thất bại` });
     };
 
     // ── Create folder ─────────────────────────────────────────────────────────

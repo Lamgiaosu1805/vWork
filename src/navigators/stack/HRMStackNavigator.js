@@ -10,6 +10,7 @@ import BranchScreen from "../../screens/hrm/BranchScreen";
 import PrintScreen from "../../screens/hrm/PrintScreen";
 import AttendanceConfigScreen from "../../screens/hrm/AttendanceConfigScreen";
 import AttendanceOverviewScreen from "../../screens/hrm/AttendanceOverviewScreen";
+import EmployeeListScreen from "../../screens/hrm/EmployeeListScreen";
 
 const Stack = createNativeStackNavigator();
 
@@ -32,6 +33,7 @@ export default function HRMStackNavigator() {
       <Stack.Screen name="PrintScreen" component={PrintScreen} />
       <Stack.Screen name="AttendanceConfigScreen" component={AttendanceConfigScreen} />
       <Stack.Screen name="AttendanceOverviewScreen" component={AttendanceOverviewScreen} />
+      <Stack.Screen name="EmployeeListScreen" component={EmployeeListScreen} />
     </Stack.Navigator>
   );
 }

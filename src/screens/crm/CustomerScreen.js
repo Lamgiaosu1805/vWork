@@ -103,7 +103,7 @@ export default function CustomerScreen() {
   }, []);
 
   const handlePress = useCallback(
-    (id) => console.log("Customer ID pressed:", id),
+    (id) => navigation.navigate("CustomerDetailScreen", { customerId: id }),
     [navigation],
   );
 
