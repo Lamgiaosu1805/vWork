@@ -26,9 +26,9 @@ dayjs.locale('vi');
 const getGreeting = (fullName, sex) => {
     const h = new Date().getHours();
     const time    = h < 12 ? 'buổi sáng' : h < 18 ? 'buổi chiều' : 'buổi tối';
-    const pronoun = sex === 1 ? 'anh' : sex === 2 ? 'chị' : 'bạn';
+    const pronoun = sex === 0 ? 'chị' : 'anh';
     const name    = fullName?.trim().split(/\s+/).pop() ?? '';
-    return `Chào ${time}, ${pronoun} ${name}!`;
+    return `Chào ${time}, ${pronoun} ${name}`;
 };
 
 const STATUS_LABEL = {

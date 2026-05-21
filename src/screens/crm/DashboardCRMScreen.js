@@ -30,9 +30,9 @@ const { width } = Dimensions.get("window");
 const getGreeting = (fullName, sex) => {
   const h = new Date().getHours();
   const time = h < 12 ? "buổi sáng" : h < 18 ? "buổi chiều" : "buổi tối";
-  const pronoun = sex === 1 ? "anh" : sex === 2 ? "chị" : "bạn";
+  const pronoun = sex === 0 ? "chị" : "anh";
   const name = fullName?.trim().split(/\s+/).pop() ?? "";
-  return `Chào ${time}, ${pronoun} ${name}!`;
+  return `Chào ${time}, ${pronoun} ${name}`;
 };
 
 const formatMoney = (amount) => {
@@ -75,6 +75,18 @@ export default function DashboardCRMScreen() {
   const [conversion, setConversion] = useState(null);
   const [loadingConversion, setLoadingConversion] = useState(true);
 
+  // Khách hàng cần follow-up (churn risks)
+  const [churnData, setChurnData] = useState(null);
+  const [loadingChurn, setLoadingChurn] = useState(false);
+
+  // Expand danh sách
+  const [showAllExpiring, setShowAllExpiring] = useState(false);
+  const [showAllLb, setShowAllLb] = useState(false);
+  const [showAllConv, setShowAllConv] = useState(false);
+  const [showAllChurn, setShowAllChurn] = useState(false);
+
+  const LIST_LIMIT = 5;
+
   const fetchAll = useCallback(async () => {
     // Fetch dữ liệu chính — nếu lỗi thì dashboard trống hoàn toàn (auth / network)
     try {
@@ -102,21 +114,25 @@ export default function DashboardCRMScreen() {
       console.log("DashboardCRM fetchAll error:", err.message);
     }
 
-    // Fetch 3 section mới độc lập — lỗi không ảnh hưởng dữ liệu chính
+    // Fetch các section mới độc lập — lỗi không ảnh hưởng dữ liệu chính
     setLoadingConversion(true);
+    setLoadingChurn(true);
     try {
-      const [expiringRes, lbRes, convRes] = await Promise.all([
+      const [expiringRes, lbRes, convRes, churnRes] = await Promise.all([
         api.get("/investments/expiring", { requiresAuth: true, params: { days: 30 } }),
         api.get("/investments/leaderboard", { requiresAuth: true, params: { period: "month" } }),
         api.get("/investments/conversion", { requiresAuth: true }),
+        api.get("/ai/churn-risks", { requiresAuth: true }),
       ]);
       setExpiring(expiringRes.data);
       setLeaderboard(lbRes.data?.leaderboard ?? []);
       setConversion(convRes.data);
+      setChurnData(churnRes.data);
     } catch (err) {
       console.log("DashboardCRM extra fetch error:", err.message);
     } finally {
       setLoadingConversion(false);
+      setLoadingChurn(false);
     }
   }, [isManager, month, year]);
 
@@ -187,6 +203,9 @@ export default function DashboardCRMScreen() {
 
   const expiringList = expiring?.investments ?? [];
   const maxLbAmount = leaderboard[0]?.total_amount || 1;
+  const churnList = churnData?.customers ?? [];
+  const churnNever = churnList.filter((c) => c.neverInvested).length;
+  const churnSilent = churnList.filter((c) => !c.neverInvested).length;
 
   return (
     <View style={styles.container}>
@@ -233,8 +252,105 @@ export default function DashboardCRMScreen() {
           )}
         </View>
 
+        {/* QR Giới Thiệu */}
+        <View style={styles.qrCard}>
+          <ViewShot ref={viewShotRef} options={{ format: "png", quality: 1 }}>
+            <View style={styles.qrInner}>
+              <Text style={styles.qrTitle}>Mã QR Giới Thiệu</Text>
+              <Text style={styles.qrCode}>{user?.phone_number}-{dataQR?.ma_nv}</Text>
+              <Text style={styles.qrSubTitle}>Khách hàng quét mã để mở tài khoản</Text>
+              <View style={styles.qrWrapper}>
+                {dataQR?.landing_url ? (
+                  <QRCode value={dataQR.landing_url} size={width * 0.52} color="#000" backgroundColor="#fff" />
+                ) : (
+                  <View style={[styles.qrWrapper, { alignItems: "center", justifyContent: "center" }]}>
+                    <Text style={{ color: "#999", fontSize: 13 }}>Chưa có mã QR</Text>
+                  </View>
+                )}
+              </View>
+            </View>
+          </ViewShot>
+          <TouchableOpacity onPress={handleShare} style={styles.shareBtn} activeOpacity={0.7}>
+            <Ionicons name="share-social-outline" size={18} color="#0055ba" />
+            <Text style={styles.shareBtnText}>Chia sẻ mã giới thiệu</Text>
+          </TouchableOpacity>
+        </View>
+
         {/* Biểu đồ doanh số */}
         <SalesSummaryChart isAdmin={perms.isAdminRole} isMgr={isManager} />
+
+        {/* ── Khách hàng cần follow-up ── */}
+        <View style={[styles.section, { borderWidth: 1, borderColor: "#FED7AA" }]}>
+          <View style={styles.sectionHeader}>
+            <Ionicons name="alert-circle-outline" size={18} color="#EA580C" />
+            <Text style={[styles.sectionTitle, { color: "#9A3412" }]}>Khách hàng cần follow-up</Text>
+          </View>
+          {!loadingChurn && churnList.length > 0 && (
+            <View style={styles.churnBadgeRow}>
+              {churnSilent > 0 && (
+                <View style={[styles.churnBadge, { backgroundColor: "#FFEDD5" }]}>
+                  <Text style={[styles.churnBadgeText, { color: "#C2410C" }]}>
+                    {churnSilent} im lặng 90+ ngày
+                  </Text>
+                </View>
+              )}
+              {churnNever > 0 && (
+                <View style={[styles.churnBadge, { backgroundColor: "#FEE2E2" }]}>
+                  <Text style={[styles.churnBadgeText, { color: "#B91C1C" }]}>
+                    {churnNever} chưa từng đầu tư
+                  </Text>
+                </View>
+              )}
+            </View>
+          )}
+
+          {loadingChurn ? (
+            <ActivityIndicator size="small" color="#EA580C" style={{ marginVertical: 16 }} />
+          ) : churnList.length === 0 ? (
+            <View style={styles.emptyState}>
+              <Ionicons name="people-outline" size={32} color="#D1D5DB" />
+              <Text style={styles.emptyText}>Không có khách hàng cần follow-up</Text>
+            </View>
+          ) : (
+            <>
+              {(showAllChurn ? churnList : churnList.slice(0, LIST_LIMIT)).map((c) => {
+                const name = c?.identity?.full_name ?? c?.phone_number ?? "—";
+                return (
+                  <View key={String(c._id)} style={styles.churnRow}>
+                    <View style={[styles.customerAvatar, { backgroundColor: c.neverInvested ? "#FEE2E2" : "#FFEDD5" }]}>
+                      <Text style={[styles.customerAvatarText, { color: c.neverInvested ? "#DC2626" : "#EA580C" }]}>
+                        {name.charAt(0).toUpperCase()}
+                      </Text>
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.customerName} numberOfLines={1}>{name}</Text>
+                      <Text style={styles.customerPhone}>{c.phone_number}</Text>
+                      {isManager && c.sale?.full_name && (
+                        <Text style={styles.churnSaleName}>{c.sale.full_name}</Text>
+                      )}
+                    </View>
+                    <View style={[styles.churnTag, { backgroundColor: c.neverInvested ? "#FEE2E2" : "#FFEDD5" }]}>
+                      <Text style={[styles.churnTagText, { color: c.neverInvested ? "#DC2626" : "#EA580C" }]}>
+                        {c.neverInvested ? "Chưa đầu tư" : `${c.daysSinceLastInvestment}n trước`}
+                      </Text>
+                    </View>
+                  </View>
+                );
+              })}
+              {churnList.length > LIST_LIMIT && (
+                <TouchableOpacity
+                  style={styles.showMoreBtn}
+                  onPress={() => setShowAllChurn((v) => !v)}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.showMoreText}>
+                    {showAllChurn ? "Thu gọn" : `Xem thêm ${churnList.length - LIST_LIMIT} khách`}
+                  </Text>
+                </TouchableOpacity>
+              )}
+            </>
+          )}
+        </View>
 
         {/* ── Cảnh báo đáo hạn ── */}
         <View style={styles.section}>
@@ -270,35 +386,43 @@ export default function DashboardCRMScreen() {
               <Text style={styles.emptyText}>Không có hợp đồng đáo hạn trong {expiringDays} ngày tới</Text>
             </View>
           ) : (
-            expiringList.map((inv) => {
-              const urgency = {
-                urgent: { bg: "#FEE2E2", color: "#DC2626" },
-                warning: { bg: "#FEF9C3", color: "#CA8A04" },
-                normal: { bg: "#DCFCE7", color: "#16A34A" },
-              }[inv.urgency] ?? { bg: "#F3F4F6", color: "#6B7280" };
-
-              return (
-                <View key={String(inv._id)} style={styles.expiringRow}>
-                  <View style={styles.customerAvatar}>
-                    <Text style={styles.customerAvatarText}>
-                      {inv.customer_name?.charAt(0).toUpperCase() ?? "?"}
-                    </Text>
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.customerName} numberOfLines={1}>{inv.customer_name}</Text>
-                    <Text style={styles.customerPhone} numberOfLines={1}>{inv.product_name}</Text>
-                  </View>
-                  <View style={{ alignItems: "flex-end", gap: 4 }}>
-                    <Text style={styles.expiringAmount}>{formatMoney(inv.amount)}</Text>
-                    <View style={[styles.urgencyBadge, { backgroundColor: urgency.bg }]}>
-                      <Text style={[styles.urgencyText, { color: urgency.color }]}>
-                        {inv.days_left} ngày
+            <>
+              {(showAllExpiring ? expiringList : expiringList.slice(0, LIST_LIMIT)).map((inv) => {
+                const urgency = {
+                  urgent: { bg: "#FEE2E2", color: "#DC2626" },
+                  warning: { bg: "#FEF9C3", color: "#CA8A04" },
+                  normal: { bg: "#DCFCE7", color: "#16A34A" },
+                }[inv.urgency] ?? { bg: "#F3F4F6", color: "#6B7280" };
+                return (
+                  <View key={String(inv._id)} style={styles.expiringRow}>
+                    <View style={styles.customerAvatar}>
+                      <Text style={styles.customerAvatarText}>
+                        {inv.customer_name?.charAt(0).toUpperCase() ?? "?"}
                       </Text>
                     </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.customerName} numberOfLines={1}>{inv.customer_name}</Text>
+                      <Text style={styles.customerPhone} numberOfLines={1}>{inv.product_name}</Text>
+                    </View>
+                    <View style={{ alignItems: "flex-end", gap: 4 }}>
+                      <Text style={styles.expiringAmount}>{formatMoney(inv.amount)}</Text>
+                      <View style={[styles.urgencyBadge, { backgroundColor: urgency.bg }]}>
+                        <Text style={[styles.urgencyText, { color: urgency.color }]}>
+                          {inv.days_left} ngày
+                        </Text>
+                      </View>
+                    </View>
                   </View>
-                </View>
-              );
-            })
+                );
+              })}
+              {expiringList.length > LIST_LIMIT && (
+                <TouchableOpacity style={styles.showMoreBtn} onPress={() => setShowAllExpiring((v) => !v)} activeOpacity={0.7}>
+                  <Text style={styles.showMoreText}>
+                    {showAllExpiring ? "Thu gọn" : `Xem thêm ${expiringList.length - LIST_LIMIT} hợp đồng`}
+                  </Text>
+                </TouchableOpacity>
+              )}
+            </>
           )}
         </View>
 
@@ -331,34 +455,43 @@ export default function DashboardCRMScreen() {
               <Text style={styles.emptyText}>Chưa có dữ liệu xếp hạng</Text>
             </View>
           ) : (
-            leaderboard.map((row, idx) => {
-              const pct = Math.round((row.total_amount / maxLbAmount) * 100);
-              const rankColor = RANK_COLORS[idx] ?? "#0055ba";
-              return (
-                <View key={String(row._id)} style={styles.lbRow}>
-                  <Text style={[styles.lbRank, { color: RANK_COLORS[idx] ?? "#9CA3AF", fontSize: idx < 3 ? 17 : 14 }]}>
-                    {idx + 1}
-                  </Text>
-                  <View style={[styles.lbAvatar, { backgroundColor: "#DBEAFE" }]}>
-                    <Text style={[styles.lbAvatarText, { color: "#2563EB" }]}>
-                      {row.sale_name?.charAt(0).toUpperCase() ?? "?"}
+            <>
+              {(showAllLb ? leaderboard : leaderboard.slice(0, LIST_LIMIT)).map((row, idx) => {
+                const pct = Math.round((row.total_amount / maxLbAmount) * 100);
+                const rankColor = RANK_COLORS[idx] ?? "#0055ba";
+                return (
+                  <View key={String(row._id)} style={styles.lbRow}>
+                    <Text style={[styles.lbRank, { color: RANK_COLORS[idx] ?? "#9CA3AF", fontSize: idx < 3 ? 17 : 14 }]}>
+                      {idx + 1}
                     </Text>
-                  </View>
-                  <View style={{ flex: 1, gap: 4 }}>
-                    <View style={styles.lbRowTop}>
-                      <Text style={styles.lbName} numberOfLines={1}>{row.sale_name}</Text>
-                      <Text style={styles.lbAmount}>{formatMoney(row.total_amount)}</Text>
+                    <View style={[styles.lbAvatar, { backgroundColor: "#DBEAFE" }]}>
+                      <Text style={[styles.lbAvatarText, { color: "#2563EB" }]}>
+                        {row.sale_name?.charAt(0).toUpperCase() ?? "?"}
+                      </Text>
                     </View>
-                    <View style={styles.progressBg}>
-                      <View style={[styles.progressBar, { width: `${pct}%`, backgroundColor: rankColor }]} />
+                    <View style={{ flex: 1, gap: 4 }}>
+                      <View style={styles.lbRowTop}>
+                        <Text style={styles.lbName} numberOfLines={1}>{row.sale_name}</Text>
+                        <Text style={styles.lbAmount}>{formatMoney(row.total_amount)}</Text>
+                      </View>
+                      <View style={styles.progressBg}>
+                        <View style={[styles.progressBar, { width: `${pct}%`, backgroundColor: rankColor }]} />
+                      </View>
+                    </View>
+                    <View style={styles.lbBadge}>
+                      <Text style={styles.lbBadgeText}>{row.count} GD</Text>
                     </View>
                   </View>
-                  <View style={styles.lbBadge}>
-                    <Text style={styles.lbBadgeText}>{row.count} GD</Text>
-                  </View>
-                </View>
-              );
-            })
+                );
+              })}
+              {leaderboard.length > LIST_LIMIT && (
+                <TouchableOpacity style={styles.showMoreBtn} onPress={() => setShowAllLb((v) => !v)} activeOpacity={0.7}>
+                  <Text style={styles.showMoreText}>
+                    {showAllLb ? "Thu gọn" : `Xem thêm ${leaderboard.length - LIST_LIMIT} người`}
+                  </Text>
+                </TouchableOpacity>
+              )}
+            </>
           )}
         </View>
 
@@ -417,8 +550,7 @@ export default function DashboardCRMScreen() {
                 <Text style={styles.convHeaderCell}>Đầu tư</Text>
                 <Text style={styles.convHeaderCell}>Tỷ lệ</Text>
               </View>
-              {conversion.rows.map((row) => {
-                const kycRate = row.total > 0 ? Math.round((row.kyc_done / row.total) * 100) : 0;
+              {(showAllConv ? conversion.rows : conversion.rows.slice(0, LIST_LIMIT)).map((row) => {
                 const invRate = row.kyc_done > 0 ? Math.round((row.invested / row.kyc_done) * 100) : 0;
                 return (
                   <View key={String(row._id)} style={styles.convTableRow}>
@@ -428,15 +560,9 @@ export default function DashboardCRMScreen() {
                       </View>
                       <Text style={styles.convCellText} numberOfLines={1}>{row.sale_name}</Text>
                     </View>
-                    <View style={styles.convCell}>
-                      <Text style={styles.convCellNum}>{row.total}</Text>
-                    </View>
-                    <View style={styles.convCell}>
-                      <Text style={styles.convCellNum}>{row.kyc_done}</Text>
-                    </View>
-                    <View style={styles.convCell}>
-                      <Text style={styles.convCellNum}>{row.invested}</Text>
-                    </View>
+                    <View style={styles.convCell}><Text style={styles.convCellNum}>{row.total}</Text></View>
+                    <View style={styles.convCell}><Text style={styles.convCellNum}>{row.kyc_done}</Text></View>
+                    <View style={styles.convCell}><Text style={styles.convCellNum}>{row.invested}</Text></View>
                     <View style={styles.convCell}>
                       <Text style={[styles.convCellPct, { color: invRate >= 50 ? "#16A34A" : "#EA580C" }]}>
                         {invRate}%
@@ -445,38 +571,15 @@ export default function DashboardCRMScreen() {
                   </View>
                 );
               })}
+              {conversion.rows.length > LIST_LIMIT && (
+                <TouchableOpacity style={styles.showMoreBtn} onPress={() => setShowAllConv((v) => !v)} activeOpacity={0.7}>
+                  <Text style={styles.showMoreText}>
+                    {showAllConv ? "Thu gọn" : `Xem thêm ${conversion.rows.length - LIST_LIMIT} sale`}
+                  </Text>
+                </TouchableOpacity>
+              )}
             </>
           ) : null}
-        </View>
-
-        {/* QR Section */}
-        <View style={styles.qrCard}>
-          <ViewShot ref={viewShotRef} options={{ format: "png", quality: 1 }}>
-            <View style={styles.qrInner}>
-              <Text style={styles.qrTitle}>Mã QR Giới Thiệu</Text>
-              <Text style={styles.qrCode}>{user?.phone_number}-{dataQR?.ma_nv}</Text>
-              <Text style={styles.qrSubTitle}>Khách hàng quét mã để mở tài khoản</Text>
-              <View style={styles.qrWrapper}>
-                {dataQR?.landing_url ? (
-                  <QRCode
-                    value={dataQR.landing_url}
-                    size={width * 0.52}
-                    color="#000"
-                    backgroundColor="#fff"
-                  />
-                ) : (
-                  <View style={[styles.qrWrapper, { alignItems: "center", justifyContent: "center" }]}>
-                    <Text style={{ color: "#999", fontSize: 13 }}>Chưa có mã QR</Text>
-                  </View>
-                )}
-              </View>
-            </View>
-          </ViewShot>
-
-          <TouchableOpacity onPress={handleShare} style={styles.shareBtn} activeOpacity={0.7}>
-            <Ionicons name="share-social-outline" size={18} color="#0055ba" />
-            <Text style={styles.shareBtnText}>Chia sẻ mã giới thiệu</Text>
-          </TouchableOpacity>
         </View>
 
         {/* Khách hàng gần đây */}
@@ -521,7 +624,7 @@ const styles = StyleSheet.create({
   greetingTitle: { fontSize: 20, fontWeight: "700", color: "#111827" },
   greetingDate: { fontSize: 13, color: "#6B7280", marginTop: 2, textTransform: "capitalize" },
 
-  statsRow: { flexDirection: "row", paddingHorizontal: 16, gap: 10, marginBottom: 16 },
+  statsRow: { flexDirection: "row", paddingHorizontal: 16, gap: 10, marginBottom: 24 },
   statCard: {
     flex: 1, borderRadius: 16, padding: 14, alignItems: "center",
     shadowColor: "#000", shadowOpacity: 0.04, shadowOffset: { width: 0, height: 2 }, elevation: 1,
@@ -599,7 +702,7 @@ const styles = StyleSheet.create({
 
   // ── QR ──
   qrCard: {
-    backgroundColor: "#fff", marginHorizontal: 16, marginTop: 16, borderRadius: 20, paddingBottom: 20,
+    backgroundColor: "#fff", marginHorizontal: 16, marginTop: 16, marginBottom: 16, borderRadius: 20, paddingBottom: 20,
     alignItems: "center", elevation: 3,
     shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 12,
   },
@@ -623,4 +726,22 @@ const styles = StyleSheet.create({
   customerPhone: { fontSize: 12, color: "#9CA3AF", marginTop: 1 },
   customerDate: { fontSize: 12, color: "#9CA3AF" },
   viewAllText: { textAlign: "center", marginTop: 12, fontSize: 13, color: "#2563EB", fontWeight: "600" },
+
+  showMoreBtn: {
+    alignItems: "center", paddingTop: 12, marginTop: 4,
+    borderTopWidth: 1, borderTopColor: "#F3F4F6",
+  },
+  showMoreText: { fontSize: 13, color: "#0055ba", fontWeight: "600" },
+
+  // ── Churn risks ──
+  churnBadgeRow: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginBottom: 12 },
+  churnBadge: { borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4 },
+  churnBadgeText: { fontSize: 11, fontWeight: "600" },
+  churnRow: {
+    flexDirection: "row", alignItems: "center", gap: 10,
+    paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: "#FEF3C7",
+  },
+  churnTag: { borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4 },
+  churnTagText: { fontSize: 11, fontWeight: "700" },
+  churnSaleName: { fontSize: 11, color: "#6B7280", marginTop: 1 },
 });

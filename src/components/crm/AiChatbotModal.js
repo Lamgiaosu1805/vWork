@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from "react";
+import React, { useState, useRef, useCallback, useEffect } from "react";
 import {
   View,
   Text,
@@ -8,7 +8,6 @@ import {
   Modal,
   StyleSheet,
   ActivityIndicator,
-  KeyboardAvoidingView,
   Platform,
   SafeAreaView,
   Keyboard,
@@ -28,7 +27,16 @@ export default function AiChatbotModal() {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [kbHeight, setKbHeight] = useState(0);
   const flatListRef = useRef(null);
+
+  useEffect(() => {
+    const showEvent = Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
+    const hideEvent = Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide";
+    const show = Keyboard.addListener(showEvent, (e) => setKbHeight(e.endCoordinates.height));
+    const hide = Keyboard.addListener(hideEvent, () => setKbHeight(0));
+    return () => { show.remove(); hide.remove(); };
+  }, []);
 
   const scrollToBottom = useCallback(() => {
     setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
@@ -121,78 +129,74 @@ export default function AiChatbotModal() {
           </View>
 
           {/* Messages */}
-          <KeyboardAvoidingView
+          <FlatList
+            ref={flatListRef}
+            data={messages}
+            keyExtractor={(_, i) => String(i)}
+            renderItem={renderMessage}
+            contentContainerStyle={styles.messageList}
+            onContentSizeChange={scrollToBottom}
             style={{ flex: 1 }}
-            behavior={Platform.OS === "ios" ? "padding" : "height"}
-            keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
-          >
-            <FlatList
-              ref={flatListRef}
-              data={messages}
-              keyExtractor={(_, i) => String(i)}
-              renderItem={renderMessage}
-              contentContainerStyle={styles.messageList}
-              onContentSizeChange={scrollToBottom}
-              ListEmptyComponent={
-                <View style={styles.emptyContainer}>
-                  <View style={styles.emptyIcon}>
-                    <Ionicons name="sparkles" size={28} color="#fff" />
-                  </View>
-                  <Text style={styles.emptyTitle}>Xin chào! Tôi có thể giúp gì?</Text>
-                  <Text style={styles.emptyDesc}>Hỏi tôi về khách hàng, hoa hồng, doanh số...</Text>
-                  <View style={styles.suggestionsContainer}>
-                    {SUGGESTIONS.map((s, i) => (
-                      <TouchableOpacity
-                        key={i}
-                        style={styles.suggestionChip}
-                        onPress={() => sendMessage(s)}
-                        activeOpacity={0.7}
-                      >
-                        <Text style={styles.suggestionText}>{s}</Text>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
+            keyboardShouldPersistTaps="handled"
+            ListEmptyComponent={
+              <View style={styles.emptyContainer}>
+                <View style={styles.emptyIcon}>
+                  <Ionicons name="sparkles" size={28} color="#fff" />
                 </View>
-              }
-            />
-
-            {/* Loading indicator */}
-            {loading && (
-              <View style={styles.loadingRow}>
-                <View style={styles.botAvatar}>
-                  <Ionicons name="sparkles" size={14} color="#fff" />
-                </View>
-                <View style={styles.loadingBubble}>
-                  <ActivityIndicator size="small" color="#6B7280" />
-                  <Text style={styles.loadingText}>Đang trả lời...</Text>
+                <Text style={styles.emptyTitle}>Xin chào! Tôi có thể giúp gì?</Text>
+                <Text style={styles.emptyDesc}>Hỏi tôi về khách hàng, hoa hồng, doanh số...</Text>
+                <View style={styles.suggestionsContainer}>
+                  {SUGGESTIONS.map((s, i) => (
+                    <TouchableOpacity
+                      key={i}
+                      style={styles.suggestionChip}
+                      onPress={() => sendMessage(s)}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={styles.suggestionText}>{s}</Text>
+                    </TouchableOpacity>
+                  ))}
                 </View>
               </View>
-            )}
+            }
+          />
 
-            {/* Input */}
-            <View style={styles.inputRow}>
-              <TextInput
-                style={styles.input}
-                value={input}
-                onChangeText={setInput}
-                placeholder="Nhập câu hỏi..."
-                placeholderTextColor="#9CA3AF"
-                multiline
-                maxLength={500}
-                onSubmitEditing={() => sendMessage()}
-                returnKeyType="send"
-                editable={!loading}
-              />
-              <TouchableOpacity
-                style={[styles.sendBtn, (!input.trim() || loading) && styles.sendBtnDisabled]}
-                onPress={() => sendMessage()}
-                disabled={!input.trim() || loading}
-                activeOpacity={0.8}
-              >
-                <Ionicons name="send" size={18} color="#fff" />
-              </TouchableOpacity>
+          {/* Loading indicator */}
+          {loading && (
+            <View style={styles.loadingRow}>
+              <View style={styles.botAvatar}>
+                <Ionicons name="sparkles" size={14} color="#fff" />
+              </View>
+              <View style={styles.loadingBubble}>
+                <ActivityIndicator size="small" color="#6B7280" />
+                <Text style={styles.loadingText}>Đang trả lời...</Text>
+              </View>
             </View>
-          </KeyboardAvoidingView>
+          )}
+
+          {/* Input — marginBottom đẩy lên trên bàn phím */}
+          <View style={[styles.inputRow, { marginBottom: kbHeight }]}>
+            <TextInput
+              style={styles.input}
+              value={input}
+              onChangeText={setInput}
+              placeholder="Nhập câu hỏi..."
+              placeholderTextColor="#9CA3AF"
+              multiline
+              maxLength={500}
+              onSubmitEditing={() => sendMessage()}
+              returnKeyType="send"
+              editable={!loading}
+            />
+            <TouchableOpacity
+              style={[styles.sendBtn, (!input.trim() || loading) && styles.sendBtnDisabled]}
+              onPress={() => sendMessage()}
+              disabled={!input.trim() || loading}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="send" size={18} color="#fff" />
+            </TouchableOpacity>
+          </View>
         </SafeAreaView>
       </Modal>
     </>
