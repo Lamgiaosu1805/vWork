@@ -51,7 +51,7 @@ const buildLabel = (s, idx, period) => {
 };
 
 export default function SalesSummaryChart({ isAdmin }) {
-    const [period, setPeriod]           = useState('month');
+    const [period, setPeriod]           = useState('week');
     const [chartData, setChartData]     = useState(null);
     const [loading, setLoading]         = useState(true);
     const [branches, setBranches]       = useState([]);

@@ -63,12 +63,12 @@ export default function DashboardCRMScreen() {
 
   // Cảnh báo đáo hạn
   const [expiring, setExpiring] = useState(null);
-  const [expiringDays, setExpiringDays] = useState(30);
+  const [expiringDays, setExpiringDays] = useState(7);
   const [loadingExpiring, setLoadingExpiring] = useState(false);
 
   // Xếp hạng sale
   const [leaderboard, setLeaderboard] = useState([]);
-  const [lbPeriod, setLbPeriod] = useState("month");
+  const [lbPeriod, setLbPeriod] = useState("week");
   const [loadingLb, setLoadingLb] = useState(false);
 
   // Tỷ lệ chuyển đổi
