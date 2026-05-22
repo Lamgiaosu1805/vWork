@@ -2,6 +2,9 @@ import React from "react";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import WorkPlaceBottomTab from "../bottomtabs/WorkPlaceBottomTab";
 import WorkplaceFileViewerScreen from "../../screens/workplace/WorkplaceFileViewerScreen";
+import CommentScreen from "../../screens/workplace/CommentScreen";
+import ComposePostScreen from "../../screens/workplace/ComposePostScreen";
+import AnnouncementsScreen from "../../screens/workplace/AnnouncementsScreen";
 
 const Stack = createNativeStackNavigator();
 
@@ -10,6 +13,9 @@ export default function WorkPlaceStackNavigator() {
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="WorkPlaceBottomTab" component={WorkPlaceBottomTab} />
       <Stack.Screen name="WorkplaceFileViewerScreen" component={WorkplaceFileViewerScreen} />
+      <Stack.Screen name="FeedCommentScreen" component={CommentScreen} />
+      <Stack.Screen name="ComposePostScreen" component={ComposePostScreen} />
+      <Stack.Screen name="AnnouncementsScreen" component={AnnouncementsScreen} />
     </Stack.Navigator>
   );
 }

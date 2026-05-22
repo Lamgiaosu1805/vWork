@@ -19,7 +19,16 @@ const STATUS_CFG = {
     pending: { label: 'Chờ duyệt', bg: '#FEF3C7', color: '#D97706' },
     approved: { label: 'Đã duyệt', bg: '#D1FAE5', color: '#059669' },
     rejected: { label: 'Từ chối', bg: '#FEE2E2', color: '#DC2626' },
+    revoked: { label: 'Đã hủy phân công', bg: '#F3E8FF', color: '#7C3AED' },
 };
+
+const STATUS_FILTERS = [
+    { key: 'pending', label: 'Chờ duyệt' },
+    { key: 'approved', label: 'Đã duyệt' },
+    { key: 'rejected', label: 'Từ chối' },
+    { key: 'revoked', label: 'Đã hủy' },
+    { key: 'all', label: 'Tất cả' },
+];
 
 // ── Hướng dẫn ─────────────────────────────────────────────────────────────
 
@@ -219,7 +228,7 @@ function MyRequestsTab() {
 
 // ── Duyệt yêu cầu (manager/admin) ─────────────────────────────────────────
 
-function AdminRequestsTab() {
+function AdminRequestsTab({ isAdmin }) {
     const [requests, setRequests] = useState([]);
     const [loading, setLoading] = useState(false);
     const [page, setPage] = useState(1);
@@ -227,17 +236,19 @@ function AdminRequestsTab() {
     const [actionLoading, setActionLoading] = useState(false);
     const [rejectTarget, setRejectTarget] = useState(null);
     const [rejectReason, setRejectReason] = useState('');
+    const [revokeTarget, setRevokeTarget] = useState(null);
+    const [revokeReason, setRevokeReason] = useState('');
+    const [statusFilter, setStatusFilter] = useState('pending');
     const loadingRef = useRef(false);
 
-    const fetchRequests = useCallback(async (p = 1, reset = false) => {
+    const fetchRequests = useCallback(async (p = 1, reset = false, status) => {
         if (loadingRef.current) return;
         loadingRef.current = true;
         setLoading(true);
         try {
-            const res = await api.get('/customer-claim-request', {
-                params: { page: p, limit: 15 },
-                requiresAuth: true,
-            });
+            const params = { page: p, limit: 15 };
+            if (status && status !== 'all') params.status = status;
+            const res = await api.get('/customer-claim-request', { params, requiresAuth: true });
             const items = res.data?.data ?? [];
             setRequests((prev) => {
                 if (reset) return items;
@@ -255,8 +266,11 @@ function AdminRequestsTab() {
     }, []);
 
     useEffect(() => {
-        fetchRequests(1, true);
-    }, []);
+        setRequests([]);
+        setPage(1);
+        setHasMore(true);
+        fetchRequests(1, true, statusFilter);
+    }, [statusFilter]);
 
     const handleApprove = (item) => {
         Alert.alert(
@@ -271,7 +285,7 @@ function AdminRequestsTab() {
                         try {
                             await api.patch(`/customer-claim-request/${item._id}/approve`, {}, { requiresAuth: true });
                             Toast.show({ type: 'success', text1: 'Đã duyệt yêu cầu' });
-                            fetchRequests(1, true);
+                            fetchRequests(1, true, statusFilter);
                         } catch (err) {
                             Toast.show({ type: 'error', text1: err?.response?.data?.message || 'Có lỗi xảy ra' });
                         } finally {
@@ -297,7 +311,25 @@ function AdminRequestsTab() {
             Toast.show({ type: 'success', text1: 'Đã từ chối yêu cầu' });
             setRejectTarget(null);
             setRejectReason('');
-            fetchRequests(1, true);
+            fetchRequests(1, true, statusFilter);
+        } catch (err) {
+            Toast.show({ type: 'error', text1: err?.response?.data?.message || 'Có lỗi xảy ra' });
+        } finally {
+            setActionLoading(false);
+        }
+    };
+
+    const handleRevoke = async () => {
+        if (!revokeTarget) return;
+        setActionLoading(true);
+        try {
+            await api.patch(`/customer-claim-request/${revokeTarget._id}/revoke`, {
+                ...(revokeReason.trim() ? { reason: revokeReason.trim() } : {}),
+            }, { requiresAuth: true });
+            Toast.show({ type: 'success', text1: 'Đã hủy phân công sale' });
+            setRevokeTarget(null);
+            setRevokeReason('');
+            fetchRequests(1, true, statusFilter);
         } catch (err) {
             Toast.show({ type: 'error', text1: err?.response?.data?.message || 'Có lỗi xảy ra' });
         } finally {
@@ -318,6 +350,8 @@ function AdminRequestsTab() {
         const customerName = item.customer_id?.identity?.full_name || 'Chưa eKYC';
         const saleName = item.sale_id?.full_name || item.sale_id?.username || '—';
         const isPending = item.status === 'pending';
+        const isApproved = item.status === 'approved';
+        const isRevoked = item.status === 'revoked';
 
         return (
             <View style={styles.reqCard}>
@@ -338,6 +372,10 @@ function AdminRequestsTab() {
 
                 {item.status === 'rejected' && item.reject_reason ? (
                     <Text style={styles.reqReject}>Lý do từ chối: {item.reject_reason}</Text>
+                ) : null}
+
+                {isRevoked && item.revoke_reason ? (
+                    <Text style={styles.reqRevoke}>Lý do hủy: {item.revoke_reason}</Text>
                 ) : null}
 
                 <Text style={styles.reqDate}>Gửi lúc: {item.createdAt}</Text>
@@ -364,20 +402,54 @@ function AdminRequestsTab() {
                         </TouchableOpacity>
                     </View>
                 )}
+
+                {isApproved && isAdmin && (
+                    <View style={[styles.actionRow, { marginTop: 8 }]}>
+                        <TouchableOpacity
+                            style={[styles.actionBtn, styles.revokeBtn, actionLoading && styles.submitBtnDisabled]}
+                            onPress={() => setRevokeTarget(item)}
+                            disabled={actionLoading}
+                            activeOpacity={0.8}
+                        >
+                            <Ionicons name="person-remove-outline" size={14} color="#7C3AED" />
+                            <Text style={[styles.actionBtnText, { color: '#7C3AED' }]}>Hủy phân công</Text>
+                        </TouchableOpacity>
+                    </View>
+                )}
             </View>
         );
     };
 
     return (
         <>
+            {/* Bộ lọc trạng thái */}
+            <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                style={styles.filterBar}
+                contentContainerStyle={styles.filterBarContent}
+            >
+                {STATUS_FILTERS.map((f) => (
+                    <TouchableOpacity
+                        key={f.key}
+                        style={[styles.filterChip, statusFilter === f.key && styles.filterChipActive]}
+                        onPress={() => setStatusFilter(f.key)}
+                    >
+                        <Text style={[styles.filterChipText, statusFilter === f.key && styles.filterChipTextActive]}>
+                            {f.label}
+                        </Text>
+                    </TouchableOpacity>
+                ))}
+            </ScrollView>
+
             <FlatList
                 data={requests}
                 keyExtractor={(item) => item._id}
                 renderItem={renderItem}
                 contentContainerStyle={styles.listContent}
-                onRefresh={() => fetchRequests(1, true)}
+                onRefresh={() => fetchRequests(1, true, statusFilter)}
                 refreshing={loading && page === 1}
-                onEndReached={() => { if (hasMore && !loading) fetchRequests(page + 1); }}
+                onEndReached={() => { if (hasMore && !loading) fetchRequests(page + 1, false, statusFilter); }}
                 onEndReachedThreshold={0.3}
                 ListEmptyComponent={
                     <View style={styles.centerBox}>
@@ -434,6 +506,54 @@ function AdminRequestsTab() {
                     </View>
                 </View>
             </Modal>
+
+            {/* Modal hủy phân công */}
+            <Modal
+                visible={!!revokeTarget}
+                transparent
+                animationType="fade"
+                onRequestClose={() => { setRevokeTarget(null); setRevokeReason(''); }}
+            >
+                <View style={styles.modalOverlay}>
+                    <View style={styles.modalBox}>
+                        <Text style={[styles.modalTitle, { color: '#7C3AED' }]}>Hủy phân công sale</Text>
+                        <Text style={styles.modalSub}>
+                            {revokeTarget?.sale_id?.full_name || 'Sale'} — KH {revokeTarget?.phone_number}
+                        </Text>
+                        <TextInput
+                            style={[styles.input, styles.inputMulti, { marginTop: 14 }]}
+                            value={revokeReason}
+                            onChangeText={setRevokeReason}
+                            placeholder="Lý do (không bắt buộc)..."
+                            multiline
+                            numberOfLines={3}
+                            textAlignVertical="top"
+                            placeholderTextColor="#9CA3AF"
+                            autoFocus
+                        />
+                        <View style={styles.modalActions}>
+                            <TouchableOpacity
+                                style={styles.modalCancelBtn}
+                                onPress={() => { setRevokeTarget(null); setRevokeReason(''); }}
+                                disabled={actionLoading}
+                            >
+                                <Text style={styles.modalCancelText}>Huỷ</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                style={[styles.modalRevokeBtn, actionLoading && styles.submitBtnDisabled]}
+                                onPress={handleRevoke}
+                                disabled={actionLoading}
+                                activeOpacity={0.8}
+                            >
+                                {actionLoading
+                                    ? <ActivityIndicator size="small" color="#fff" />
+                                    : <Text style={styles.modalRevokeText}>Xác nhận hủy</Text>
+                                }
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </View>
+            </Modal>
         </>
     );
 }
@@ -444,6 +564,7 @@ export default function ClaimRequestScreen() {
     const navigation = useNavigation();
     const user = useSelector(state => state.auth.user);
     const isManager = canMgr(user, 'crm');
+    const isAdmin = user?.role === 'admin';
     const [activeTab, setActiveTab] = useState('submit');
 
     const tabs = [
@@ -476,7 +597,7 @@ export default function ClaimRequestScreen() {
 
             {activeTab === 'submit' && <SubmitTab />}
             {activeTab === 'history' && <MyRequestsTab />}
-            {activeTab === 'admin' && <AdminRequestsTab />}
+            {activeTab === 'admin' && <AdminRequestsTab isAdmin={isAdmin} />}
         </SafeAreaView>
     );
 }
@@ -525,14 +646,23 @@ const styles = StyleSheet.create({
     reqReject: { fontSize: 12, color: '#DC2626', marginTop: 6 },
     reqDate: { fontSize: 11, color: '#9CA3AF', marginTop: 8 },
 
+    // Filter bar
+    filterBar: { backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#F3F4F6' },
+    filterBarContent: { paddingHorizontal: 12, paddingVertical: 10, gap: 8, flexDirection: 'row' },
+    filterChip: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, borderWidth: 1, borderColor: '#E5E7EB', backgroundColor: '#F9FAFB' },
+    filterChipActive: { backgroundColor: PRIMARY, borderColor: PRIMARY },
+    filterChipText: { fontSize: 12, fontWeight: '600', color: '#6B7280' },
+    filterChipTextActive: { color: '#fff' },
+
     // Action buttons
     actionRow: { flexDirection: 'row', gap: 8, marginTop: 12 },
     actionBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5, paddingVertical: 9, borderRadius: 9 },
     approveBtn: { backgroundColor: '#059669' },
     rejectBtn: { backgroundColor: '#FEE2E2', borderWidth: 1, borderColor: '#FECACA' },
+    revokeBtn: { backgroundColor: '#F3E8FF', borderWidth: 1, borderColor: '#DDD6FE' },
     actionBtnText: { fontSize: 13, fontWeight: '700', color: '#fff' },
 
-    // Reject modal
+    // Modals
     modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'center', alignItems: 'center', padding: 24 },
     modalBox: { backgroundColor: '#fff', borderRadius: 18, padding: 20, width: '100%' },
     modalTitle: { fontSize: 16, fontWeight: '800', color: '#111827', marginBottom: 4 },
@@ -542,6 +672,10 @@ const styles = StyleSheet.create({
     modalCancelText: { fontSize: 14, fontWeight: '600', color: '#374151' },
     modalRejectBtn: { flex: 2, paddingVertical: 12, borderRadius: 10, backgroundColor: '#DC2626', alignItems: 'center' },
     modalRejectText: { fontSize: 14, fontWeight: '700', color: '#fff' },
+    modalRevokeBtn: { flex: 2, paddingVertical: 12, borderRadius: 10, backgroundColor: '#7C3AED', alignItems: 'center' },
+    modalRevokeText: { fontSize: 14, fontWeight: '700', color: '#fff' },
+
+    reqRevoke: { fontSize: 12, color: '#7C3AED', marginTop: 6 },
 
     centerBox: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32 },
     emptyText: { fontSize: 14, color: '#9CA3AF' },

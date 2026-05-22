@@ -21,7 +21,6 @@ const MANAGER_FEATURES = [
         iconBg: '#DBEAFE',
         iconColor: '#2563EB',
         screen: 'AdminCustomerScreen',
-        available: true,
     },
     {
         id: 'agents',
@@ -30,7 +29,6 @@ const MANAGER_FEATURES = [
         iconBg: '#EDE9FE',
         iconColor: '#7C3AED',
         screen: 'ListAgentScreen',
-        available: true,
     },
     {
         id: 'team-commission',
@@ -38,57 +36,11 @@ const MANAGER_FEATURES = [
         icon: 'pie-chart',
         iconBg: '#D1FAE5',
         iconColor: '#059669',
-        screen: null,
-        available: false,
-    },
-    {
-        id: 'team-manage',
-        label: 'Quản lý\nTeam',
-        icon: 'git-network',
-        iconBg: '#FEF3C7',
-        iconColor: '#D97706',
-        screen: null,
-        available: false,
-    },
-    {
-        id: 'approve',
-        label: 'Phê duyệt\nyêu cầu KH',
-        icon: 'checkmark-circle',
-        iconBg: '#FCE7F3',
-        iconColor: '#DB2777',
-        screen: null,
-        available: false,
-    },
-    {
-        id: 'reports',
-        label: 'Báo cáo\nbán hàng',
-        icon: 'bar-chart',
-        iconBg: '#FEE2E2',
-        iconColor: '#DC2626',
-        screen: null,
-        available: false,
+        screen: 'Commission',
     },
 ];
 
 const PERSONAL_FEATURES = [
-    {
-        id: 'sales-kit',
-        label: 'Kho tài liệu\n(Sales Kit)',
-        icon: 'folder-open',
-        iconBg: '#DBEAFE',
-        iconColor: '#2563EB',
-        screen: null,
-        available: false,
-    },
-    {
-        id: 'schedule',
-        label: 'Lịch hẹn\n& Nhắc việc',
-        icon: 'calendar',
-        iconBg: '#D1FAE5',
-        iconColor: '#059669',
-        screen: null,
-        available: false,
-    },
     {
         id: 'claim-request',
         label: 'Yêu cầu\nnhận KH',
@@ -96,7 +48,6 @@ const PERSONAL_FEATURES = [
         iconBg: '#FEF3C7',
         iconColor: '#D97706',
         screen: 'ClaimRequestScreen',
-        available: true,
     },
     {
         id: 'investment',
@@ -105,16 +56,6 @@ const PERSONAL_FEATURES = [
         iconBg: '#D1FAE5',
         iconColor: '#059669',
         screen: 'InvestmentScreen',
-        available: true,
-    },
-    {
-        id: 'my-report',
-        label: 'Báo cáo\ncá nhân',
-        icon: 'stats-chart',
-        iconBg: '#FCE7F3',
-        iconColor: '#DB2777',
-        screen: null,
-        available: false,
     },
 ];
 
@@ -123,32 +64,14 @@ const SectionHeader = ({ title }) => (
     <Text style={styles.sectionTitle}>{title}</Text>
 );
 
-const FeatureCard = ({ item, onPress }) => {
-    const disabled = !item.available;
-    return (
-        <TouchableOpacity
-            style={[styles.card, disabled && styles.cardDisabled]}
-            onPress={disabled ? undefined : onPress}
-            activeOpacity={disabled ? 1 : 0.7}
-        >
-            <View style={[styles.cardIconBox, { backgroundColor: disabled ? '#F3F4F6' : item.iconBg }]}>
-                <Ionicons
-                    name={item.icon}
-                    size={24}
-                    color={disabled ? '#D1D5DB' : item.iconColor}
-                />
-            </View>
-            <Text style={[styles.cardLabel, disabled && styles.cardLabelDisabled]} numberOfLines={2}>
-                {item.label}
-            </Text>
-            {disabled && (
-                <View style={styles.comingSoonBadge}>
-                    <Text style={styles.comingSoonText}>Sắp có</Text>
-                </View>
-            )}
-        </TouchableOpacity>
-    );
-};
+const FeatureCard = ({ item, onPress }) => (
+    <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.7}>
+        <View style={[styles.cardIconBox, { backgroundColor: item.iconBg }]}>
+            <Ionicons name={item.icon} size={24} color={item.iconColor} />
+        </View>
+        <Text style={styles.cardLabel} numberOfLines={2}>{item.label}</Text>
+    </TouchableOpacity>
+);
 
 // ── Main ────────────────────────────────────────────────────────────────────
 export default function ExpandCRMScreen() {
@@ -200,13 +123,6 @@ export default function ExpandCRMScreen() {
                     </View>
                 </View>
 
-                {/* ── Thông tin phiên bản ── */}
-                <View style={styles.footer}>
-                    <Ionicons name="information-circle-outline" size={16} color="#9CA3AF" />
-                    <Text style={styles.footerText}>
-                        Các tính năng "Sắp có" đang được phát triển và sẽ sớm khả dụng.
-                    </Text>
-                </View>
             </ScrollView>
         </View>
     );
@@ -237,15 +153,6 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 2 },
         shadowRadius: 8,
         elevation: 2,
-        position: 'relative',
-        overflow: 'hidden',
-    },
-    cardDisabled: {
-        backgroundColor: '#FAFAFA',
-        shadowOpacity: 0,
-        elevation: 0,
-        borderWidth: 1,
-        borderColor: '#F3F4F6',
     },
     cardIconBox: {
         width: 48,
@@ -261,30 +168,4 @@ const styles = StyleSheet.create({
         color: '#111827',
         lineHeight: 20,
     },
-    cardLabelDisabled: { color: '#9CA3AF' },
-
-    comingSoonBadge: {
-        position: 'absolute',
-        top: 10,
-        right: 10,
-        backgroundColor: '#F3F4F6',
-        borderRadius: 6,
-        paddingHorizontal: 6,
-        paddingVertical: 2,
-    },
-    comingSoonText: { fontSize: 10, fontWeight: '600', color: '#9CA3AF' },
-
-    footer: {
-        flexDirection: 'row',
-        alignItems: 'flex-start',
-        gap: 8,
-        marginHorizontal: 20,
-        marginTop: 28,
-        padding: 14,
-        backgroundColor: '#F9FAFB',
-        borderRadius: 12,
-        borderWidth: 1,
-        borderColor: '#E5E7EB',
-    },
-    footerText: { flex: 1, fontSize: 12, color: '#9CA3AF', lineHeight: 18 },
 });
