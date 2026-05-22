@@ -89,9 +89,10 @@ const AuthAvatar = ({ filename, name, size = 40 }) => {
             .catch(() => {});
         return () => { cancelled = true; };
     }, [filename]);
-    if (uri) return <Image source={{ uri }} style={{ width: size, height: size, borderRadius: size / 2 }} />;
+    const avatarStyle = { width: size, height: size, borderRadius: size / 2, marginRight: 7 };
+    if (uri) return <Image source={{ uri }} style={avatarStyle} />;
     return (
-        <View style={[styles.authorAvatar, { width: size, height: size, borderRadius: size / 2 }]}>
+        <View style={[styles.authorAvatar, avatarStyle]}>
             <Text style={[styles.authorAvatarText, { fontSize: size * 0.38 }]}>{getInitials(name)}</Text>
         </View>
     );
@@ -671,7 +672,7 @@ const styles = StyleSheet.create({
     pinnedText: { fontSize: 12, color: '#F59E0B', fontWeight: '600' },
 
     authorRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingTop: 12, paddingBottom: 8 },
-    authorAvatar: { width: 40, height: 40, borderRadius: 20, backgroundColor: BRAND, justifyContent: 'center', alignItems: 'center', marginRight: 14 },
+    authorAvatar: { backgroundColor: BRAND, justifyContent: 'center', alignItems: 'center' },
     authorAvatarText: { color: '#fff', fontSize: 15, fontWeight: '700' },
     authorMeta: { flex: 1 },
     authorNameRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },

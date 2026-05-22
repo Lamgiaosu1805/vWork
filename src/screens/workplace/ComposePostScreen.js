@@ -23,7 +23,7 @@ import { canMgr } from '../../helpers/permissions';
 import feedApi from '../../api/feedApi';
 
 const BRAND = '#ED2E30';
-const MAX_IMAGES = 4;
+const MAX_IMAGES = 20;
 
 export default function ComposePostScreen({ navigation }) {
     const user = useSelector((state) => state.auth.user);
