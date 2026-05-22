@@ -323,6 +323,21 @@ const PostCard = ({ post, currentUser, onReact, onDelete, onPin, onCommentPress,
     const [expanded, setExpanded] = useState(false);
     const [lightboxIdx, setLightboxIdx] = useState(null);
     const [reactionsOpen, setReactionsOpen] = useState(false);
+    const [previewComments, setPreviewComments] = useState([]);
+
+    useEffect(() => {
+        if (!post.comments_count) { setPreviewComments([]); return; }
+        let cancelled = false;
+        feedApi.getComments(post._id, { page: 1, limit: 2, sort: 'desc' })
+            .then((res) => {
+                if (!cancelled) {
+                    const items = res?.data?.data ?? [];
+                    setPreviewComments([...items].reverse());
+                }
+            })
+            .catch(() => {});
+        return () => { cancelled = true; };
+    }, [post._id, post.comments_count]);
 
     const totalReactions = post.reactions?.length ?? 0;
     const legacyLikes = !post.reactions ? post.likes : null;
@@ -418,9 +433,11 @@ const PostCard = ({ post, currentUser, onReact, onDelete, onPin, onCommentPress,
                         </View>
                     ) : null}
                     {post.comments_count > 0 && (
-                        <Text style={[styles.statsText, { marginLeft: 'auto' }]}>
-                            {post.comments_count} bình luận
-                        </Text>
+                        <TouchableOpacity onPress={() => onCommentPress(post)} activeOpacity={0.7} style={{ marginLeft: 'auto' }}>
+                            <Text style={styles.statsText}>
+                                {post.comments_count} bình luận
+                            </Text>
+                        </TouchableOpacity>
                     )}
                 </View>
             )}
@@ -433,6 +450,26 @@ const PostCard = ({ post, currentUser, onReact, onDelete, onPin, onCommentPress,
                     <Text style={styles.actionLabel}>Bình luận</Text>
                 </TouchableOpacity>
             </View>
+
+            {/* Preview bình luận */}
+            {previewComments.length > 0 && (
+                <View style={styles.previewWrap}>
+                    {post.comments_count > 2 && (
+                        <TouchableOpacity onPress={() => onCommentPress(post)} activeOpacity={0.7}>
+                            <Text style={styles.viewAllComments}>Xem tất cả {post.comments_count} bình luận</Text>
+                        </TouchableOpacity>
+                    )}
+                    {previewComments.map((c) => (
+                        <View key={c._id} style={styles.previewComment}>
+                            <AuthAvatar filename={c.author_avatar} name={c.author_name} size={28} />
+                            <View style={styles.previewBubble}>
+                                <Text style={styles.previewName}>{c.author_name}</Text>
+                                <Text style={styles.previewText}>{c.content}</Text>
+                            </View>
+                        </View>
+                    ))}
+                </View>
+            )}
 
             <Modal visible={lightboxIdx !== null} transparent animationType="fade" onRequestClose={() => setLightboxIdx(null)}>
                 <Pressable style={styles.lightboxBg} onPress={() => setLightboxIdx(null)}>
@@ -753,4 +790,12 @@ const styles = StyleSheet.create({
         width: 5, height: 5, borderRadius: 3,
         backgroundColor: BRAND, marginTop: 3,
     },
+
+    // Preview comments
+    previewWrap: { paddingHorizontal: 14, paddingBottom: 12, paddingTop: 6, gap: 6 },
+    viewAllComments: { fontSize: 13, color: '#65676B', fontWeight: '500', marginBottom: 2 },
+    previewComment: { flexDirection: 'row', alignItems: 'flex-start', gap: 8 },
+    previewBubble: { flex: 1, backgroundColor: '#F0F2F5', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 7 },
+    previewName: { fontSize: 13, fontWeight: '700', color: '#050505' },
+    previewText: { fontSize: 13, color: '#050505', lineHeight: 18 },
 });

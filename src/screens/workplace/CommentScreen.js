@@ -25,6 +25,7 @@ import feedApi from '../../api/feedApi';
 import socket from '../../libs/socket';
 import { store } from '../../redux/store';
 import utils from '../../helpers/utils';
+import Header from '../../components/Header';
 
 dayjs.extend(relativeTime);
 dayjs.locale('vi');
@@ -61,7 +62,6 @@ const PostHeader = ({ post }) => {
                     <View style={phStyles.authorMeta}>
                         <Text style={phStyles.authorName}>{post.author_name}</Text>
                         <Text style={phStyles.authorTime}>
-                            {post.author_dept ? `${post.author_dept} · ` : ''}
                             {dayjs(post.createdAt).fromNow()}
                         </Text>
                     </View>
@@ -121,11 +121,12 @@ const AuthAvatar = ({ filename, name, size = 28 }) => {
         return () => { cancelled = true; };
     }, [filename]);
 
+    const avatarStyle = { width: size, height: size, borderRadius: size / 2, marginRight: 6 };
     if (uri) {
-        return <Image source={{ uri }} style={{ width: size, height: size, borderRadius: size / 2 }} />;
+        return <Image source={{ uri }} style={avatarStyle} />;
     }
     return (
-        <View style={[styles.commentAvatar, { width: size, height: size, borderRadius: size / 2 }]}>
+        <View style={[styles.commentAvatar, avatarStyle]}>
             <Text style={[styles.commentAvatarText, { fontSize: size * 0.38 }]}>{getInitials(name)}</Text>
         </View>
     );
@@ -137,7 +138,6 @@ const Bubble = ({ comment, isMine, showAvatar, canDelete, onDelete }) => {
 
     return (
         <View style={[styles.bubbleRow, isMine && styles.bubbleRowMine]}>
-            {/* Avatar người khác */}
             {!isMine && (
                 showAvatar
                     ? <AuthAvatar filename={comment.author_avatar} name={comment.author_name} size={28} />
@@ -145,11 +145,6 @@ const Bubble = ({ comment, isMine, showAvatar, canDelete, onDelete }) => {
             )}
 
             <View style={[styles.bubbleCol, isMine && styles.bubbleColMine]}>
-                {/* Tên người khác — chỉ hiện ở bubble đầu tiên của chuỗi */}
-                {!isMine && showAvatar && (
-                    <Text style={styles.bubbleName}>{comment.author_name}</Text>
-                )}
-
                 <TouchableOpacity
                     activeOpacity={0.75}
                     onPress={() => setTimeVisible((v) => !v)}
@@ -163,6 +158,9 @@ const Bubble = ({ comment, isMine, showAvatar, canDelete, onDelete }) => {
                     }}
                 >
                     <View style={[styles.bubble, isMine ? styles.bubbleMine : styles.bubbleOther]}>
+                        {!isMine && showAvatar && (
+                            <Text style={styles.bubbleName}>{comment.author_name}</Text>
+                        )}
                         <Text style={[styles.bubbleText, isMine && styles.bubbleTextMine]}>
                             {comment.content}
                         </Text>
@@ -292,15 +290,8 @@ export default function CommentScreen({ route, navigation }) {
     };
 
     return (
-        <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
-            {/* Header — chỉ back + tiêu đề */}
-            <View style={styles.header}>
-                <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-                    <Ionicons name="chevron-back" size={26} color="#050505" />
-                </TouchableOpacity>
-                <Text style={styles.headerTitle}>Bài viết</Text>
-                <View style={{ width: 34 }} />
-            </View>
+        <SafeAreaView style={styles.safe} edges={['bottom']}>
+            <Header title="Bài viết" leftIconName="chevron-back" onLeftPress={() => navigation.goBack()} />
 
             <KeyboardAvoidingView
                 style={styles.flex}
@@ -382,16 +373,6 @@ const styles = StyleSheet.create({
     safe: { flex: 1, backgroundColor: '#F0F2F5' },
     flex: { flex: 1 },
 
-    // Header
-    header: {
-        flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-        paddingHorizontal: 8, paddingVertical: 12,
-        borderBottomWidth: 1, borderBottomColor: '#E4E6EB',
-        backgroundColor: '#fff',
-    },
-    backBtn: { padding: 4 },
-    headerTitle: { fontSize: 17, fontWeight: '700', color: '#050505' },
-
     center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
     list: { paddingHorizontal: 12, paddingVertical: 12, gap: 2 },
     empty: { paddingTop: 80, alignItems: 'center', gap: 4 },
@@ -400,36 +381,32 @@ const styles = StyleSheet.create({
     // Bubbles
     bubbleRow: {
         flexDirection: 'row',
-        alignItems: 'flex-end',
+        alignItems: 'flex-start',
         marginBottom: 2,
     },
     bubbleRowMine: { flexDirection: 'row-reverse' },
 
-    bubbleAvatar: {
-        width: 28, height: 28, borderRadius: 14,
-        backgroundColor: BRAND,
-        justifyContent: 'center', alignItems: 'center',
-        marginRight: 6, flexShrink: 0,
-    },
-    bubbleAvatarText: { color: '#fff', fontSize: 10, fontWeight: '700' },
     bubbleAvatarSpacer: { width: 28, marginRight: 6 },
+
+    commentAvatar: { backgroundColor: BRAND, justifyContent: 'center', alignItems: 'center' },
+    commentAvatarText: { color: '#fff', fontWeight: '700' },
 
     bubbleCol: { maxWidth: '72%', alignItems: 'flex-start' },
     bubbleColMine: { alignItems: 'flex-end' },
 
-    bubbleName: { fontSize: 11, color: '#65676B', marginBottom: 2, marginLeft: 10 },
+    bubbleName: { fontSize: 12, color: '#65676B', fontWeight: '600', marginBottom: 3 },
 
     bubble: {
         paddingHorizontal: 14, paddingVertical: 9,
-        borderRadius: 20, maxWidth: '100%',
+        borderRadius: 18, maxWidth: '100%',
     },
     bubbleMine: {
         backgroundColor: BUBBLE_MINE,
-        borderBottomRightRadius: 4,
+        borderTopRightRadius: 4,
     },
     bubbleOther: {
         backgroundColor: BUBBLE_OTHER,
-        borderBottomLeftRadius: 4,
+        borderTopLeftRadius: 4,
     },
     bubbleText: { fontSize: 15, color: '#050505', lineHeight: 20 },
     bubbleTextMine: { color: '#fff' },
