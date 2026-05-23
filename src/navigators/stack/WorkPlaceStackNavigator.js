@@ -5,6 +5,7 @@ import WorkplaceFileViewerScreen from "../../screens/workplace/WorkplaceFileView
 import CommentScreen from "../../screens/workplace/CommentScreen";
 import ComposePostScreen from "../../screens/workplace/ComposePostScreen";
 import AnnouncementsScreen from "../../screens/workplace/AnnouncementsScreen";
+import ProfileScreen from "../../screens/workplace/ProfileScreen";
 
 const Stack = createNativeStackNavigator();
 
@@ -16,6 +17,7 @@ export default function WorkPlaceStackNavigator() {
       <Stack.Screen name="FeedCommentScreen" component={CommentScreen} />
       <Stack.Screen name="ComposePostScreen" component={ComposePostScreen} />
       <Stack.Screen name="AnnouncementsScreen" component={AnnouncementsScreen} />
+      <Stack.Screen name="WorkplaceProfileScreen" component={ProfileScreen} />
     </Stack.Navigator>
   );
 }
