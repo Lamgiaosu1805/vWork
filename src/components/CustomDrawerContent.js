@@ -18,9 +18,9 @@ import { unregisterFcmTokenFromServer } from "../utils/notifications/fcmConfig";
 import { getPermissions } from "../helpers/permissions";
 
 export default function CustomDrawerContent(props) {
-    const { navigation, state } = props;
-    const user = useSelector((state) => state.auth.user);
-    const { showCRM } = getPermissions(user);
+  const { navigation, state } = props;
+  const user = useSelector((state) => state.auth.user);
+  const { showCRM } = getPermissions(user);
 
   const [avatarBase64, setAvatarBase64] = useState(null);
   const [uploading, setUploading] = useState(false);
@@ -49,7 +49,7 @@ export default function CustomDrawerContent(props) {
     };
 
     fetchAvatar();
-  }, [user?.avatar]);
+  }, [user?.avatar, user?.avatarUpdatedAt]);
 
   const handlePickAvatar = async () => {
     // Xin quyền truy cập thư viện ảnh
@@ -108,13 +108,12 @@ export default function CustomDrawerContent(props) {
     navigation.navigate(routeName);
   };
 
-
-    const handleLogout = async () => {
-        await unregisterFcmTokenFromServer();
-        await AsyncStorage.removeItem("lastStack");
-        await AsyncStorage.removeItem("accessToken");
-        navigation.replace("LoginScreen");
-    };
+  const handleLogout = async () => {
+    await unregisterFcmTokenFromServer();
+    await AsyncStorage.removeItem("lastStack");
+    await AsyncStorage.removeItem("accessToken");
+    navigation.replace("LoginScreen");
+  };
 
   const handleChangePassword = async () => {
     navigation.closeDrawer?.();
@@ -141,7 +140,6 @@ export default function CustomDrawerContent(props) {
           {label}
         </Text>
       </TouchableOpacity>
-  
     );
   };
 
