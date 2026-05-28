@@ -16,6 +16,7 @@ import { useSelector } from "react-redux";
 import api from "../api/axiosInstance";
 import { unregisterFcmTokenFromServer } from "../utils/notifications/fcmConfig";
 import { getPermissions } from "../helpers/permissions";
+import { disconnectChatSocket } from "../libs/chatSocket";
 
 export default function CustomDrawerContent(props) {
   const { navigation, state } = props;
@@ -112,6 +113,8 @@ export default function CustomDrawerContent(props) {
     await unregisterFcmTokenFromServer();
     await AsyncStorage.removeItem("lastStack");
     await AsyncStorage.removeItem("accessToken");
+    await AsyncStorage.removeItem("refreshToken");
+    disconnectChatSocket();
     navigation.replace("LoginScreen");
   };
 
