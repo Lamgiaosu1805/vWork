@@ -77,7 +77,13 @@ export const AuthImage = ({ filename, style, resizeMode = "cover" }) => {
 };
 
 // ── AuthAvatar ────────────────────────────────────────────────────────────────
-export const AuthAvatar = ({ filename, name, size = 40, cacheKey }) => {
+export const AuthAvatar = ({
+  filename,
+  name,
+  size = 40,
+  cacheKey,
+  isFlex = false,
+}) => {
   const [uri, setUri] = useState(null);
   useEffect(() => {
     if (!filename) return;
@@ -94,12 +100,19 @@ export const AuthAvatar = ({ filename, name, size = 40, cacheKey }) => {
       cancelled = true;
     };
   }, [filename, cacheKey]);
-  const sz = {
-    width: size,
-    height: size,
-    borderRadius: size / 2,
-    marginRight: 7,
-  };
+  const sz = isFlex
+    ? {
+        width: "100%",
+        height: "100%",
+        borderRadius: 0,
+        marginRight: 0,
+      }
+    : {
+        width: size,
+        height: size,
+        borderRadius: size / 2,
+        marginRight: 7,
+      };
   if (uri) return <Image source={{ uri }} style={sz} resizeMode="cover" />;
   return (
     <View style={[s.avatarFallback, sz]}>

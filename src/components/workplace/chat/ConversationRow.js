@@ -1,8 +1,10 @@
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import React from "react";
+import { RectButton, Swipeable } from "react-native-gesture-handler";
 import { Ionicons } from "@expo/vector-icons";
-import { isCurrentUser } from "../../../utils/chatUtils";
+import { isCurrentUser, resolveConversationId, resolveGroupAvatars } from "../../../utils/chatUtils";
 import dayjs from "dayjs";
+import { AuthAvatar } from "../../PostCard";
 
 const resolveLastMessageText = (conversation) => {
   const lastMessage = conversation?.lastMessage ?? null;
@@ -71,11 +73,33 @@ const getConversationPreview = (
   return senderName ? `${senderName}: ${messageText}` : messageText;
 };
 
+const renderAvatarCell = (avatar) => {
+  if (!avatar) return null;
+
+  if (avatar.filename) {
+    return (
+      <AuthAvatar
+        filename={avatar.filename}
+        name={avatar.name}
+        cacheKey={avatar.cacheKey}
+        isFlex
+      />
+    );
+  }
+
+  return (
+    <View style={styles.groupAvatarFallback}>
+      <Ionicons name="person" size={12} color="#fff" />
+    </View>
+  );
+};
+
 const ConversationRow = ({
   item,
   currentUserKeys,
   currentUserInfoId,
   onPress,
+  onDelete,
 }) => {
   const preview = getConversationPreview(
     item,
@@ -89,36 +113,109 @@ const ConversationRow = ({
     currentUserKeys,
   );
 
-  return (
-    <TouchableOpacity style={styles.row} activeOpacity={0.85} onPress={onPress}>
-      <View style={styles.avatarWrap}>
-        <Ionicons name="chatbubbles" size={24} color="#0F766E" />
-      </View>
+  const groupAvatars =
+    item?.type === "group" && !item?.avatar ? resolveGroupAvatars(item) : [];
+  const count = groupAvatars.length;
 
-      <View style={styles.rowBody}>
-        <View style={styles.rowTop}>
-          <Text
-            style={[styles.title, isUnread && styles.titleUnread]}
-            numberOfLines={1}
-          >
-            {item.display_name ?? "Cuộc trò chuyện"}
-          </Text>
-          <View style={styles.timeWrap}>
-            {isUnread && <View style={styles.unreadDot} />}
-            <Text style={styles.time}>{time}</Text>
+  return (
+    <Swipeable
+      renderRightActions={() => (
+        <RectButton
+          style={styles.deleteButton}
+          onPress={() => onDelete?.(String(resolveConversationId(item)))}
+        >
+          <Text style={styles.deleteButtonText}>Xoá</Text>
+        </RectButton>
+      )}
+    >
+      <TouchableOpacity
+        style={styles.row}
+        activeOpacity={0.85}
+        onPress={onPress}
+      >
+        {item.avatar ? (
+          <AuthAvatar
+            filename={item.avatar}
+            name={item.full_name}
+            size={46}
+            cacheKey={item.updatedAt}
+          />
+        ) : groupAvatars.length > 0 ? (
+          <View style={styles.groupAvatarWrap}>
+            {count === 1 && (
+              <View style={styles.fullCell}>
+                {renderAvatarCell(groupAvatars[0])}
+              </View>
+            )}
+
+            {count === 2 && (
+              <>
+                <View style={styles.halfCell}>
+                  {renderAvatarCell(groupAvatars[0])}
+                </View>
+                <View style={styles.halfCell}>
+                  {renderAvatarCell(groupAvatars[1])}
+                </View>
+              </>
+            )}
+
+            {count === 3 && (
+              <>
+                <View style={styles.largeCell}>
+                  {renderAvatarCell(groupAvatars[0])}
+                </View>
+                <View style={styles.stackCell}>
+                  <View style={styles.stackHalf}>
+                    {renderAvatarCell(groupAvatars[1])}
+                  </View>
+                  <View style={styles.stackHalf}>
+                    {renderAvatarCell(groupAvatars[2])}
+                  </View>
+                </View>
+              </>
+            )}
+
+            {count >= 4 && (
+              <>
+                {groupAvatars.slice(0, 4).map((avatar) => (
+                  <View key={avatar.id} style={styles.quarterCell}>
+                    {renderAvatarCell(avatar)}
+                  </View>
+                ))}
+              </>
+            )}
+          </View>
+        ) : (
+          <View style={styles.avatarWrap}>
+            <Ionicons name="person" size={24} color="#fff" />
+          </View>
+        )}
+
+        <View style={styles.rowBody}>
+          <View style={styles.rowTop}>
+            <Text
+              style={[styles.title, isUnread && styles.titleUnread]}
+              numberOfLines={1}
+            >
+              {item.display_name ?? "Cuộc trò chuyện"}
+            </Text>
+            <View style={styles.timeWrap}>
+              {isUnread && <View style={styles.unreadDot} />}
+              <Text style={styles.time}>{time}</Text>
+            </View>
+          </View>
+
+          <View style={styles.rowBottom}>
+            <Text
+              style={[styles.preview, isUnread && styles.previewUnread]}
+              numberOfLines={1}
+            >
+              {preview}
+            </Text>
           </View>
         </View>
-
-        <View style={styles.rowBottom}>
-          <Text
-            style={[styles.preview, isUnread && styles.previewUnread]}
-            numberOfLines={1}
-          >
-            {preview}
-          </Text>
-        </View>
-      </View>
-    </TouchableOpacity>
+      </TouchableOpacity>
+    </Swipeable>
   );
 };
 
@@ -142,10 +239,55 @@ const styles = StyleSheet.create({
     width: 46,
     height: 46,
     borderRadius: 23,
-    backgroundColor: "#E6FFFB",
+    backgroundColor: "#9CA3AF",
     alignItems: "center",
     justifyContent: "center",
     marginRight: 12,
+  },
+  groupAvatarWrap: {
+    width: 46,
+    height: 46,
+    marginRight: 12,
+    borderRadius: 23,
+    overflow: "hidden",
+    backgroundColor: "#E5E7EB",
+    flexDirection: "row",
+    flexWrap: "wrap",
+  },
+  fullCell: {
+    width: "100%",
+    height: "100%",
+    overflow: "hidden",
+  },
+  halfCell: {
+    width: "50%",
+    height: "100%",
+    overflow: "hidden",
+  },
+  largeCell: {
+    width: "50%",
+    height: "100%",
+    overflow: "hidden",
+  },
+  stackCell: {
+    width: "50%",
+    height: "100%",
+  },
+  stackHalf: {
+    width: "100%",
+    height: "50%",
+    overflow: "hidden",
+  },
+  quarterCell: {
+    width: "50%",
+    height: "50%",
+    overflow: "hidden",
+  },
+  groupAvatarFallback: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#9CA3AF",
   },
   rowBody: { flex: 1 },
   rowTop: {
@@ -166,4 +308,14 @@ const styles = StyleSheet.create({
   time: { color: "#6B7280", fontSize: 12 },
   preview: { flex: 1, color: "#6B7280", fontSize: 14 },
   previewUnread: { color: "#111827", fontWeight: "600" },
+  deleteButton: {
+    width: 80,
+    backgroundColor: "#DC2626",
+    justifyContent: "center",
+    alignItems: "center",
+    borderRadius: 20,
+    marginBottom: 12,
+    marginRight: 12,
+  },
+  deleteButtonText: { color: "#FFF", fontWeight: "700" },
 });

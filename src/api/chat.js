@@ -32,6 +32,19 @@ const chatApi = {
         requiresAuth: true,
       },
     ),
+
+  updateGroupConversationName: (conversationId, payload) =>
+    api.patch(`/chat/conversations/${conversationId}/group-name`, payload, {
+      requiresAuth: true,
+    }),
+
+  deleteMessage: (conversationId, messageId) =>
+    api.delete(`/chat/conversations/${conversationId}/messages/${messageId}`, {
+      requiresAuth: true,
+    }),
+
+  deleteConversation: (conversationId) =>
+    api.delete(`/chat/conversations/${conversationId}`, { requiresAuth: true }),
 };
 
 export default chatApi;

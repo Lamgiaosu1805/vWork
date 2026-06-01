@@ -218,6 +218,28 @@ const chatSlice = createSlice({
         },
       );
     },
+    deleteMessage: (state, action) => {
+      const { conversationId, messageId } = action.payload ?? {};
+      if (!conversationId || !messageId) return;
+
+      const current = state.messagesByConversationId[conversationId] ?? [];
+      state.messagesByConversationId[conversationId] = current.filter((m) => {
+        const id = m?._id ?? m?.id ?? null;
+        const clientId = m?.clientMessageId ?? null;
+        return !(String(id) === String(messageId) || String(clientId) === String(messageId));
+      });
+    },
+    deleteConversation: (state, action) => {
+      const conversationId = action.payload;
+      if (!conversationId) return;
+      state.conversations = state.conversations.filter(
+        (c) => String(resolveConversationId(c)) !== String(conversationId),
+      );
+      // remove messages cache
+      if (state.messagesByConversationId[conversationId]) {
+        delete state.messagesByConversationId[conversationId];
+      }
+    },
     clearActiveConversationId: (state) => {
       state.activeConversationId = null;
     },
@@ -235,6 +257,8 @@ export const {
   appendMessage,
   updateMessageStatus,
   markMessagesSeen,
+  deleteMessage,
+  deleteConversation,
   clearActiveConversationId,
   clearChatState,
 } = chatSlice.actions;

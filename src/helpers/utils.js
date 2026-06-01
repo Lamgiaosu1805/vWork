@@ -1,7 +1,7 @@
 const apiLive = "https://vWork.vnfite.com.vn";
 const apiTest = "https://vWork-uat.vnfite.com.vn";
 
-const BASE_URL = "http://192.168.100.54:2345";
+const BASE_URL = apiLive;
 
 const renderMaritalStatus = (number) => {
     if (number == 0) {

@@ -6,6 +6,9 @@ import {
   upsertConversation,
   appendMessage,
   markMessagesSeen,
+  deleteConversation,
+  deleteMessage,
+  clearActiveConversationId,
 } from "../redux/slice/chatSlice";
 
 let chatSocket = null;
@@ -33,6 +36,8 @@ const attachGlobalHandlers = () => {
   chatSocket.off("conversation:upserted");
   chatSocket.off("message:new");
   chatSocket.off("message:seen");
+  chatSocket.off("conversation:deleted");
+  chatSocket.off("message:deleted");
 
   chatSocket.on("conversation:upserted", (payload) => {
     const conversation = payload?.conversation ?? payload?.data ?? payload;
@@ -87,6 +92,23 @@ const attachGlobalHandlers = () => {
     globalDispatch(
       markMessagesSeen({ conversationId, userInfoId: payload?.userInfoId }),
     );
+  });
+
+  chatSocket.on("conversation:deleted", (payload) => {
+    const conversationId =
+      payload?.conversationId ?? payload?.data?.conversationId ?? null;
+    if (!conversationId || !globalDispatch) return;
+    globalDispatch(deleteConversation(conversationId));
+    // if the deleted conversation was active, clear it
+    globalDispatch(clearActiveConversationId());
+  });
+
+  chatSocket.on("message:deleted", (payload) => {
+    const conversationId =
+      payload?.conversationId ?? payload?.data?.conversationId ?? null;
+    const messageId = payload?.messageId ?? payload?.data?.messageId ?? null;
+    if (!conversationId || !messageId || !globalDispatch) return;
+    globalDispatch(deleteMessage({ conversationId, messageId }));
   });
 };
 

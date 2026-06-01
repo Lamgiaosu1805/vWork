@@ -108,6 +108,7 @@ const CreateCustomerBottomSheet = ({ translateCreateCustomerY }) => {
   return (
     <BottomSheet onClose={handleClose} translateY={translateCreateCustomerY}>
       <ScrollView
+        bounces={false}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
       >

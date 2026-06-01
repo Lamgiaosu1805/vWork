@@ -1,9 +1,9 @@
-import React, { useCallback, useMemo } from "react";
+import React, { useCallback, useMemo, useRef } from "react";
 import {
   ActivityIndicator,
+  Alert,
   FlatList,
   RefreshControl,
-  SafeAreaView,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -32,6 +32,9 @@ import {
   resolveConversationId,
 } from "../../../utils/chatUtils";
 import ConversationRow from "../../../components/workplace/chat/ConversationRow";
+import { HEIGHT_SHEET } from "../../crm/CustomerScreen";
+import { useSharedValue, withTiming } from "react-native-reanimated";
+import NewConversationBottomSheet from "../../../components/workplace/chat/NewConversationBottomSheet";
 
 dayjs.extend(relativeTime);
 dayjs.locale("vi");
@@ -47,6 +50,106 @@ export default function ChatListScreen({ navigation }) {
     () => user?._id ?? user?.id ?? null,
     [user],
   );
+  const translateNewConversation = useSharedValue(HEIGHT_SHEET);
+  const flatListRef = useRef(null);
+
+  const handleSelectConversation = useCallback(
+    async (item) => {
+      try {
+        // Group creation flow from NewConversationBottomSheet
+        if (item?.type === "group" || Array.isArray(item?.members)) {
+          const members = item.members;
+          const memberIds = members
+            .map((m) => m.id_account?._id)
+            .filter(Boolean);
+
+          if (!memberIds.length) {
+            Toast.show({ type: "error", text1: "Không có thành viên" });
+            return;
+          }
+
+          const res = await chatApi.createGroupConversation({
+            name: item.name,
+            members: memberIds,
+          });
+          const conversation = res?.data?.data;
+          const conversationId = resolveConversationId(conversation);
+
+          if (!conversationId) {
+            Toast.show({
+              type: "error",
+              text1: "Không thể mở cuộc trò chuyện",
+            });
+            return;
+          }
+
+          navigation.navigate("ChatRoomScreen", {
+            conversationId,
+            conversation,
+          });
+          return;
+        }
+
+        // Private conversation flow
+        const receiverId = item?.id_account?._id;
+
+        if (!receiverId) {
+          Toast.show({ type: "error", text1: "Không tìm thấy người nhận" });
+          return;
+        }
+
+        const res = await chatApi.createPrivateConversation({
+          receiver_id: receiverId,
+        });
+        const conversation = res?.data?.data;
+        const conversationId = resolveConversationId(conversation);
+
+        if (!conversationId) {
+          Toast.show({ type: "error", text1: "Không thể mở cuộc trò chuyện" });
+          return;
+        }
+
+        navigation.navigate("ChatRoomScreen", { conversationId, conversation });
+      } catch (error) {
+        Toast.show({
+          type: "error",
+          text1:
+            error?.response?.data?.message ??
+            error?.message ??
+            "Không thể tạo cuộc trò chuyện",
+        });
+      }
+    },
+    [navigation],
+  );
+
+  const handleDeleteConversation = useCallback(
+    (conversationId) => {
+      if (!conversationId) return;
+      const doDelete = async () => {
+        try {
+          await chatApi.deleteConversation(conversationId);
+          dispatch({ type: "chat/deleteConversation", payload: conversationId });
+          Toast.show({ type: "success", text1: "Đã xoá cuộc trò chuyện" });
+        } catch (error) {
+          Toast.show({
+            type: "error",
+            text1:
+              error?.response?.data?.message ?? error?.message ?? "Xoá thất bại",
+          });
+        }
+      };
+
+      Alert.alert("Xoá cuộc trò chuyện", "Bạn có chắc muốn xoá cuộc trò chuyện này?", [
+        { text: "Huỷ", style: "cancel" },
+        { text: "Xoá", style: "destructive", onPress: doDelete },
+      ]);
+    },
+    [dispatch],
+  );
+
+  const openNewConversattion = () =>
+    (translateNewConversation.value = withTiming(0));
 
   const loadConversations = useCallback(async () => {
     dispatch(setLoadingConversations(true));
@@ -66,12 +169,16 @@ export default function ChatListScreen({ navigation }) {
     } finally {
       dispatch(setLoadingConversations(false));
     }
-  }, [dispatch]);
+  }, []);
 
   useFocusEffect(
     useCallback(() => {
       let active = true;
       let socket = null;
+      
+      requestAnimationFrame(() => {
+        flatListRef.current?.scrollToOffset?.({ offset: 0, animated: false });
+      });
 
       const handleConversationUpserted = (payload) => {
         const conversation = payload?.conversation ?? payload?.data ?? payload;
@@ -155,18 +262,19 @@ export default function ChatListScreen({ navigation }) {
             conversation: item,
           })
         }
+        onDelete={handleDeleteConversation}
       />
     );
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={styles.container}>
       <Header
         title="Tin nhắn"
         leftIconName="menu"
         onLeftPress={() => openDrawer()}
-        rightIconName="reload"
-        onRightPress={loadConversations}
+        rightIconName="chatbubbles"
+        onRightPress={openNewConversattion}
       />
 
       {loading && conversations.length === 0 ? (
@@ -175,6 +283,7 @@ export default function ChatListScreen({ navigation }) {
         </View>
       ) : (
         <FlatList
+          ref={flatListRef}
           data={conversations}
           keyExtractor={(item, index) =>
             String(resolveConversationId(item) ?? index)
@@ -205,7 +314,12 @@ export default function ChatListScreen({ navigation }) {
           }
         />
       )}
-    </SafeAreaView>
+
+      <NewConversationBottomSheet
+        translateNewConversation={translateNewConversation}
+        onSelect={handleSelectConversation}
+      />
+    </View>
   );
 }
 

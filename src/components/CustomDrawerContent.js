@@ -50,7 +50,7 @@ export default function CustomDrawerContent(props) {
     };
 
     fetchAvatar();
-  }, [user?.avatar, user?.avatarUpdatedAt]);
+  }, [user?.avatar, user?.updatedAt]);
 
   const handlePickAvatar = async () => {
     // Xin quyền truy cập thư viện ảnh

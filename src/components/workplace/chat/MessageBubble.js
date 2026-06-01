@@ -1,4 +1,4 @@
-import { StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import React, { useMemo } from "react";
 import { resolveMessageText } from "../../../utils/chatUtils";
 import dayjs from "dayjs";
@@ -8,10 +8,11 @@ const resolveMessageTime = (message) => {
   return value ? dayjs(value).format("HH:mm") : "";
 };
 
-const MessageBubble = ({ item, isMine }) => {
+const MessageBubble = ({ item, isMine, onLongPress }) => {
   const statusText = useMemo(() => {
     if (!isMine) return "";
     if (item?.status === "failed") return "Gửi thất bại";
+    if (item?.status === "queued") return "Chờ gửi";
     if (item?.status === "sending") return "Đang gửi";
     if ((item?.seenBy?.length ?? 0) > 1 || item?.status === "seen")
       return "Đã xem";
@@ -19,11 +20,13 @@ const MessageBubble = ({ item, isMine }) => {
   }, [item, isMine]);
 
   return (
-    <View
+    <TouchableOpacity
+      activeOpacity={item.isDeleted ? 1 : 0.7}
       style={[
         styles.messageRow,
         isMine ? styles.messageRowMine : styles.messageRowOther,
       ]}
+      onLongPress={item.isDeleted ? undefined : onLongPress}
     >
       <View
         style={[styles.bubble, isMine ? styles.bubbleMine : styles.bubbleOther]}
@@ -34,7 +37,9 @@ const MessageBubble = ({ item, isMine }) => {
             isMine ? styles.messageTextMine : styles.messageTextOther,
           ]}
         >
-          {resolveMessageText(item)}
+          {item.isDeleted
+            ? "Tin nhắn đã được thu hồi"
+            : resolveMessageText(item)}
         </Text>
 
         <View style={styles.metaRow}>
@@ -58,7 +63,7 @@ const MessageBubble = ({ item, isMine }) => {
           )}
         </View>
       </View>
-    </View>
+    </TouchableOpacity>
   );
 };
 

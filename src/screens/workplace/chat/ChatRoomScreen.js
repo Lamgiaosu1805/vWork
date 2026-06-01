@@ -4,13 +4,16 @@ import {
   FlatList,
   KeyboardAvoidingView,
   Platform,
-  SafeAreaView,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
   View,
+  Alert,
+  ActionSheetIOS,
+  Clipboard,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect } from "@react-navigation/native";
 import { useDispatch, useSelector } from "react-redux";
@@ -19,15 +22,10 @@ import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
 import "dayjs/locale/vi";
 
-import {
-  connectChatSocket,
-  getChatSocket,
-  isChatSocketConnected,
-} from "../../../libs/chatSocket";
+import { connectChatSocket, getChatSocket } from "../../../libs/chatSocket";
 import {
   appendMessage,
   clearActiveConversationId,
-  markMessagesSeen,
   setActiveConversationId,
   setLoadingMessages,
   setMessages,
@@ -35,82 +33,46 @@ import {
   updateMessageStatus,
 } from "../../../redux/slice/chatSlice";
 import {
+  buildTimelineItems,
   getCurrentUserKeys,
   isCurrentUser,
+  makeClientMessageId,
   resolveConversationId,
-  resolveMessageId,
+  resolveConversationTitle,
+  resolveConversationAccountId,
+  resolveMessageSender,
+  resolveGroupAvatars,
 } from "../../../utils/chatUtils";
 import chatApi from "../../../api/chat";
 import MessageBubble from "../../../components/workplace/chat/MessageBubble";
 import DateSeparator from "./DateSeparator";
+import { AuthAvatar } from "../../../components/PostCard";
 
 dayjs.extend(relativeTime);
 dayjs.locale("vi");
 
-const resolveConversationTitle = (conversation, currentUserKeys) => {
-  if (!conversation) return "Cuộc trò chuyện";
+const LIMIT = 15;
 
-  if (conversation?.display_name) return conversation.display_name;
-  if (conversation?.name) return conversation.name;
+const renderAvatarCell = (avatar) => {
+  if (!avatar) return null;
 
-  return "Cuộc trò chuyện";
-};
-
-const resolveMessageDayKey = (message) => {
-  const value = message?.createdAt;
-  return value ? dayjs(value).format("YYYY-MM-DD") : null;
-};
-
-const resolveDayLabel = (dateValue) => {
-  if (!dateValue) return "";
-
-  const messageDate = dayjs(dateValue);
-  const today = dayjs().startOf("day");
-  const diffDays = today.diff(messageDate.startOf("day"), "day");
-
-  if (diffDays === 0) return "Hôm nay";
-  if (diffDays === 1) return "Hôm qua";
-  if (diffDays === 2) return "Hôm kia";
-  if (diffDays > 2 && diffDays < 7) {
-    const weekday = messageDate.day();
-    const labels = ["CN", "TH 2", "TH 3", "TH 4", "TH 5", "TH 6", "TH 7"];
-    return labels[weekday] ?? messageDate.format("DD/MM/YYYY");
+  if (avatar.filename) {
+    return (
+      <AuthAvatar
+        filename={avatar.filename}
+        name={avatar.name}
+        cacheKey={avatar.cacheKey}
+        isFlex
+      />
+    );
   }
 
-  return messageDate.format("DD/MM/YYYY");
+  return (
+    <View style={styles.groupAvatarFallback}>
+      <Ionicons name="person" size={12} color="#fff" />
+    </View>
+  );
 };
-
-const buildTimelineItems = (messages = []) => {
-  const timeline = [];
-  messages.forEach((message, index) => {
-    const dayKey = resolveMessageDayKey(message);
-    const dayLabel = resolveDayLabel(message?.createdAt);
-    const nextDayKey = resolveMessageDayKey(messages[index + 1]);
-
-    timeline.push({
-      type: "message",
-      key: resolveMessageId(message),
-      message,
-    });
-
-    if (dayKey && dayKey !== nextDayKey && dayLabel) {
-      timeline.push({
-        type: "separator",
-        key: `separator_${dayKey}`,
-        label: dayLabel,
-      });
-    }
-  });
-
-  return timeline;
-};
-
-const resolveMessageSender = (message) => message?.senderId ?? null;
-
-const makeClientMessageId = () =>
-  `local_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-
-const LIMIT = 15;
 
 export default function ChatRoomScreen({ route, navigation }) {
   const {
@@ -118,6 +80,7 @@ export default function ChatRoomScreen({ route, navigation }) {
     conversation: initialConversation,
   } = route.params ?? {};
   const dispatch = useDispatch();
+  const insets = useSafeAreaInsets();
   const user = useSelector((state) => state.auth.user);
   const accessToken = useSelector((state) => state.auth.accessToken);
   const chatState = useSelector((state) => state.chat);
@@ -132,6 +95,11 @@ export default function ChatRoomScreen({ route, navigation }) {
   const [conversation, setConversation] = useState(initialConversation ?? null);
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);
+  const groupAvatars =
+    conversation?.type === "group" && !conversation?.avatar
+      ? resolveGroupAvatars(conversation)
+      : [];
+  const count = groupAvatars.length;
 
   const conversationId = useMemo(
     () =>
@@ -156,6 +124,8 @@ export default function ChatRoomScreen({ route, navigation }) {
     }, 80);
   }, []);
 
+  console.log(messages);
+  
   const markSeen = useCallback(async () => {
     if (!conversationId) return;
 
@@ -205,6 +175,7 @@ export default function ChatRoomScreen({ route, navigation }) {
     dispatch(setLoadingMessages({ conversationId, loading: true }));
     try {
       const res = await chatApi.getMessages(conversationId, 1, LIMIT);
+
       const items = res?.data?.data ?? res?.data ?? [];
       dispatch(setMessages({ conversationId, messages: items }));
       scrollToBottom();
@@ -254,11 +225,153 @@ export default function ChatRoomScreen({ route, navigation }) {
     chatState.messagesByConversationId,
   ]);
 
+  const showDeleteConfirm = (msgId, _id) =>
+    Alert.alert(
+      "Thu hồi tin nhắn",
+      "Tin nhắn sẽ bị thu hồi với tất cả mọi người. Bạn có chắc không?",
+      [
+        { text: "Huỷ", style: "cancel" },
+        {
+          text: "Xoá",
+          style: "destructive",
+          onPress: async () => {
+            const messageId = _id ?? msgId;
+            try {
+              const socket = getChatSocket();
+
+              if (socket?.connected) {
+                socket.emit(
+                  "chat:deleteMessage",
+                  { conversationId, messageId },
+                  (response) => {
+                    if (!response?.ok) {
+                      Toast.show({
+                        type: "error",
+                        text1: response?.message ?? "Thu hồi thất bại",
+                      });
+                      return;
+                    }
+
+                    Toast.show({
+                      type: "success",
+                      text1: "Đã thu hồi tin nhắn",
+                    });
+                  },
+                );
+                return;
+              }
+
+              await chatApi.deleteMessage(conversationId, messageId);
+              dispatch(
+                deleteMessageAction({
+                  conversationId,
+                  messageId,
+                }),
+              );
+              Toast.show({ type: "success", text1: "Đã thu hồi tin nhắn" });
+            } catch (error) {
+              Toast.show({
+                type: "error",
+                text1:
+                  error?.response?.data?.message ??
+                  error?.message ??
+                  "Thu hồi thất bại",
+              });
+            }
+          },
+        },
+      ],
+    );
+
+  const handleCopy = async (content) => {
+    try {
+      const textToCopy = content ?? "";
+      if (!textToCopy) {
+        Toast.show({
+          type: "info",
+          text1: "Không có nội dung để sao chép",
+        });
+        return;
+      }
+      if (Platform.OS === "android" || Platform.OS === "ios") {
+        Clipboard.setString(textToCopy);
+        Toast.show({ type: "success", text1: "Đã sao chép" });
+      } else if (navigator?.clipboard?.writeText) {
+        await navigator.clipboard.writeText(textToCopy);
+        Toast.show({ type: "success", text1: "Đã sao chép" });
+      } else {
+        Toast.show({
+          type: "info",
+          text1: "Trình duyệt không hỗ trợ sao chép",
+        });
+      }
+    } catch (e) {
+      Toast.show({ type: "error", text1: "Sao chép thất bại" });
+    }
+  };
+
+  const handleMessageLongPress = useCallback(
+    (message) => {
+      if (!message) return;
+      const msgId =
+        message?._id ?? message?.id ?? message?.clientMessageId ?? null;
+      if (!msgId) {
+        Toast.show({ type: "error", text1: "Không thể thao tác tin nhắn này" });
+        return;
+      }
+
+      // Kiểm tra tin nhắn có phải của mình không
+      const sender = resolveMessageSender(message);
+      const isMine = isCurrentUser(currentUserKeys, sender);
+
+      // Kiểm tra có trong 1 tiếng không
+      const sentAt = message?.createdAt ? dayjs(message.createdAt) : null;
+      const canRecall =
+        isMine && sentAt ? dayjs().diff(sentAt, "minute") <= 60 : false;
+
+      if (Platform.OS === "ios" && ActionSheetIOS) {
+        const options = ["Sao chép"];
+        if (canRecall) options.push("Thu hồi");
+        options.push("Huỷ");
+
+        const cancelIndex = options.length - 1;
+        const destructiveIndex = canRecall ? 1 : -1;
+
+        ActionSheetIOS.showActionSheetWithOptions(
+          {
+            options,
+            destructiveButtonIndex: destructiveIndex,
+            cancelButtonIndex: cancelIndex,
+          },
+          (buttonIndex) => {
+            if (buttonIndex === 0) {
+              handleCopy(message.content);
+            } else if (canRecall && buttonIndex === 1) {
+              showDeleteConfirm(msgId, message._id);
+            }
+          },
+        );
+      } else {
+        const alertButtons = [{ text: "Sao chép", onPress: handleCopy }];
+        if (canRecall) {
+          alertButtons.push({
+            text: "Thu hồi",
+            style: "destructive",
+            onPress: showRecallConfirm,
+          });
+        }
+        alertButtons.push({ text: "Huỷ", style: "cancel" });
+
+        Alert.alert("Tuỳ chọn", null, alertButtons, { cancelable: true });
+      }
+    },
+    [conversationId, currentUserKeys, dispatch],
+  );
+
   useFocusEffect(
     useCallback(() => {
       if (!conversationId) return undefined;
 
-      let active = true;
       let socket = null;
 
       const joinRoom = () => {
@@ -269,121 +382,13 @@ export default function ChatRoomScreen({ route, navigation }) {
         }
       };
 
-      const handleConversationUpserted = (payload) => {
-        const item = payload?.conversation ?? payload?.data ?? payload;
-        if (!item) return;
-
-        dispatch(upsertConversation(item));
-        const payloadConversationId = resolveConversationId(item);
-        if (
-          payloadConversationId &&
-          String(payloadConversationId) === String(conversationId)
-        ) {
-          setConversation((prev) => ({ ...(prev ?? {}), ...item }));
-        }
-      };
-
-      const handleMessageNew = (payload) => {
-        const message =
-          payload?.message ??
-          payload?.data?.message ??
-          payload?.data ??
-          payload ??
-          null;
-        const payloadConversation =
-          payload?.conversation ?? payload?.data?.conversation ?? null;
-        const payloadConversationId =
-          resolveConversationId(payloadConversation) ??
-          message?.conversationId ??
-          payload?.conversationId ??
-          null;
-
-        if (
-          !payloadConversationId ||
-          String(payloadConversationId) !== String(conversationId)
-        )
-          return;
-
-        const foundClientMessageId =
-          payload?.clientMessageId ??
-          payload?.data?.clientMessageId ??
-          message?.clientMessageId ??
-          null;
-
-        const normalizedMessage = message?.conversationId
-          ? {
-              ...(message || {}),
-              ...(foundClientMessageId
-                ? { clientMessageId: foundClientMessageId }
-                : {}),
-            }
-          : {
-              ...message,
-              conversationId,
-              ...(foundClientMessageId
-                ? { clientMessageId: foundClientMessageId }
-                : {}),
-            };
-
-        dispatch(appendMessage({ conversationId, message: normalizedMessage }));
-        dispatch(
-          upsertConversation(
-            payloadConversation ?? {
-              _id: conversationId,
-              lastMessage: normalizedMessage,
-            },
-          ),
-        );
-
-        const sender = resolveMessageSender(normalizedMessage);
-        if (!isCurrentUser(currentUserKeys, sender)) {
-          markSeen();
-        }
-
-        scrollToBottom();
-      };
-
-      const handleMessageSeen = (payload) => {
-        const message =
-          payload?.message ??
-          payload?.data?.message ??
-          payload?.data ??
-          payload ??
-          null;
-        const payloadConversationId =
-          resolveConversationId(
-            payload?.conversation ?? payload?.data?.conversation ?? null,
-          ) ??
-          message?.conversationId ??
-          payload?.conversationId ??
-          null;
-
-        if (
-          !payloadConversationId ||
-          String(payloadConversationId) !== String(conversationId)
-        )
-          return;
-
-        dispatch(
-          markMessagesSeen({
-            conversationId,
-            userInfoId: payload?.userInfoId,
-          }),
-        );
-      };
-
       const bootstrap = async () => {
         dispatch(setActiveConversationId(conversationId));
         socket = await connectChatSocket(accessToken);
 
-        if (!active) return;
-
         if (socket) {
           socket.on("connect", joinRoom);
           socket.on("reconnect", joinRoom);
-          socket.on("conversation:upserted", handleConversationUpserted);
-          socket.on("message:new", handleMessageNew);
-          socket.on("message:seen", handleMessageSeen);
         }
 
         await Promise.all([loadConversationMeta(), loadMessages()]);
@@ -397,26 +402,20 @@ export default function ChatRoomScreen({ route, navigation }) {
       bootstrap();
 
       return () => {
-        active = false;
         if (socket) {
           socket.emit("chat:leave", { conversationId });
           socket.off("connect", joinRoom);
           socket.off("reconnect", joinRoom);
-          socket.off("conversation:upserted", handleConversationUpserted);
-          socket.off("message:new", handleMessageNew);
-          socket.off("message:seen", handleMessageSeen);
         }
         dispatch(clearActiveConversationId());
       };
     }, [
       accessToken,
       conversationId,
-      currentUserKeys,
       dispatch,
       loadConversationMeta,
       loadMessages,
       markSeen,
-      scrollToBottom,
     ]),
   );
 
@@ -519,15 +518,13 @@ export default function ChatRoomScreen({ route, navigation }) {
     }
   };
 
-  const title = resolveConversationTitle(conversation, currentUserKeys);
-
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={styles.container}>
       <KeyboardAvoidingView
         style={styles.body}
         behavior={Platform.OS === "ios" ? "padding" : "height"}
       >
-        <View style={styles.header}>
+        <View style={[styles.header, { paddingTop: insets.top }]}>
           <TouchableOpacity
             style={styles.backButton}
             onPress={() => navigation.goBack()}
@@ -535,24 +532,87 @@ export default function ChatRoomScreen({ route, navigation }) {
             <Ionicons name="chevron-back" size={24} color="#111827" />
           </TouchableOpacity>
 
-          <View style={styles.headerCenter}>
-            <Text style={styles.headerTitle} numberOfLines={1}>
-              {title}
-            </Text>
-            <Text style={styles.headerSubTitle} numberOfLines={1}>
-              {isChatSocketConnected()
-                ? "Đang kết nối realtime"
-                : "Dùng REST khi socket chưa sẵn sàng"}
-            </Text>
-          </View>
+          <TouchableOpacity
+            onPress={() =>
+              conversation?.type === "group"
+                ? navigation.navigate("GroupChatSettingsScreen", {
+                    conversationId,
+                    conversation,
+                  })
+                : navigation.navigate("WorkplaceProfileScreen", {
+                    accountId: resolveConversationAccountId(
+                      conversation,
+                      currentUserKeys,
+                    ),
+                  })
+            }
+            style={{ flexDirection: "row", alignItems: "center", gap: 8 }}
+            activeOpacity={0.85}
+          >
+            {conversation.avatar ? (
+              <AuthAvatar
+                filename={conversation.avatar}
+                name={conversation.full_name}
+                size={46}
+                cacheKey={conversation.updatedAt}
+              />
+            ) : groupAvatars.length > 0 ? (
+              <View style={styles.groupAvatarWrap}>
+                {count === 1 && (
+                  <View style={styles.fullCell}>
+                    {renderAvatarCell(groupAvatars[0])}
+                  </View>
+                )}
 
-          <View style={styles.headerStatus}>
-            <Ionicons
-              name={isChatSocketConnected() ? "radio" : "cloud-outline"}
-              size={18}
-              color="#0F766E"
-            />
-          </View>
+                {count === 2 && (
+                  <>
+                    <View style={styles.halfCell}>
+                      {renderAvatarCell(groupAvatars[0])}
+                    </View>
+                    <View style={styles.halfCell}>
+                      {renderAvatarCell(groupAvatars[1])}
+                    </View>
+                  </>
+                )}
+
+                {count === 3 && (
+                  <>
+                    <View style={styles.largeCell}>
+                      {renderAvatarCell(groupAvatars[0])}
+                    </View>
+                    <View style={styles.stackCell}>
+                      <View style={styles.stackHalf}>
+                        {renderAvatarCell(groupAvatars[1])}
+                      </View>
+                      <View style={styles.stackHalf}>
+                        {renderAvatarCell(groupAvatars[2])}
+                      </View>
+                    </View>
+                  </>
+                )}
+
+                {count >= 4 && (
+                  <>
+                    {groupAvatars.slice(0, 4).map((avatar) => (
+                      <View key={avatar.id} style={styles.quarterCell}>
+                        {renderAvatarCell(avatar)}
+                      </View>
+                    ))}
+                  </>
+                )}
+              </View>
+            ) : (
+              <View style={styles.avatarWrap}>
+                <Ionicons name="person" size={24} color="#fff" />
+              </View>
+            )}
+
+            <View style={styles.headerCenter}>
+              <Text style={styles.headerTitle} numberOfLines={1}>
+                {resolveConversationTitle(conversation, currentUserKeys)}
+              </Text>
+            </View>
+          </TouchableOpacity>
         </View>
 
         {loadingMessages && messages.length === 0 ? (
@@ -571,7 +631,13 @@ export default function ChatRoomScreen({ route, navigation }) {
 
               const sender = resolveMessageSender(item.message);
               const isMine = isCurrentUser(currentUserKeys, sender);
-              return <MessageBubble item={item.message} isMine={isMine} />;
+              return (
+                <MessageBubble
+                  item={item.message}
+                  isMine={isMine}
+                  onLongPress={() => handleMessageLongPress(item.message)}
+                />
+              );
             }}
             inverted
             onMomentumScrollBegin={() => {
@@ -629,7 +695,12 @@ export default function ChatRoomScreen({ route, navigation }) {
           />
         )}
 
-        <View style={styles.composer}>
+        <View
+          style={[
+            styles.composer,
+            { paddingBottom: Math.max(insets.bottom + 8, 12) },
+          ]}
+        >
           <View style={styles.inputWrap}>
             <TextInput
               value={text}
@@ -659,7 +730,7 @@ export default function ChatRoomScreen({ route, navigation }) {
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -668,13 +739,13 @@ const styles = StyleSheet.create({
   header: {
     minHeight: 64,
     paddingHorizontal: 12,
-    paddingTop: 40,
     paddingBottom: 10,
     flexDirection: "row",
     alignItems: "center",
     borderBottomWidth: 1,
     borderBottomColor: "#E5E7EB",
     backgroundColor: "#FFF",
+    gap: 12,
   },
   backButton: {
     width: 40,
@@ -682,17 +753,21 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#F3F4F6",
   },
-  headerCenter: { flex: 1, marginHorizontal: 12 },
+  headerCenter: { flex: 1 },
   headerTitle: { color: "#111827", fontSize: 17, fontWeight: "700" },
-  headerSubTitle: { marginTop: 2, color: "#6B7280", fontSize: 12 },
-  headerStatus: { width: 40, alignItems: "flex-end", justifyContent: "center" },
   body: { flex: 1 },
   loadingWrap: { flex: 1, alignItems: "center", justifyContent: "center" },
   messagesList: { paddingHorizontal: 12, paddingTop: 12, paddingBottom: 16 },
   emptyMessages: { flexGrow: 1, paddingHorizontal: 12, paddingTop: 12 },
-
+  avatarWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "#9CA3AF",
+    alignItems: "center",
+    justifyContent: "center",
+  },
   emptyState: {
     flex: 1,
     minHeight: 260,
@@ -755,5 +830,50 @@ const styles = StyleSheet.create({
   loadMoreText: {
     color: "#9CA3AF",
     fontSize: 12,
+  },
+  groupAvatarWrap: {
+    width: 46,
+    height: 46,
+    marginRight: 12,
+    borderRadius: 23,
+    overflow: "hidden",
+    backgroundColor: "#E5E7EB",
+    flexDirection: "row",
+    flexWrap: "wrap",
+  },
+  fullCell: {
+    width: "100%",
+    height: "100%",
+    overflow: "hidden",
+  },
+  halfCell: {
+    width: "50%",
+    height: "100%",
+    overflow: "hidden",
+  },
+  largeCell: {
+    width: "50%",
+    height: "100%",
+    overflow: "hidden",
+  },
+  stackCell: {
+    width: "50%",
+    height: "100%",
+  },
+  stackHalf: {
+    width: "100%",
+    height: "50%",
+    overflow: "hidden",
+  },
+  quarterCell: {
+    width: "50%",
+    height: "50%",
+    overflow: "hidden",
+  },
+  groupAvatarFallback: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#9CA3AF",
   },
 });
