@@ -90,6 +90,13 @@ export default function ExpandScreen({ navigation }) {
             <Text style={styles.sectionLabel}>Quản lý tổ chức</Text>
             <View style={styles.group}>
               <MenuItem
+                icon="paper-plane-outline"
+                label="Xử lý yêu cầu"
+                description="Xử lý các yêu cầu của nhân viên."
+                onPress={() => navigation.navigate('ApprovalRequestScreen')}
+              />
+              <View style={styles.divider} />
+              <MenuItem
                 icon="business"
                 label="Chi nhánh"
                 description="Danh sách và quản lý chi nhánh"

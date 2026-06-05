@@ -49,7 +49,8 @@
       "expo-asset",
       "expo-font",
       "@react-native-firebase/app",
-      "@react-native-firebase/messaging"
+      "@react-native-firebase/messaging",
+      "@react-native-community/datetimepicker"
     ],
     "extra": {
       "eas": {
