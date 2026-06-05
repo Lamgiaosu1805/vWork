@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   StyleSheet,
   ActivityIndicator,
+  Alert,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -161,7 +162,8 @@ export default function CustomDrawerContent(props) {
             }
             return;
           }
-          navigation.navigate(routeName);
+          // navigation.navigate(routeName);
+          Alert.alert(label, "Tính năng đang được phát triển", [{ text: "OK" }], { cancelable: true });
         }}
       >
         <Ionicons
