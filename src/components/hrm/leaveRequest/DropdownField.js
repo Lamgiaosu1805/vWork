@@ -33,7 +33,9 @@ const DropdownField = ({
         value={value}
         onChange={(item) => onChange(item.value)}
         renderRightIcon={() => (
-          <Ionicons name="chevron-down" size={16} color={"#9CA3AF"} />
+          <View pointerEvents="none">
+            <Ionicons name="chevron-down" size={16} color={"#9CA3AF"} />
+          </View>
         )}
       />
     </View>
