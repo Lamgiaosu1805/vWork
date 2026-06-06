@@ -1,5 +1,6 @@
 import {
   ActivityIndicator,
+  KeyboardAvoidingView,
   Platform,
   ScrollView,
   StyleSheet,
@@ -216,252 +217,266 @@ const AddRequestScreen = ({ navigation }) => {
   }, [isLateOrEarly, isForgot]);
 
   return (
-    <ScrollView
-      style={{ flex: 1, backgroundColor: "#F5F7FB" }}
-      showsVerticalScrollIndicator={false}
-    >
-      <SafeAreaView edges={[]}>
-        <Header
-          title="Tạo Đơn Giải Trình / Nghỉ Phép"
-          leftIconName="chevron-back-outline"
-          onLeftPress={() => navigation.goBack()}
-        />
-
-        {/* ── CALENDAR ── */}
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Chọn ngày trên lịch</Text>
-          <MiniCalendar
-            selectedDate={selectedDate}
-            startDate={isLongLeave ? startDate : selectedDate}
-            endDate={isLongLeave ? endDate : selectedDate}
-            hoverDate={hoverDate}
-            isRange={isLongLeave}
-            onDayPress={handleDayPress}
-            onDayHover={setHoverDate}
-          />
-        </View>
-
-        {/* ── FORM ── */}
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Tạo Đơn Giải Trình / Nghỉ Phép</Text>
-          <Text style={styles.cardSubtitle}>
-            Hệ thống đánh giá chống lạm dụng, phát sinh cảnh báo cuối vì phạm
-            công thời gian thực.
-          </Text>
-
-          {/* Loại đơn */}
-          <DropdownField
-            value={requestType.value}
-            onChange={(value) => {
-              const selected = REQUEST_TYPE_ITEMS.find(
-                (item) => item.value === value,
-              );
-
-              handleChangeType(selected);
-            }}
-            items={REQUEST_TYPE_ITEMS}
-            placeholder="Chọn loại đơn"
-          />
-          {/* Người duyệt */}
-          <DropdownField
-            label="Chọn người duyệt đơn"
-            required
-            value={reviewerId}
-            onChange={setReviewerId}
-            items={reviewerItems}
-            placeholder="-- Chọn người duyệt --"
+    <SafeAreaView style={{ flex: 1, backgroundColor: "#F5F7FB" }} edges={[]}>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+      >
+        <ScrollView
+          style={{ flex: 1, backgroundColor: "#F5F7FB" }}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ paddingBottom: 40 }}
+          keyboardShouldPersistTaps="handled"
+        >
+          <Header
+            title="Tạo Đơn Giải Trình / Nghỉ Phép"
+            leftIconName="chevron-back-outline"
+            onLeftPress={() => navigation.goBack()}
           />
 
-          {/* ── Date fields ── */}
-          {isLongLeave ? (
-            <>
-              <View style={styles.row}>
-                <DisplayBox
-                  label="Từ ngày"
-                  value={startDate ? dayjs(startDate).format("DD/MM/YYYY") : ""}
-                  placeholder="Chọn ngày bắt đầu"
-                />
-                <View style={{ width: 10 }} />
-                <DropdownField
-                  label="Ca bắt đầu"
-                  required
-                  value={fromPeriod}
-                  onChange={setFromPeriod}
-                  items={PERIOD_ITEMS}
-                />
-              </View>
-              <View style={styles.row}>
-                <DisplayBox
-                  label="Đến ngày"
-                  value={endDate ? dayjs(endDate).format("DD/MM/YYYY") : ""}
-                  placeholder="Chọn ngày kết thúc"
-                />
-                <View style={{ width: 10 }} />
-                <DropdownField
-                  label="Ca kết thúc"
-                  required
-                  value={toPeriod}
-                  onChange={setToPeriod}
-                  items={PERIOD_ITEMS}
-                />
-              </View>
-            </>
-          ) : (
-            <>
-              <View style={styles.row}>
-                <DisplayBox
-                  label="Ngày diễn ra sự việc"
-                  value={
-                    selectedDate ? dayjs(selectedDate).format("DD/MM/YYYY") : ""
-                  }
-                  placeholder="Chọn ngày trên lịch"
-                />
-                {isLeaveRequest && !isLateOrEarly && (
-                  <>
-                    <View style={{ width: 10 }} />
-                    <DropdownField
-                      label="Buổi nghỉ"
-                      required
-                      value={session}
-                      onChange={setSession}
-                      items={SESSION_ITEMS}
-                    />
-                  </>
-                )}
-              </View>
-
-              {isLateOrEarly && (
-                <View style={styles.row}>
-                  <DropdownField
-                    label="Ca làm việc"
-                    required
-                    value={shiftId}
-                    onChange={setShiftId}
-                    items={shiftItems}
-                    placeholder="-- Chọn ca làm việc --"
-                  />
-                  <View style={{ width: 10 }} />
-                  <View style={[styles.fieldGroup, { flex: 1 }]}>
-                    <Text style={styles.fieldLabel}>Số phút*</Text>
-                    <TextInput
-                      style={styles.input}
-                      value={minutes}
-                      onChangeText={setMinutes}
-                      keyboardType="numeric"
-                      placeholder="Nhập số phút"
-                      placeholderTextColor={"#9CA3AF"}
-                    />
-                  </View>
-                </View>
-              )}
-            </>
-          )}
-
-          {/* Quên chấm công */}
-          {isForgot && (
-            <>
-              <View style={styles.fieldGroup}>
-                <Text style={styles.fieldLabel}>Giờ chấm công dự kiến*</Text>
-                <TouchableOpacity
-                  style={styles.input}
-                  onPress={() => setShowTimePicker(true)}
-                >
-                  <Text
-                    style={{
-                      color: expectedTime ? "#2A2A2A" : "#9CA3AF",
-                      fontSize: 14,
-                      marginTop: 14,
-                    }}
-                  >
-                    {expectedTime
-                      ? dayjs(expectedTime).format("HH:mm")
-                      : "--:--"}
-                  </Text>
-                </TouchableOpacity>
-
-                <PickerTimeModal
-                  visible={showTimePicker}
-                  value={expectedTime || new Date()}
-                  onClose={() => setShowTimePicker(false)}
-                  onConfirm={setExpectedTime}
-                />
-              </View>
-              <DropdownField
-                label="Loại quên chấm công"
-                required
-                value={forgotType}
-                onChange={setForgotType}
-                items={FORGOT_TYPE_ITEMS}
-              />
-            </>
-          )}
-
-          {/* Hình thức nghỉ dài hạn */}
-          {isLongLeave && (
-            <View style={styles.fieldGroup}>
-              <Text style={styles.fieldLabel}>Hình thức nghỉ*</Text>
-              <View style={styles.radioRow}>
-                <TouchableOpacity
-                  style={styles.radioItem}
-                  onPress={() => setUsePaidLeave(true)}
-                >
-                  <View
-                    style={[styles.radio, usePaidLeave && styles.radioActive]}
-                  />
-                  <Text style={styles.radioLabel}>Nghỉ có phép</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.radioItem}
-                  onPress={() => setUsePaidLeave(false)}
-                >
-                  <View
-                    style={[styles.radio, !usePaidLeave && styles.radioActive]}
-                  />
-                  <Text style={styles.radioLabel}>Nghỉ không phép</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          )}
-
-          {/* Lý do */}
-          <View style={styles.fieldGroup}>
-            <Text style={styles.fieldLabel}>Lý do cụ thể</Text>
-            <TextInput
-              style={[styles.input, styles.textarea]}
-              value={reason}
-              onChangeText={setReason}
-              multiline
-              numberOfLines={4}
-              placeholder="Nhập lý do chi tiết giải trình..."
-              placeholderTextColor={"#9CA3AF"}
-              textAlignVertical="top"
+          {/* ── CALENDAR ── */}
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>Chọn ngày trên lịch</Text>
+            <MiniCalendar
+              selectedDate={selectedDate}
+              startDate={isLongLeave ? startDate : selectedDate}
+              endDate={isLongLeave ? endDate : selectedDate}
+              hoverDate={hoverDate}
+              isRange={isLongLeave}
+              onDayPress={handleDayPress}
+              onDayHover={setHoverDate}
             />
           </View>
 
-          {/* Submit */}
-          <TouchableOpacity
-            style={[
-              styles.submitBtn,
-              (isPending || isReviewerLoading) && { opacity: 0.6 },
-            ]}
-            onPress={handleSubmit}
-            disabled={isPending || isReviewerLoading}
-            activeOpacity={0.8}
-          >
-            {isPending ? (
-              <ActivityIndicator color="#fff" />
+          {/* ── FORM ── */}
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>Tạo Đơn Giải Trình / Nghỉ Phép</Text>
+            <Text style={styles.cardSubtitle}>
+              Hệ thống đánh giá chống lạm dụng, phát sinh cảnh báo cuối vì phạm
+              công thời gian thực.
+            </Text>
+
+            {/* Loại đơn */}
+            <DropdownField
+              value={requestType.value}
+              onChange={(value) => {
+                const selected = REQUEST_TYPE_ITEMS.find(
+                  (item) => item.value === value,
+                );
+
+                handleChangeType(selected);
+              }}
+              items={REQUEST_TYPE_ITEMS}
+              placeholder="Chọn loại đơn"
+            />
+            {/* Người duyệt */}
+            <DropdownField
+              label="Chọn người duyệt đơn"
+              required
+              value={reviewerId}
+              onChange={setReviewerId}
+              items={reviewerItems}
+              placeholder="-- Chọn người duyệt --"
+            />
+
+            {/* ── Date fields ── */}
+            {isLongLeave ? (
+              <>
+                <View style={styles.row}>
+                  <DisplayBox
+                    label="Từ ngày"
+                    value={
+                      startDate ? dayjs(startDate).format("DD/MM/YYYY") : ""
+                    }
+                    placeholder="Chọn ngày bắt đầu"
+                  />
+                  <View style={{ width: 10 }} />
+                  <DropdownField
+                    label="Ca bắt đầu"
+                    required
+                    value={fromPeriod}
+                    onChange={setFromPeriod}
+                    items={PERIOD_ITEMS}
+                  />
+                </View>
+                <View style={styles.row}>
+                  <DisplayBox
+                    label="Đến ngày"
+                    value={endDate ? dayjs(endDate).format("DD/MM/YYYY") : ""}
+                    placeholder="Chọn ngày kết thúc"
+                  />
+                  <View style={{ width: 10 }} />
+                  <DropdownField
+                    label="Ca kết thúc"
+                    required
+                    value={toPeriod}
+                    onChange={setToPeriod}
+                    items={PERIOD_ITEMS}
+                  />
+                </View>
+              </>
             ) : (
-              <View
-                style={{ flexDirection: "row", alignItems: "center", gap: 8 }}
-              >
-                <Ionicons name="send" size={16} color="#fff" />
-                <Text style={styles.submitBtnText}>Gửi yêu cầu duyệt</Text>
+              <>
+                <View style={styles.row}>
+                  <DisplayBox
+                    label="Ngày diễn ra sự việc"
+                    value={
+                      selectedDate
+                        ? dayjs(selectedDate).format("DD/MM/YYYY")
+                        : ""
+                    }
+                    placeholder="Chọn ngày trên lịch"
+                  />
+                  {isLeaveRequest && !isLateOrEarly && (
+                    <>
+                      <View style={{ width: 10 }} />
+                      <DropdownField
+                        label="Buổi nghỉ"
+                        required
+                        value={session}
+                        onChange={setSession}
+                        items={SESSION_ITEMS}
+                      />
+                    </>
+                  )}
+                </View>
+
+                {isLateOrEarly && (
+                  <View style={styles.row}>
+                    <DropdownField
+                      label="Ca làm việc"
+                      required
+                      value={shiftId}
+                      onChange={setShiftId}
+                      items={shiftItems}
+                      placeholder="-- Chọn ca làm việc --"
+                    />
+                    <View style={{ width: 10 }} />
+                    <View style={[styles.fieldGroup, { flex: 1 }]}>
+                      <Text style={styles.fieldLabel}>Số phút*</Text>
+                      <TextInput
+                        style={styles.input}
+                        value={minutes}
+                        onChangeText={setMinutes}
+                        keyboardType="numeric"
+                        placeholder="Nhập số phút"
+                        placeholderTextColor={"#9CA3AF"}
+                      />
+                    </View>
+                  </View>
+                )}
+              </>
+            )}
+
+            {/* Quên chấm công */}
+            {isForgot && (
+              <>
+                <View style={styles.fieldGroup}>
+                  <Text style={styles.fieldLabel}>Giờ chấm công dự kiến*</Text>
+                  <TouchableOpacity
+                    style={styles.input}
+                    onPress={() => setShowTimePicker(true)}
+                  >
+                    <Text
+                      style={{
+                        color: expectedTime ? "#2A2A2A" : "#9CA3AF",
+                        fontSize: 14,
+                        marginTop: 14,
+                      }}
+                    >
+                      {expectedTime
+                        ? dayjs(expectedTime).format("HH:mm")
+                        : "--:--"}
+                    </Text>
+                  </TouchableOpacity>
+
+                  <PickerTimeModal
+                    visible={showTimePicker}
+                    value={expectedTime || new Date()}
+                    onClose={() => setShowTimePicker(false)}
+                    onConfirm={setExpectedTime}
+                  />
+                </View>
+                <DropdownField
+                  label="Loại quên chấm công"
+                  required
+                  value={forgotType}
+                  onChange={setForgotType}
+                  items={FORGOT_TYPE_ITEMS}
+                />
+              </>
+            )}
+
+            {/* Hình thức nghỉ dài hạn */}
+            {isLongLeave && (
+              <View style={styles.fieldGroup}>
+                <Text style={styles.fieldLabel}>Hình thức nghỉ*</Text>
+                <View style={styles.radioRow}>
+                  <TouchableOpacity
+                    style={styles.radioItem}
+                    onPress={() => setUsePaidLeave(true)}
+                  >
+                    <View
+                      style={[styles.radio, usePaidLeave && styles.radioActive]}
+                    />
+                    <Text style={styles.radioLabel}>Nghỉ có phép</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.radioItem}
+                    onPress={() => setUsePaidLeave(false)}
+                  >
+                    <View
+                      style={[
+                        styles.radio,
+                        !usePaidLeave && styles.radioActive,
+                      ]}
+                    />
+                    <Text style={styles.radioLabel}>Nghỉ không phép</Text>
+                  </TouchableOpacity>
+                </View>
               </View>
             )}
-          </TouchableOpacity>
-        </View>
-      </SafeAreaView>
-    </ScrollView>
+
+            {/* Lý do */}
+            <View style={styles.fieldGroup}>
+              <Text style={styles.fieldLabel}>Lý do cụ thể</Text>
+              <TextInput
+                style={[styles.input, styles.textarea]}
+                value={reason}
+                onChangeText={setReason}
+                multiline
+                numberOfLines={4}
+                placeholder="Nhập lý do chi tiết giải trình..."
+                placeholderTextColor={"#9CA3AF"}
+                textAlignVertical="top"
+              />
+            </View>
+
+            {/* Submit */}
+            <TouchableOpacity
+              style={[
+                styles.submitBtn,
+                (isPending || isReviewerLoading) && { opacity: 0.6 },
+              ]}
+              onPress={handleSubmit}
+              disabled={isPending || isReviewerLoading}
+              activeOpacity={0.8}
+            >
+              {isPending ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <View
+                  style={{ flexDirection: "row", alignItems: "center", gap: 8 }}
+                >
+                  <Ionicons name="send" size={16} color="#fff" />
+                  <Text style={styles.submitBtnText}>Gửi yêu cầu duyệt</Text>
+                </View>
+              )}
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 };
 
