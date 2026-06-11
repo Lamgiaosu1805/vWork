@@ -17,6 +17,19 @@ const parseRevenueValue = (value) => {
   return Number(cleaned);
 };
 
+export const formatMoney = (value) => {
+  if (!value) return "---";
+
+  const number = Number(String(value).replaceAll(",", ""));
+
+  return `${number.toLocaleString("vi-VN")} đ`;
+};
+
+export const fmtDate = (d) =>
+  d
+    ? `${String(d.date()).padStart(2, "0")}/${String(d.month() + 1).padStart(2, "0")}/${d.year()}`
+    : null;
+
 export const formatRevenueCompact = (value, fractionDigits = 2) => {
   const revenue = parseRevenueValue(value);
   if (!Number.isFinite(revenue)) return "0";
