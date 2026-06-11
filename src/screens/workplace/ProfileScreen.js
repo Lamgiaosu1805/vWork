@@ -9,7 +9,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useSelector } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import * as ImagePicker from 'expo-image-picker';
 import * as ImageManipulator from 'expo-image-manipulator';
 import Toast from 'react-native-toast-message';
@@ -18,7 +18,7 @@ import dayjs from 'dayjs';
 import 'dayjs/locale/vi';
 
 import api from '../../api/axiosInstance';
-import { store } from '../../redux/store';
+import { updateUserFields } from '../../redux/slice/authSlice';
 import utils from '../../helpers/utils';
 import { canMgr } from '../../helpers/permissions';
 import Header from '../../components/Header';
@@ -34,6 +34,7 @@ const EMPLOYMENT_LABEL = { fulltime: 'Toàn thời gian', parttime: 'Bán thời
 // ── ProfileScreen ─────────────────────────────────────────────────────────────
 export default function ProfileScreen({ route, navigation }) {
     const { accountId } = route.params ?? {};
+    const dispatch = useDispatch();
     const currentUser = useSelector((s) => s.auth.user);
     const accessToken = useSelector((s) => s.auth.accessToken);
     const canManagePost = canMgr(currentUser, 'workplace');
@@ -138,6 +139,7 @@ export default function ProfileScreen({ route, navigation }) {
             const json = JSON.parse(response.data);
             if (json.avatar) {
                 setProfile((p) => p ? { ...p, avatar: json.avatar } : p);
+                dispatch(updateUserFields({ avatar: json.avatar, avatarUpdatedAt: Date.now() }));
                 Toast.show({ type: 'success', text1: 'Cập nhật ảnh đại diện thành công' });
             }
         } catch {
@@ -199,9 +201,10 @@ export default function ProfileScreen({ route, navigation }) {
                 <View style={styles.avatarRow}>
                     <View style={styles.avatarWrap}>
                         <AuthAvatar
-                            filename={isSelf ? currentUser?.avatar : profile?.avatar}
+                            filename={isSelf ? (profile?.avatar ?? currentUser?.avatar) : profile?.avatar}
                             name={profile?.full_name}
                             size={AVATAR_SIZE}
+                            cacheKey={isSelf ? currentUser?.avatarUpdatedAt : undefined}
                         />
                         {isSelf && (
                             <TouchableOpacity style={styles.editAvatarBtn} onPress={pickAndUploadAvatar} disabled={uploadingAvatar}>
