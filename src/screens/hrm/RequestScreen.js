@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useCallback, useState } from "react";
 import {
   View,
   Text,
@@ -23,6 +23,8 @@ import useGetMyRequests from "../../hooks/requests/useGetMyRequests";
 import Header from "../../components/Header";
 import { openDrawer } from "../../helpers/navigationRef";
 import useCancelLeaveRequest from "../../hooks/requests/useCancelLeaveRequest";
+import { useFocusEffect } from "@react-navigation/native";
+import Toast from "react-native-toast-message";
 
 dayjs.extend(isBetween);
 
@@ -40,15 +42,18 @@ export default function RequestScreen({ navigation }) {
   const { mutate: cancelRequest, isPending: isCancelling } =
     useCancelLeaveRequest();
 
-  const { data: myRequestsData, isLoading: isLoadingRequests } =
-    useGetMyRequests({
-      request_type: filterType,
-      status: requestStatus,
-      from: fromFilter,
-      to: toFilter,
-      page,
-      limit: 5,
-    });
+  const {
+    data: myRequestsData,
+    isLoading: isLoadingRequests,
+    refetch,
+  } = useGetMyRequests({
+    request_type: filterType,
+    status: requestStatus,
+    from: fromFilter,
+    to: toFilter,
+    page,
+    limit: 5,
+  });
 
   const myRequests = myRequestsData?.data ?? [];
   const totalPages = myRequestsData?.pagination?.total_pages ?? 1;
@@ -58,10 +63,33 @@ export default function RequestScreen({ navigation }) {
 
   const confirmCancel = () => {
     if (!cancelModal.id) return;
+
     cancelRequest(cancelModal.id, {
-      onSuccess: () => setCancelModal({ visible: false, id: null }),
+      onSuccess: async () => {
+        setCancelModal({ visible: false, id: null });
+
+        Toast.show({
+          type: "success",
+          text1: "Thu hồi đơn thành công",
+        });
+
+        await refetch();
+      },
+
+      onError: (error) => {
+        Toast.show({
+          type: "error",
+          text1: error?.response?.data?.message || "Thu hồi đơn thất bại",
+        });
+      },
     });
   };
+
+  useFocusEffect(
+    useCallback(() => {
+      refetch();
+    }, []),
+  );
 
   return (
     <ScrollView style={styles.screen} showsVerticalScrollIndicator={false}>

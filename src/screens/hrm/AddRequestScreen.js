@@ -151,7 +151,7 @@ const AddRequestScreen = ({ navigation }) => {
       return;
     }
 
-    const payload = { assigned_reviewer: reviewerId, reason };
+    const payload = { assigned_reviewer: reviewerId, reason: reason.trim() };
 
     if (isForgot) {
       payload.request_type = "forgot_checkin";
@@ -203,6 +203,7 @@ const AddRequestScreen = ({ navigation }) => {
       onSuccess: () => {
         resetForm();
         Toast.show({ type: "success", text1: "Gửi yêu cầu thành công!" });
+        navigation.goBack();
       },
       onError: (errorMessage) => {
         Toast.show({ type: "error", text1: errorMessage });
