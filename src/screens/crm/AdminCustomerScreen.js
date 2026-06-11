@@ -9,6 +9,7 @@ import {
   TouchableOpacity,
   ScrollView,
   Alert,
+  RefreshControl,
 } from "react-native";
 import React, { useEffect, useState, useCallback, useRef } from "react";
 import { Feather, Ionicons } from "@expo/vector-icons";
@@ -76,23 +77,34 @@ function AssignModal({ customer, isAdmin, onClose, onSuccess }) {
     setSubmitting(true);
     try {
       if (isReassign) {
-        await api.patch(`/customer/${customer._id}/reassign`, {
-          sale_user_info_id: selectedUser._id,
-          reason: reason.trim(),
-          include_cif_hh: false,
-          include_ekyc_hh: false,
-        }, { requiresAuth: true });
+        await api.patch(
+          `/customer/${customer._id}/reassign`,
+          {
+            sale_user_info_id: selectedUser._id,
+            reason: reason.trim(),
+            include_cif_hh: false,
+            include_ekyc_hh: false,
+          },
+          { requiresAuth: true },
+        );
         Toast.show({ type: "success", text1: "Chuyển sale thành công" });
       } else {
-        await api.post(`/customer/${customer._id}/assign`, {
-          sale_user_info_id: selectedUser._id,
-        }, { requiresAuth: true });
+        await api.post(
+          `/customer/${customer._id}/assign`,
+          {
+            sale_user_info_id: selectedUser._id,
+          },
+          { requiresAuth: true },
+        );
         Toast.show({ type: "success", text1: "Phân khách thành công" });
       }
       onSuccess();
       onClose();
     } catch (err) {
-      Toast.show({ type: "error", text1: err?.response?.data?.message || "Có lỗi xảy ra" });
+      Toast.show({
+        type: "error",
+        text1: err?.response?.data?.message || "Có lỗi xảy ra",
+      });
     } finally {
       setSubmitting(false);
     }
@@ -117,13 +129,18 @@ function AssignModal({ customer, isAdmin, onClose, onSuccess }) {
             </TouchableOpacity>
           </View>
 
-          <ScrollView style={styles.modalScroll} keyboardShouldPersistTaps="handled">
+          <ScrollView
+            style={styles.modalScroll}
+            keyboardShouldPersistTaps="handled"
+          >
             {/* Thông tin khách */}
             <View style={styles.infoBox}>
               <Text style={styles.infoName}>{customerName}</Text>
               <Text style={styles.infoPhone}>SĐT: {customer.phone_number}</Text>
               {currentSaleName && (
-                <Text style={styles.infoSale}>Sale hiện tại: {currentSaleName}</Text>
+                <Text style={styles.infoSale}>
+                  Sale hiện tại: {currentSaleName}
+                </Text>
               )}
             </View>
 
@@ -131,7 +148,8 @@ function AssignModal({ customer, isAdmin, onClose, onSuccess }) {
             {isReassign && (
               <View style={styles.warnBox}>
                 <Text style={styles.warnText}>
-                  ⚠️ Thao tác này sẽ ghi đè sale hiện tại và xoá hoa hồng cũ. Mọi thay đổi đều có audit log.
+                  ⚠️ Thao tác này sẽ ghi đè sale hiện tại và xoá hoa hồng cũ.
+                  Mọi thay đổi đều có audit log.
                 </Text>
               </View>
             )}
@@ -149,7 +167,9 @@ function AssignModal({ customer, isAdmin, onClose, onSuccess }) {
                 placeholder="Tìm theo tên, mã NV..."
                 placeholderTextColor="#9CA3AF"
               />
-              {loadingUsers && <ActivityIndicator size="small" color={PRIMARY} />}
+              {loadingUsers && (
+                <ActivityIndicator size="small" color={PRIMARY} />
+              )}
             </View>
 
             {/* Danh sách sale */}
@@ -160,25 +180,52 @@ function AssignModal({ customer, isAdmin, onClose, onSuccess }) {
                   return (
                     <TouchableOpacity
                       key={u._id}
-                      style={[styles.userItem, isSelected && styles.userItemSelected]}
+                      style={[
+                        styles.userItem,
+                        isSelected && styles.userItemSelected,
+                      ]}
                       onPress={() => setSelectedUser(u)}
                       activeOpacity={0.7}
                     >
                       <View style={styles.userItemContent}>
-                        <View style={[styles.userAvatar, isSelected && { backgroundColor: PRIMARY }]}>
-                          <Text style={[styles.userAvatarText, isSelected && { color: "#fff" }]}>
-                            {(u.full_name || u.username || "?")[0].toUpperCase()}
+                        <View
+                          style={[
+                            styles.userAvatar,
+                            isSelected && { backgroundColor: PRIMARY },
+                          ]}
+                        >
+                          <Text
+                            style={[
+                              styles.userAvatarText,
+                              isSelected && { color: "#fff" },
+                            ]}
+                          >
+                            {(u.full_name ||
+                              u.username ||
+                              "?")[0].toUpperCase()}
                           </Text>
                         </View>
                         <View style={{ flex: 1 }}>
-                          <Text style={[styles.userName, isSelected && { color: PRIMARY }]}>
+                          <Text
+                            style={[
+                              styles.userName,
+                              isSelected && { color: PRIMARY },
+                            ]}
+                          >
                             {u.full_name || u.username}
                           </Text>
                           <Text style={styles.userMeta}>
-                            {u.ma_nv ? `${u.ma_nv} · ` : ""}{u.phone_number || ""}
+                            {u.ma_nv ? `${u.ma_nv} · ` : ""}
+                            {u.phone_number || ""}
                           </Text>
                         </View>
-                        {isSelected && <Ionicons name="checkmark-circle" size={20} color={PRIMARY} />}
+                        {isSelected && (
+                          <Ionicons
+                            name="checkmark-circle"
+                            size={20}
+                            color={PRIMARY}
+                          />
+                        )}
                       </View>
                     </TouchableOpacity>
                   );
@@ -189,7 +236,9 @@ function AssignModal({ customer, isAdmin, onClose, onSuccess }) {
             {/* Lý do (chỉ khi chuyển sale) */}
             {isReassign && (
               <>
-                <Text style={[styles.fieldLabel, { marginTop: 16 }]}>Lý do chuyển sale *</Text>
+                <Text style={[styles.fieldLabel, { marginTop: 16 }]}>
+                  Lý do chuyển sale *
+                </Text>
                 <TextInput
                   style={[styles.searchBox, styles.inputMulti]}
                   value={reason}
@@ -208,24 +257,34 @@ function AssignModal({ customer, isAdmin, onClose, onSuccess }) {
 
           {/* Actions */}
           <View style={styles.modalActions}>
-            <TouchableOpacity style={styles.cancelBtn} onPress={onClose} disabled={submitting}>
+            <TouchableOpacity
+              style={styles.cancelBtn}
+              onPress={onClose}
+              disabled={submitting}
+            >
               <Text style={styles.cancelBtnText}>Huỷ</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={[
                 styles.confirmBtn,
-                (!selectedUser || (isReassign && !reason.trim()) || submitting) && styles.confirmBtnDisabled,
+                (!selectedUser ||
+                  (isReassign && !reason.trim()) ||
+                  submitting) &&
+                  styles.confirmBtnDisabled,
               ]}
               onPress={handleSubmit}
-              disabled={!selectedUser || (isReassign && !reason.trim()) || submitting}
+              disabled={
+                !selectedUser || (isReassign && !reason.trim()) || submitting
+              }
               activeOpacity={0.8}
             >
-              {submitting
-                ? <ActivityIndicator size="small" color="#fff" />
-                : <Text style={styles.confirmBtnText}>
-                    {isReassign ? "Xác nhận chuyển sale" : "Xác nhận phân khách"}
-                  </Text>
-              }
+              {submitting ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <Text style={styles.confirmBtnText}>
+                  {isReassign ? "Xác nhận chuyển sale" : "Xác nhận phân khách"}
+                </Text>
+              )}
             </TouchableOpacity>
           </View>
         </View>
@@ -302,126 +361,164 @@ export default function AdminCustomerScreen() {
     }, 400);
   };
 
-  const renderItem = useCallback(({ item }) => {
-    const hasSale = !!item.referred_by;
-    const canReassign = isAdmin && hasSale;
-    const canAssign = !hasSale;
+  const renderItem = useCallback(
+    ({ item }) => {
+      const hasSale = !!item.referred_by;
+      const canReassign = isAdmin && hasSale;
+      const canAssign = !hasSale;
 
-    return (
-      <View>
-        <CustomerCard key={item._id} row={item} onPress={() => {}} />
-        {(canAssign || canReassign) && (
-          <TouchableOpacity
-            style={[styles.assignBtn, canReassign && styles.reassignBtn]}
-            onPress={() => setAssignTarget(item)}
-            activeOpacity={0.8}
-          >
-            <Ionicons
-              name={canReassign ? "swap-horizontal" : "person-add"}
-              size={14}
-              color={canReassign ? "#D97706" : "#fff"}
-            />
-            <Text style={[styles.assignBtnText, canReassign && styles.reassignBtnText]}>
-              {canReassign ? "Chuyển sale" : "Phân khách"}
-            </Text>
-          </TouchableOpacity>
-        )}
-      </View>
-    );
-  }, [isAdmin]);
+      return (
+        <View>
+          <CustomerCard
+            row={item}
+            onPress={() =>
+              navigation.navigate("CustomerDetailScreen", {
+                externalId: item.external_id,
+                ma_nv: item?.referred_by?.ma_nv,
+              })
+            }
+          />
+          {(canAssign || canReassign) && (
+            <TouchableOpacity
+              style={[styles.assignBtn, canReassign && styles.reassignBtn]}
+              onPress={() => setAssignTarget(item)}
+              activeOpacity={0.8}
+            >
+              <Ionicons
+                name={canReassign ? "swap-horizontal" : "person-add"}
+                size={14}
+                color={canReassign ? "#D97706" : "#fff"}
+              />
+              <Text
+                style={[
+                  styles.assignBtnText,
+                  canReassign && styles.reassignBtnText,
+                ]}
+              >
+                {canReassign ? "Chuyển sale" : "Phân khách"}
+              </Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      );
+    },
+    [isAdmin],
+  );
 
   return (
     <View style={{ flex: 1, alignItems: "center" }}>
-      <Header title="Quản lý khách hàng" leftIconName="arrow-back" onLeftPress={() => navigation.goBack()} />
+      <Header
+        title="Quản lý khách hàng"
+        leftIconName="arrow-back"
+        onLeftPress={() => navigation.goBack()}
+      />
 
-      <View style={{ width: "100%", paddingHorizontal: 20, marginTop: 8 }}>
-        <View style={styles.filterBar}>
-          <View style={styles.searchWrap}>
-            <Feather name="search" size={16} color="#9DA4B0" style={styles.searchIcon} />
-            <TextInput
-              style={styles.searchInput}
-              placeholder="Tìm kiếm theo tên, số điện thoại..."
-              placeholderTextColor="#9DA4B0"
-              value={search}
-              onChangeText={handleSearchChange}
-            />
-          </View>
-
-          <View style={styles.filtersRow}>
-            <Dropdown
-              style={styles.dropdown}
-              containerStyle={styles.dropdownContainer}
-              selectedTextStyle={{ fontSize: 12, color: "#374151" }}
-              iconStyle={{ width: 14, height: 14 }}
-              itemTextStyle={{ fontSize: 12, color: "#374151" }}
-              data={[
-                { value: "all", label: "Tất cả loại KH" },
-                { value: "potential", label: "KH Tiềm năng" },
-                { value: "normal", label: "KH Thường" },
-              ]}
-              labelField="label"
-              valueField="value"
-              value={filterType}
-              onChange={(item) => setFilterType(item.value)}
-            />
-
-            <Dropdown
-              style={styles.dropdown}
-              containerStyle={styles.dropdownContainer}
-              selectedTextStyle={{ fontSize: 12, color: "#374151" }}
-              iconStyle={{ width: 14, height: 14 }}
-              itemTextStyle={{ fontSize: 12, color: "#374151" }}
-              data={[
-                { value: "all", label: "Tất cả nguồn" },
-                { value: "sale", label: "Qua Sale" },
-                { value: "agent", label: "Qua Đại lý" },
-                { value: "marketing", label: "Marketing" },
-              ]}
-              labelField="label"
-              valueField="value"
-              value={filterSource}
-              onChange={(item) => setFilterSource(item.value)}
-            />
-          </View>
-        </View>
-      </View>
-
-      <Text style={styles.listHeaderText}>Danh sách khách hàng ({total})</Text>
-
-      {loading ? (
-        <View style={styles.loadingWrap}>
-          <ActivityIndicator size="large" color={PRIMARY} />
-        </View>
-      ) : (
-        <FlatList
-          style={styles.container}
-          contentContainerStyle={{ paddingBottom: 40, paddingHorizontal: 20 }}
-          keyboardShouldPersistTaps="handled"
-          data={data}
-          renderItem={renderItem}
-          keyExtractor={(item) => item._id}
-          refreshing={refreshing}
-          onRefresh={() => fetchPage(1, activeSearch.current, true)}
-          onEndReached={() => {
-            if (!loadingMore && !loading && page < totalPages)
-              fetchPage(page + 1, activeSearch.current);
-          }}
-          onEndReachedThreshold={0.3}
-          ListFooterComponent={() =>
-            loadingMore ? (
-              <View style={styles.footerLoader}>
-                <ActivityIndicator size="small" color={PRIMARY} />
-              </View>
-            ) : null
-          }
-          ListEmptyComponent={() => (
-            <View style={styles.emptyWrap}>
-              <Feather name="users" size={40} color="#D1D5DB" />
-              <Text style={styles.emptyText}>Không tìm thấy khách hàng</Text>
+      <ScrollView
+        contentContainerStyle={{ paddingBottom: 40, paddingHorizontal: 12 }}
+        style={styles.container}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={() => fetchPage(1, activeSearch.current, true)}
+            colors={[PRIMARY]}
+            tintColor={PRIMARY}
+          />
+        }
+      >
+        <View style={{ width: "100%", marginTop: 8 }}>
+          <View style={styles.filterBar}>
+            <View style={styles.searchWrap}>
+              <Feather
+                name="search"
+                size={16}
+                color="#9DA4B0"
+                style={styles.searchIcon}
+              />
+              <TextInput
+                style={styles.searchInput}
+                placeholder="Tìm kiếm theo tên, số điện thoại..."
+                placeholderTextColor="#9DA4B0"
+                value={search}
+                onChangeText={handleSearchChange}
+              />
             </View>
-          )}
-        />
-      )}
+
+            <View style={styles.filtersRow}>
+              <Dropdown
+                style={styles.dropdown}
+                containerStyle={styles.dropdownContainer}
+                selectedTextStyle={{ fontSize: 12, color: "#374151" }}
+                iconStyle={{ width: 14, height: 14 }}
+                itemTextStyle={{ fontSize: 12, color: "#374151" }}
+                data={[
+                  { value: "all", label: "Tất cả loại KH" },
+                  { value: "potential", label: "KH Tiềm năng" },
+                  { value: "normal", label: "KH Thường" },
+                ]}
+                labelField="label"
+                valueField="value"
+                value={filterType}
+                onChange={(item) => setFilterType(item.value)}
+              />
+
+              <Dropdown
+                style={styles.dropdown}
+                containerStyle={styles.dropdownContainer}
+                selectedTextStyle={{ fontSize: 12, color: "#374151" }}
+                iconStyle={{ width: 14, height: 14 }}
+                itemTextStyle={{ fontSize: 12, color: "#374151" }}
+                data={[
+                  { value: "all", label: "Tất cả nguồn" },
+                  { value: "sale", label: "Qua Sale" },
+                  { value: "agent", label: "Qua Đại lý" },
+                  { value: "marketing", label: "Marketing" },
+                ]}
+                labelField="label"
+                valueField="value"
+                value={filterSource}
+                onChange={(item) => setFilterSource(item.value)}
+              />
+            </View>
+          </View>
+        </View>
+
+        <Text style={styles.listHeaderText}>
+          Danh sách khách hàng ({total})
+        </Text>
+
+        {loading ? (
+          <View style={styles.loadingWrap}>
+            <ActivityIndicator size="large" color={PRIMARY} />
+          </View>
+        ) : (
+          <FlatList
+            scrollEnabled={false}
+            keyboardShouldPersistTaps="handled"
+            data={data}
+            renderItem={renderItem}
+            keyExtractor={(item, index) => item._id}
+            onEndReached={() => {
+              if (!loadingMore && !loading && page < totalPages)
+                fetchPage(page + 1, activeSearch.current);
+            }}
+            onEndReachedThreshold={0.3}
+            ListFooterComponent={() =>
+              loadingMore ? (
+                <View style={styles.footerLoader}>
+                  <ActivityIndicator size="small" color={PRIMARY} />
+                </View>
+              ) : null
+            }
+            ListEmptyComponent={() => (
+              <View style={styles.emptyWrap}>
+                <Feather name="users" size={40} color="#D1D5DB" />
+                <Text style={styles.emptyText}>Không tìm thấy khách hàng</Text>
+              </View>
+            )}
+          />
+        )}
+      </ScrollView>
 
       {assignTarget && (
         <AssignModal
@@ -465,7 +562,6 @@ const styles = StyleSheet.create({
     color: "#111827",
     marginBottom: 12,
     alignSelf: "flex-start",
-    paddingHorizontal: 20,
   },
   loadingWrap: { flex: 1, alignItems: "center", justifyContent: "center" },
   emptyWrap: { alignItems: "center", paddingVertical: 48, gap: 12 },
@@ -497,11 +593,19 @@ const styles = StyleSheet.create({
     backgroundColor: PRIMARY,
   },
   assignBtnText: { fontSize: 13, fontWeight: "700", color: "#fff" },
-  reassignBtn: { backgroundColor: "#FEF3C7", borderWidth: 1, borderColor: "#FDE68A" },
+  reassignBtn: {
+    backgroundColor: "#FEF3C7",
+    borderWidth: 1,
+    borderColor: "#FDE68A",
+  },
   reassignBtnText: { color: "#D97706" },
 
   // Modal
-  modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.45)", justifyContent: "flex-end" },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.45)",
+    justifyContent: "flex-end",
+  },
   modalBox: {
     backgroundColor: "#fff",
     borderTopLeftRadius: 24,
@@ -529,7 +633,12 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#E5E7EB",
   },
-  infoName: { fontSize: 15, fontWeight: "700", color: "#111827", marginBottom: 3 },
+  infoName: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#111827",
+    marginBottom: 3,
+  },
   infoPhone: { fontSize: 13, color: "#6B7280" },
   infoSale: { fontSize: 13, color: "#6B7280", marginTop: 3 },
 
@@ -543,7 +652,12 @@ const styles = StyleSheet.create({
   },
   warnText: { fontSize: 12, color: "#C2410C", lineHeight: 18 },
 
-  fieldLabel: { fontSize: 13, fontWeight: "700", color: "#374151", marginBottom: 8 },
+  fieldLabel: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#374151",
+    marginBottom: 8,
+  },
   searchBox: {
     flexDirection: "row",
     alignItems: "center",
@@ -572,7 +686,12 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
   userItemSelected: { borderColor: PRIMARY, backgroundColor: "#FFF0F0" },
-  userItemContent: { flexDirection: "row", alignItems: "center", gap: 10, padding: 12 },
+  userItemContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    padding: 12,
+  },
   userAvatar: {
     width: 36,
     height: 36,

@@ -1,264 +1,387 @@
-import { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from "react";
 import {
-    ActivityIndicator,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
-} from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { useNavigation, useRoute } from '@react-navigation/native';
-import api from '../../api/axiosInstance';
-import Header from '../../components/Header';
+  View,
+  Text,
+  ScrollView,
+  ActivityIndicator,
+  StyleSheet,
+  RefreshControl,
+  TouchableOpacity,
+} from "react-native";
+import { useSelector } from "react-redux";
+import useCustomer from "../../hooks/crm/useCustomer";
+import { useNavigation, useRoute } from "@react-navigation/native";
+import CustomerStats from "../../components/crm/customerDetail/CustomerStats";
+import CustomerTabs from "../../components/crm/customerDetail/CustomerTabs";
+import TransactionTabs from "../../components/crm/customerDetail/TransactionTabs";
+import InfoTab from "../../components/crm/customerDetail/InfoTab";
+import { LinearGradient } from "expo-linear-gradient";
+import { Feather, Ionicons } from "@expo/vector-icons";
+import Toast from "react-native-toast-message";
+import InvestmentTabs from "../../components/crm/customerDetail/InvestmentTabs";
 
-const STATUS_VI = {
-    registered: 'Tiềm năng',
-    kyc_pending: 'Chờ xét KYC',
-    kyc_verified: 'Đã xác thực',
-    kyc_rejected: 'KYC từ chối',
-    active: 'Hoạt động',
-    inactive: 'Ngừng',
-    blocked: 'Bị khóa',
-};
-
-const STATUS_COLOR = {
-    kyc_verified: '#059669',
-    active: '#2563EB',
-    registered: '#F59E0B',
-    kyc_rejected: '#EF4444',
-    blocked: '#EF4444',
-    kyc_pending: '#F59E0B',
-    inactive: '#9CA3AF',
-};
-
-const formatMoney = (v) => {
-    if (!v) return '0 đ';
-    if (v >= 1_000_000_000) return `${(v / 1_000_000_000).toFixed(1)} tỷ đ`;
-    if (v >= 1_000_000) return `${Math.round(v / 1_000_000)} triệu đ`;
-    return v.toLocaleString('vi-VN') + ' đ';
-};
-
-const formatDate = (d) =>
-    d ? new Date(d).toLocaleDateString('vi-VN') : '—';
-
-// ─── AI Summary Card ────────────────────────────────────────────────────────
-
-function AiSummaryCard({ customerId }) {
-    const [summary, setSummary] = useState(null);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(false);
-
-    useEffect(() => {
-        api.get(`/ai/customer/${customerId}/summary`, { requiresAuth: true })
-            .then((res) => setSummary(res.data?.summary ?? null))
-            .catch(() => setError(true))
-            .finally(() => setLoading(false));
-    }, [customerId]);
-
-    return (
-        <View style={styles.aiCard}>
-            <View style={styles.aiHeader}>
-                <Ionicons name="sparkles" size={14} color="#2563EB" />
-                <Text style={styles.aiTitle}>Phân tích AI</Text>
-            </View>
-            {loading ? (
-                <ActivityIndicator size="small" color="#2563EB" style={{ marginTop: 8 }} />
-            ) : error || !summary ? (
-                <Text style={styles.aiEmpty}>Không thể tải phân tích lúc này.</Text>
-            ) : (
-                <Text style={styles.aiText}>{summary}</Text>
-            )}
-        </View>
-    );
-}
-
-// ─── Main Screen ─────────────────────────────────────────────────────────────
+const PRIMARY = "#ED2E30";
 
 export default function CustomerDetailScreen() {
-    const navigation = useNavigation();
-    const route = useRoute();
-    const { customerId } = route.params ?? {};
+  const navigation = useNavigation();
+  const route = useRoute();
+  const accessToken = useSelector((s) => s.auth.accessToken);
+  const { externalId, ma_nv } = route.params;
 
-    const [customer, setCustomer] = useState(null);
-    const [investments, setInvestments] = useState([]);
-    const [loading, setLoading] = useState(true);
+  const {
+    getCustomerDetailInfo,
+    getCustomerFluctuation,
+    getInvestmentHolding,
+    getStaffInfo,
+    loading,
+  } = useCustomer();
 
-    const fetchData = useCallback(async () => {
-        if (!customerId) return;
-        try {
-            const [custRes, invRes] = await Promise.all([
-                api.get(`/customer/${customerId}`, { requiresAuth: true }),
-                api.get('/investments/list', { requiresAuth: true, params: { customer_id: customerId, limit: 5 } }),
-            ]);
-            setCustomer(custRes.data?.data ?? custRes.data ?? null);
-            setInvestments(invRes.data?.data ?? []);
-        } catch (err) {
-            console.log('CustomerDetailScreen fetch error:', err.message);
-        } finally {
-            setLoading(false);
-        }
-    }, [customerId]);
+  const [staff, setStaff] = useState(null);
+  const [detail, setDetail] = useState(null);
+  const [transactions, setTransactions] = useState(null);
+  const [investment, setInvestment] = useState(null);
+  const [refreshing, setRefreshing] = useState(false);
+  const [activeTab, setActiveTab] = useState("info");
+  const [paginationTransaction, setPaginationTransaction] = useState({
+    total: 0,
+    page: 1,
+    limit: 10,
+    total_pages: 1,
+  });
+  const [paginationInvestment, setPaginationInvestment] = useState({
+    total: 0,
+    page: 0,
+    limit: 10,
+    total_pages: 1,
+  });
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [pageTransaction, setPageTransaction] = useState(1);
+  const [pageInvestment, setPageInvestment] = useState(0);
+  const [filterTransaction, setFilterTransaction] = useState({
+    from: null,
+    to: null,
+  });
+  const [filterInvestment, setFilterInvestment] = useState({
+    from: null,
+    to: null,
+  });
 
-    useEffect(() => { fetchData(); }, [fetchData]);
+  const fetchStaffInfo = useCallback(async () => {
+    if (!ma_nv) return;
 
-    if (loading) {
-        return (
-            <View style={styles.container}>
-                <Header title="Chi tiết khách hàng" leftIconName="arrow-back" onLeftPress={() => navigation.goBack()} />
-                <View style={styles.center}><ActivityIndicator size="large" color="#2563EB" /></View>
-            </View>
-        );
+    const res = await getStaffInfo({
+      ma_nv: ma_nv,
+    });
+
+    setStaff(res?.data?.data || null);
+  }, [ma_nv]);
+
+  const fetchInvestmentHolding = useCallback(async () => {
+    const res = await getInvestmentHolding({
+      external_id: externalId,
+      pageSize: 10,
+      pageNumber: pageInvestment,
+      type: 1,
+      fromDate: filterInvestment.from
+        ? filterInvestment.from.format("YYYY-MM-DD")
+        : null,
+      toDate: filterInvestment.to
+        ? filterInvestment.to.format("YYYY-MM-DD")
+        : null,
+    });
+
+    const totalRecords = res?.data?.data?.totalRecords || 0;
+
+    const items = res?.data?.data?.investmentHoldingProducts || [];
+
+    setInvestment((prev) =>
+      pageInvestment === 0 ? items : [...(prev || []), ...items],
+    );
+
+    setPaginationInvestment({
+      page: pageInvestment,
+      limit: 10,
+      total: totalRecords,
+      total_pages: Math.ceil(totalRecords / 10),
+    });
+  }, [externalId, filterInvestment, pageInvestment]);
+
+  const fetchCustomerInfo = useCallback(async () => {
+    const res = await getCustomerDetailInfo({
+      external_id: externalId,
+    });
+    setDetail(res?.data?.data || null);
+  }, [externalId]);
+
+  const fetchFluctuation = useCallback(async () => {
+    const res = await getCustomerFluctuation({
+      external_id: externalId,
+      limit: 10,
+      page: pageTransaction,
+      start_date: filterTransaction.from
+        ? filterTransaction.from.format("YYYY-MM-DD")
+        : null,
+      end_date: filterTransaction.to
+        ? filterTransaction.to.format("YYYY-MM-DD")
+        : null,
+    });
+
+    setTransactions((prev) =>
+      pageTransaction === 1 ? res?.data?.data : [...prev, ...res?.data?.data],
+    );
+    setPaginationTransaction(res?.data?.pagination || {});
+  }, [externalId, pageTransaction, filterTransaction]);
+
+  const onLoadMore = async () => {
+    if (
+      loadingMore ||
+      pageTransaction >= paginationTransaction.total_pages ||
+      pageInvestment >= paginationInvestment.total_pages
+    )
+      return;
+    try {
+      setLoadingMore(true);
+      if (activeTab === "transaction") {
+        setPageTransaction((p) => p + 1);
+      } else if (activeTab === "investment") {
+        setPageInvestment((p) => p + 1);
+      }
+    } finally {
+      setLoadingMore(false);
     }
+  };
 
-    const name = customer?.identity?.full_name ?? customer?.phone_number ?? 'Khách hàng';
-    const status = customer?.status ?? 'registered';
-    const totalActive = investments
-        .filter(i => i.status === 'active')
-        .reduce((s, i) => s + (i.amount || 0), 0);
+  const getInitials = (name = "") => {
+    if (!name) return "KH";
+    return name
+      .trim()
+      .split(" ")
+      .slice(-2)
+      .map((i) => i[0])
+      .join("")
+      .toUpperCase();
+  };
 
+  useEffect(() => {
+    if (activeTab === "info") {
+      fetchCustomerInfo();
+    } else if (activeTab === "transaction") {
+      fetchFluctuation();
+    } else if (activeTab === "investment") {
+      fetchInvestmentHolding();
+    }
+  }, [
+    activeTab,
+    pageTransaction,
+    pageInvestment,
+    filterTransaction,
+    filterInvestment,
+  ]);
+
+  useEffect(() => {
+    fetchStaffInfo();
+  }, [fetchStaffInfo]);
+
+  const onRefresh = async () => {
+    try {
+      setRefreshing(true);
+      activeTab === "info"
+        ? await fetchCustomerInfo()
+        : activeTab === "transaction"
+          ? await fetchFluctuation()
+          : await fetchInvestmentHolding();
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
+  if (loading && !detail) {
     return (
-        <View style={styles.container}>
-            <Header title="Chi tiết khách hàng" leftIconName="arrow-back" onLeftPress={() => navigation.goBack()} />
-            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 32 }}>
-
-                {/* Profile header */}
-                <View style={styles.profileCard}>
-                    <View style={styles.avatar}>
-                        <Text style={styles.avatarText}>{name.charAt(0).toUpperCase()}</Text>
-                    </View>
-                    <View style={{ flex: 1 }}>
-                        <Text style={styles.profileName}>{name}</Text>
-                        <Text style={styles.profilePhone}>{customer?.phone_number ?? '—'}</Text>
-                        <View style={[styles.statusBadge, { backgroundColor: (STATUS_COLOR[status] ?? '#9CA3AF') + '18' }]}>
-                            <Text style={[styles.statusText, { color: STATUS_COLOR[status] ?? '#9CA3AF' }]}>
-                                {STATUS_VI[status] ?? status}
-                            </Text>
-                        </View>
-                    </View>
-                </View>
-
-                {/* AI Summary */}
-                {customerId && <AiSummaryCard customerId={customerId} />}
-
-                {/* Thông tin cơ bản */}
-                <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>Thông tin</Text>
-                    <InfoRow icon="card-outline" label="CCCD" value={customer?.identity?.id_number ?? '—'} />
-                    <InfoRow icon="location-outline" label="Địa chỉ" value={customer?.identity?.address ?? '—'} />
-                    <InfoRow icon="calendar-outline" label="Ngày tham gia" value={formatDate(customer?.createdAt)} />
-                    <InfoRow icon="cash-outline" label="Đang đầu tư" value={formatMoney(totalActive)} />
-                </View>
-
-                {/* Khoản đầu tư gần đây */}
-                {investments.length > 0 && (
-                    <View style={styles.section}>
-                        <Text style={styles.sectionTitle}>Đầu tư gần đây</Text>
-                        {investments.map((inv) => (
-                            <View key={inv._id} style={styles.invRow}>
-                                <View style={{ flex: 1 }}>
-                                    <Text style={styles.invName}>{inv.product_name}</Text>
-                                    <Text style={styles.invMeta}>
-                                        {formatMoney(inv.amount)} · {inv.interest_rate}%/năm · đáo hạn {formatDate(inv.maturity_at)}
-                                    </Text>
-                                </View>
-                                <View style={[styles.invBadge, { backgroundColor: inv.status === 'active' ? '#DCFCE7' : '#F3F4F6' }]}>
-                                    <Text style={[styles.invBadgeText, { color: inv.status === 'active' ? '#059669' : '#6B7280' }]}>
-                                        {inv.status === 'active' ? 'Đang chạy' : inv.status === 'matured' ? 'Đáo hạn' : inv.status}
-                                    </Text>
-                                </View>
-                            </View>
-                        ))}
-                    </View>
-                )}
-            </ScrollView>
-        </View>
+      <View style={styles.loadingWrap}>
+        <ActivityIndicator size="large" color={PRIMARY} />
+      </View>
     );
-}
+  }
 
-function InfoRow({ icon, label, value }) {
-    return (
-        <View style={styles.infoRow}>
-            <Ionicons name={icon} size={16} color="#9CA3AF" style={{ width: 22 }} />
-            <Text style={styles.infoLabel}>{label}</Text>
-            <Text style={styles.infoValue} numberOfLines={2}>{value}</Text>
+  console.log({
+    pageInvestment,
+    totalPages: paginationInvestment.total_pages,
+  });
+  return (
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={{ paddingBottom: 40 }}
+      showsVerticalScrollIndicator={false}
+      refreshControl={
+        <RefreshControl
+          refreshing={refreshing}
+          onRefresh={onRefresh}
+          colors={[PRIMARY]}
+        />
+      }
+      onScroll={({ nativeEvent }) => {
+        const { layoutMeasurement, contentOffset, contentSize } = nativeEvent;
+
+        const isCloseToBottom =
+          layoutMeasurement.height + contentOffset.y >=
+          contentSize.height - 100;
+
+        if (isCloseToBottom && !loadingMore) {
+          if (
+            activeTab === "transaction" &&
+            pageTransaction < paginationTransaction.total_pages
+          ) {
+            setPageTransaction((p) => p + 1);
+          }
+
+          if (
+            activeTab === "investment" &&
+            pageInvestment < paginationInvestment.total_pages
+          ) {
+            setPageInvestment((p) => p + 1);
+          }
+        }
+      }}
+      scrollEventThrottle={16}
+    >
+      <LinearGradient
+        colors={["#FF2D2F", "#F6A56B"]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 0 }}
+        style={styles.header}
+      >
+        <TouchableOpacity
+          style={styles.backBtn}
+          onPress={() => navigation.goBack()}
+        >
+          <Ionicons name="arrow-back" size={22} color="#fff" />
+        </TouchableOpacity>
+
+        <View style={styles.avatar}>
+          <Text style={styles.avatarText}>{getInitials(detail?.fullName)}</Text>
         </View>
-    );
+
+        <View style={{ flex: 1 }}>
+          <Text style={styles.name}>{detail?.fullName || "Khách hàng"}</Text>
+          <Text style={styles.subText}>
+            Username: {detail?.userName || "--"}
+          </Text>
+          <Text style={styles.subText}>
+            Mã tài khoản: {detail?.bankAccountVnfite || "--"}
+          </Text>
+          <View style={styles.verifyBadge}>
+            <View style={styles.dot} />
+            <Text style={styles.verifyText}>Đã xác thực</Text>
+          </View>
+        </View>
+
+        <TouchableOpacity
+          style={styles.editBtn}
+          onPress={() =>
+            Toast.show({ type: "info", text1: "Tính năng đang phát triển" })
+          }
+        >
+          <Feather name="edit-2" size={15} color="#fff" />
+        </TouchableOpacity>
+      </LinearGradient>
+
+      <CustomerStats detail={detail} />
+      <CustomerTabs activeTab={activeTab} onTabChange={setActiveTab} />
+
+      {activeTab === "info" && (
+        <InfoTab detail={detail} accessToken={accessToken} staff={staff} />
+      )}
+      {activeTab === "transaction" && (
+        <TransactionTabs
+          pagination={paginationTransaction}
+          transactions={transactions}
+          fromDate={filterTransaction.from}
+          setFromDate={(from) =>
+            setFilterTransaction((f) => ({
+              ...f,
+              from: from,
+            }))
+          }
+          toDate={filterTransaction.to}
+          setToDate={(to) =>
+            setFilterTransaction((f) => ({
+              ...f,
+              to: to,
+            }))
+          }
+          loadingMore={loadingMore}
+        />
+      )}
+      {activeTab === "investment" && (
+        <InvestmentTabs
+          investment={investment}
+          pagination={paginationInvestment}
+          fromDate={filterInvestment.from}
+          setFromDate={(from) =>
+            setFilterInvestment((f) => ({
+              ...f,
+              from: from,
+            }))
+          }
+          toDate={filterInvestment.to}
+          setToDate={(to) =>
+            setFilterInvestment((f) => ({
+              ...f,
+              to: to,
+            }))
+          }
+          isLoading={loading}
+          loadingMore={loadingMore}
+        />
+      )}
+    </ScrollView>
+  );
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#F5F7FA' },
-    center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-
-    profileCard: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 14,
-        backgroundColor: '#fff',
-        marginHorizontal: 16,
-        marginTop: 16,
-        borderRadius: 16,
-        padding: 16,
-        shadowColor: '#000',
-        shadowOpacity: 0.05,
-        shadowOffset: { width: 0, height: 2 },
-        elevation: 2,
-    },
-    avatar: {
-        width: 52,
-        height: 52,
-        borderRadius: 26,
-        backgroundColor: '#2563EB',
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    avatarText: { color: '#fff', fontSize: 20, fontWeight: '800' },
-    profileName: { fontSize: 16, fontWeight: '700', color: '#111827' },
-    profilePhone: { fontSize: 13, color: '#6B7280', marginTop: 2 },
-    statusBadge: { alignSelf: 'flex-start', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8, marginTop: 6 },
-    statusText: { fontSize: 11, fontWeight: '700' },
-
-    aiCard: {
-        backgroundColor: '#EFF6FF',
-        borderRadius: 14,
-        padding: 14,
-        marginHorizontal: 16,
-        marginTop: 12,
-        borderWidth: 1,
-        borderColor: '#BFDBFE',
-    },
-    aiHeader: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 },
-    aiTitle: { fontSize: 12, fontWeight: '700', color: '#1D4ED8' },
-    aiText: { fontSize: 13, color: '#374151', lineHeight: 20 },
-    aiEmpty: { fontSize: 13, color: '#9CA3AF', marginTop: 4 },
-
-    section: {
-        backgroundColor: '#fff',
-        borderRadius: 16,
-        marginHorizontal: 16,
-        marginTop: 12,
-        padding: 16,
-        shadowColor: '#000',
-        shadowOpacity: 0.04,
-        shadowOffset: { width: 0, height: 1 },
-        elevation: 1,
-    },
-    sectionTitle: { fontSize: 14, fontWeight: '700', color: '#111827', marginBottom: 12 },
-
-    infoRow: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 10, gap: 8 },
-    infoLabel: { fontSize: 13, color: '#6B7280', width: 90 },
-    infoValue: { fontSize: 13, color: '#111827', fontWeight: '500', flex: 1 },
-
-    invRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingVertical: 10,
-        borderBottomWidth: 1,
-        borderBottomColor: '#F3F4F6',
-        gap: 10,
-    },
-    invName: { fontSize: 13, fontWeight: '600', color: '#111827' },
-    invMeta: { fontSize: 12, color: '#6B7280', marginTop: 2 },
-    invBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 },
-    invBadgeText: { fontSize: 11, fontWeight: '700' },
+  container: { flex: 1, backgroundColor: "#F4F4F5" },
+  loadingWrap: { flex: 1, justifyContent: "center", alignItems: "center" },
+  header: {
+    paddingTop: 56,
+    paddingHorizontal: 16,
+    paddingBottom: 24,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 14,
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
+  },
+  backBtn: { paddingVertical: 20 },
+  avatar: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: "#374151",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  avatarText: { color: "#fff", fontWeight: "700", fontSize: 18 },
+  name: { color: "#fff", fontSize: 17, fontWeight: "800" },
+  subText: { color: "#fff", fontSize: 12, marginTop: 3 },
+  verifyBadge: {
+    marginTop: 8,
+    alignSelf: "flex-start",
+    backgroundColor: "#D1FAE5",
+    borderRadius: 20,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: "#10B981" },
+  verifyText: { color: "#047857", fontSize: 11, fontWeight: "600" },
+  editBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    backgroundColor: "rgba(255,255,255,0.2)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
 });
