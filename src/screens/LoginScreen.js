@@ -22,6 +22,7 @@ import ChangeFirstPasswordModal from "../components/ChangeFirstPasswordModal";
 import { useDispatch } from "react-redux";
 import { setCredentials } from "../redux/slice/authSlice";
 import { syncFcmTokenWithServer } from "../utils/notifications/fcmConfig";
+import { Icons } from "../assets/icons";
 
 export default function LoginScreen({ navigation }) {
     const [visible, setVisible] = useState(false);
@@ -102,11 +103,11 @@ export default function LoginScreen({ navigation }) {
                 >
                     <View style={{ alignItems: "center" }}>
                         <Image
-                            source={{ uri: "https://cdn-icons-png.flaticon.com/512/10984/10984874.png" }}
+                            source={Icons.IcApp}
                             style={{ width: 100, height: 100 }}
                             resizeMode="contain"
                         />
-                        <Text style={styles.appTitle}>X-Work</Text>
+                        <Text style={styles.appTitle}>VNFITE WORK</Text>
                     </View>
 
                     <View style={{ marginTop: 40, width: Dimensions.get("window").width - 48 }}>
@@ -149,7 +150,7 @@ export default function LoginScreen({ navigation }) {
                                 <Ionicons
                                     name={remember ? "checkbox" : "checkbox-outline"}
                                     size={22}
-                                    color="#004643"
+                                    color="#F16733"
                                 />
                                 <Text style={styles.rememberText}>Ghi nhớ đăng nhập</Text>
                             </TouchableOpacity>
@@ -192,11 +193,11 @@ const styles = StyleSheet.create({
         justifyContent: "center",
     },
     appTitle: {
-        fontSize: 20,
+        fontSize: 28,
         marginTop: 16,
         fontWeight: "800",
         letterSpacing: 2,
-        color: "#004643",
+        color: "#F16733",
     },
     titleInput: {
         fontSize: 14,
@@ -231,7 +232,7 @@ const styles = StyleSheet.create({
     loginButton: {
         marginTop: 40,
         height: 48,
-        backgroundColor: "#004643",
+        backgroundColor: "#F16733",
         borderRadius: 100,
         justifyContent: "center",
         alignItems: "center",

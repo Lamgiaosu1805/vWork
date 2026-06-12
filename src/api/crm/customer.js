@@ -14,4 +14,47 @@ const getAllCustomers = async (params = {}) => {
   });
 };
 
-export { getListCustomers, getAllCustomers };
+const getCustomerDetailInfoApi = async (params = {}) => {
+  return api.get("/customer/detail-info-customer", {
+    requiresAuth: true,
+    params,
+  });
+};
+
+const getCustomerFluctuationApi = async (params = {}) => {
+  return api.get("/customer/fluctuation", {
+    requiresAuth: true,
+    params,
+  });
+};
+
+const viewImageApi = async (params = {}) => {
+  return api.get("/customer/view-image", {
+    requiresAuth: true,
+    params,
+  });
+};
+
+const getInvestmentHoldingApi = async (params = {}) => {
+  return api.get("/customer/investment-holding", {
+    requiresAuth: true,
+    params,
+  });
+};
+
+const getStaffInfoApi = async (params = {}) => {
+  return api.get("/customer/staff-info", {
+    requiresAuth: true,
+    params,
+  });
+};
+
+export {
+  getListCustomers,
+  getAllCustomers,
+  getCustomerDetailInfoApi,
+  getCustomerFluctuationApi,
+  viewImageApi,
+  getInvestmentHoldingApi,
+  getStaffInfoApi
+};
