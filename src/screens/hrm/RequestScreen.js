@@ -1,395 +1,388 @@
-import React, { useState } from 'react';
+import React, { useCallback, useState } from "react";
 import {
-    View,
-    Text,
-    StyleSheet,
-    ScrollView,
-    TouchableOpacity,
-    TextInput,
-    Alert,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
-import Toast from 'react-native-toast-message';
-import Header from '../../components/Header';
-import { openDrawer } from '../../helpers/navigationRef';
+  View,
+  Text,
+  ScrollView,
+  TouchableOpacity,
+  TextInput,
+  StyleSheet,
+  ActivityIndicator,
+  Modal,
+  Pressable,
+} from "react-native";
+import dayjs from "dayjs";
+import isBetween from "dayjs/plugin/isBetween";
+import { Ionicons } from "@expo/vector-icons";
+import { SafeAreaView } from "react-native-safe-area-context";
+import KpiCard from "../../components/hrm/leaveRequest/KpiCard";
+import RequestCard from "../../components/hrm/leaveRequest/RequestCard";
+import utils from "../../helpers/utils";
+import { useSelector } from "react-redux";
+import useGetStatisticsRequests from "../../hooks/requests/useGetStatisticsRequests";
+import useGetMyRequests from "../../hooks/requests/useGetMyRequests";
+import Header from "../../components/Header";
+import { openDrawer } from "../../helpers/navigationRef";
+import useCancelLeaveRequest from "../../hooks/requests/useCancelLeaveRequest";
+import { useFocusEffect } from "@react-navigation/native";
+import Toast from "react-native-toast-message";
 
-const PRIMARY = '#ED2E30';
+dayjs.extend(isBetween);
 
-const LEAVE_TYPES = ['Nghỉ phép năm', 'Nghỉ ốm', 'Nghỉ không lương', 'Nghỉ thai sản', 'Nghỉ việc riêng'];
-const LATE_TYPES  = ['Đi muộn', 'Về sớm', 'Đi muộn & Về sớm'];
+export default function RequestScreen({ navigation }) {
+  const [requestStatus, setRequestStatus] = useState("pending");
+  const [filterType] = useState("");
+  const [fromFilter] = useState(dayjs().startOf("month").format("YYYY-MM-DD"));
+  const [toFilter] = useState(dayjs().format("YYYY-MM-DD"));
+  const [page, setPage] = useState(1);
+  const [expandedRequestId, setExpandedRequestId] = useState(null);
+  const [cancelModal, setCancelModal] = useState({ visible: false, id: null });
 
-const STATUS_CFG = {
-    pending:  { label: 'Chờ duyệt', bg: '#FEF3C7', color: '#B45309' },
-    approved: { label: 'Đã duyệt',  bg: '#D1FAE5', color: '#065F46' },
-    rejected: { label: 'Từ chối',   bg: '#FEE2E2', color: '#B91C1C' },
-};
+  // Hooks
+  const { data: stats, isLoading: statsLoading } = useGetStatisticsRequests();
+  const { mutate: cancelRequest, isPending: isCancelling } =
+    useCancelLeaveRequest();
 
-const mockLeave = [
-    { id: 1, type: 'Nghỉ phép năm', from: '02/05/2026', to: '03/05/2026', days: 2, reason: 'Du lịch gia đình', status: 'approved', submitted: '28/04/2026' },
-    { id: 2, type: 'Nghỉ ốm',       from: '07/05/2026', to: '07/05/2026', days: 1, reason: 'Sốt cao',          status: 'approved', submitted: '07/05/2026' },
-    { id: 3, type: 'Nghỉ việc riêng',from: '20/05/2026', to: '20/05/2026', days: 1, reason: 'Việc gia đình',   status: 'pending',  submitted: '12/05/2026' },
-];
+  const {
+    data: myRequestsData,
+    isLoading: isLoadingRequests,
+    refetch,
+  } = useGetMyRequests({
+    request_type: filterType,
+    status: requestStatus,
+    from: fromFilter,
+    to: toFilter,
+    page,
+    limit: 5,
+  });
 
-const mockLate = [
-    { id: 1, type: 'Đi muộn', date: '04/05/2026', time: '08:45', reason: 'Kẹt xe',          status: 'approved', submitted: '04/05/2026' },
-    { id: 2, type: 'Về sớm',  date: '08/05/2026', time: '12:30', reason: 'Đưa con đi khám', status: 'approved', submitted: '08/05/2026' },
-    { id: 3, type: 'Đi muộn', date: '13/05/2026', time: '09:10', reason: 'Xe hỏng',          status: 'pending',  submitted: '13/05/2026' },
-];
+  const myRequests = myRequestsData?.data ?? [];
+  const totalPages = myRequestsData?.pagination?.total_pages ?? 1;
+  const totalItems = myRequestsData?.pagination?.total ?? 0;
 
-const mockOther = [
-    { id: 1, title: 'Xin tăng ca',  content: 'Xin làm thêm thứ 7 tuần này',              status: 'approved', submitted: '10/05/2026' },
-    { id: 2, title: 'Đổi ca làm',   content: 'Xin đổi ca sáng sang ca chiều ngày 15/05', status: 'pending',  submitted: '12/05/2026' },
-];
+  const auth = useSelector((state) => state.auth);
 
-// ─── Shared components ───────────────────────────────────────────────────────
+  const confirmCancel = () => {
+    if (!cancelModal.id) return;
 
-function StatusBadge({ status }) {
-    const cfg = STATUS_CFG[status] ?? STATUS_CFG.pending;
-    return (
-        <View style={[styles.badge, { backgroundColor: cfg.bg }]}>
-            <Text style={[styles.badgeText, { color: cfg.color }]}>{cfg.label}</Text>
-        </View>
-    );
-}
+    cancelRequest(cancelModal.id, {
+      onSuccess: async () => {
+        setCancelModal({ visible: false, id: null });
 
-function SectionLabel({ children }) {
-    return <Text style={styles.sectionLabel}>{children}</Text>;
-}
+        Toast.show({
+          type: "success",
+          text1: "Thu hồi đơn thành công",
+        });
 
-function Field({ label, children }) {
-    return (
-        <View style={styles.field}>
-            <Text style={styles.fieldLabel}>{label}</Text>
-            {children}
-        </View>
-    );
-}
+        await refetch();
+      },
 
-function StyledInput({ placeholder, value, onChangeText, multiline, keyboardType }) {
-    return (
-        <TextInput
-            style={[styles.input, multiline && styles.inputMulti]}
-            placeholder={placeholder}
-            placeholderTextColor="#9CA3AF"
-            value={value}
-            onChangeText={onChangeText}
-            multiline={multiline}
-            numberOfLines={multiline ? 4 : 1}
-            keyboardType={keyboardType}
+      onError: (error) => {
+        Toast.show({
+          type: "error",
+          text1: error?.response?.data?.message || "Thu hồi đơn thất bại",
+        });
+      },
+    });
+  };
+
+  useFocusEffect(
+    useCallback(() => {
+      refetch();
+    }, []),
+  );
+
+  return (
+    <ScrollView style={styles.screen} showsVerticalScrollIndicator={false}>
+      <SafeAreaView edges={[]}>
+        <Header
+          title="Gửi yêu cầu"
+          leftIconName="menu"
+          onLeftPress={() => {
+            openDrawer();
+          }}
+          rightIconName="add-sharp"
+          onRightPress={() => navigation.navigate("AddRequestScreen")}
         />
-    );
-}
+        <View style={styles.header}>
+          <Text style={styles.greeting}>
+            {utils.getGreeting(auth.user?.full_name, auth.user?.sex)}
+          </Text>
+          <Text style={styles.subtitle}>
+            Tổng quan hệ thống quản lý nhân sự
+          </Text>
+        </View>
 
-function TypeSelector({ options, value, onSelect }) {
-    return (
-        <View style={styles.typeList}>
-            {options.map((opt) => (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.kpiRow}
+        >
+          <KpiCard
+            icon="finger-print"
+            colorIcon={"#4F46E5"}
+            title="Lượt quên chấm công"
+            value={statsLoading ? "--" : stats?.missed_clock_days}
+            unit="ngày"
+            note="Thử việc chưa được cấp lượt quên công."
+            noteColor="#EAB308"
+          />
+          <KpiCard
+            icon="calendar-outline"
+            colorIcon={"#0369A1"}
+            title="Ngày phép tích lũy"
+            value={statsLoading ? "--" : stats?.leave_balance}
+            unit="ngày"
+            note="Tự động mở khóa 3 lượt quên công."
+            noteColor="#EAB308"
+          />
+          <KpiCard
+            icon="alert-circle-outline"
+            colorIcon={"#E11D48"}
+            title="Ngày nghỉ không phép"
+            value={statsLoading ? "--" : stats?.absent_days}
+            unit="ngày"
+            note="Số ngày bạn bị phạt"
+            noteColor={"#EF4444"}
+          />
+        </ScrollView>
+
+        <View style={[styles.card, { padding: 0, overflow: "hidden" }]}>
+          <View style={styles.tabRow}>
+            {[
+              { key: "pending", label: "Chờ Duyệt", dot: "#F59E0B" },
+              { key: "approved", label: "Đã Duyệt", dot: "#22C55E" },
+              { key: "rejected", label: "Từ Chối", dot: "#EF4444" },
+            ].map((tab) => {
+              const active = requestStatus === tab.key;
+              return (
                 <TouchableOpacity
-                    key={opt}
-                    style={[styles.typeChip, value === opt && styles.typeChipActive]}
-                    onPress={() => onSelect(opt)}
-                    activeOpacity={0.7}
+                  key={tab.key}
+                  style={[styles.tab, active && styles.tabActive]}
+                  onPress={() => {
+                    setRequestStatus(tab.key);
+                    setPage(1);
+                  }}
                 >
-                    <Text style={[styles.typeChipText, value === opt && styles.typeChipTextActive]}>{opt}</Text>
+                  <Text
+                    style={[styles.tabText, active && styles.tabTextActive]}
+                  >
+                    {tab.label}
+                  </Text>
+                  <View style={[styles.tabDot, { backgroundColor: tab.dot }]} />
                 </TouchableOpacity>
-            ))}
+              );
+            })}
+          </View>
+
+          <View style={{ padding: 12, gap: 8 }}>
+            {isLoadingRequests ? (
+              <ActivityIndicator
+                style={{ marginVertical: 40 }}
+                color={"#39C79A"}
+              />
+            ) : myRequests.length === 0 ? (
+              <View style={styles.emptyBox}>
+                <Ionicons name="document-outline" size={40} color={"#9CA3AF"} />
+                <Text style={{ color: "#9CA3AF", marginTop: 8 }}>
+                  Không có dữ liệu
+                </Text>
+              </View>
+            ) : (
+              myRequests.map((item) => (
+                <RequestCard
+                  key={item._id}
+                  item={item}
+                  expanded={expandedRequestId === item._id}
+                  onToggle={() =>
+                    setExpandedRequestId((prev) =>
+                      prev === item._id ? null : item._id,
+                    )
+                  }
+                  onCancel={() =>
+                    setCancelModal({ visible: true, id: item._id })
+                  }
+                  isCancelling={isCancelling}
+                />
+              ))
+            )}
+          </View>
+
+          {totalPages > 1 && (
+            <View style={styles.pagination}>
+              <TouchableOpacity
+                onPress={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page === 1}
+                style={[styles.pageBtn, page === 1 && { opacity: 0.4 }]}
+              >
+                <Ionicons name="chevron-back" size={18} color={"#2A2A2A"} />
+              </TouchableOpacity>
+              <Text style={styles.pageInfo}>
+                {page} / {totalPages} • {totalItems} đơn
+              </Text>
+              <TouchableOpacity
+                onPress={() => setPage((p) => Math.min(totalPages, p + 1))}
+                disabled={page === totalPages}
+                style={[
+                  styles.pageBtn,
+                  page === totalPages && { opacity: 0.4 },
+                ]}
+              >
+                <Ionicons name="chevron-forward" size={18} color={"#2A2A2A"} />
+              </TouchableOpacity>
+            </View>
+          )}
         </View>
-    );
-}
+      </SafeAreaView>
 
-function SubmitButton({ label, onPress }) {
-    return (
-        <TouchableOpacity style={styles.submitBtn} onPress={onPress} activeOpacity={0.8}>
-            <Ionicons name="send-outline" size={16} color="#fff" />
-            <Text style={styles.submitBtnText}>{label}</Text>
-        </TouchableOpacity>
-    );
-}
-
-function HistoryCard({ children }) {
-    return <View style={styles.historyCard}>{children}</View>;
-}
-
-function HistoryMeta({ left, right, status }) {
-    return (
-        <View style={styles.historyMeta}>
-            <Text style={styles.historyMetaText}>{left}</Text>
-            <View style={styles.historyMetaRight}>
-                {right && <Text style={styles.historyMetaText}>{right}</Text>}
-                <StatusBadge status={status} />
+      <Modal
+        visible={cancelModal.visible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setCancelModal({ visible: false, id: null })}
+      >
+        <Pressable
+          style={styles.modalOverlay}
+          onPress={() => setCancelModal({ visible: false, id: null })}
+        >
+          <View style={styles.modalBox}>
+            <Text style={styles.modalTitle}>Thu hồi đơn?</Text>
+            <Text style={styles.modalDesc}>
+              Đơn sẽ bị huỷ và không thể khôi phục lại.
+            </Text>
+            <View style={styles.modalActions}>
+              <TouchableOpacity
+                onPress={() => setCancelModal({ visible: false, id: null })}
+                style={styles.modalBtnSecondary}
+              >
+                <Text style={{ color: "#666", fontWeight: "600" }}>Đóng</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={confirmCancel}
+                disabled={isCancelling}
+                style={[
+                  styles.modalBtnDanger,
+                  isCancelling && { opacity: 0.6 },
+                ]}
+              >
+                {isCancelling ? (
+                  <ActivityIndicator color="#fff" size="small" />
+                ) : (
+                  <Text style={{ color: "#fff", fontWeight: "700" }}>
+                    Xác nhận
+                  </Text>
+                )}
+              </TouchableOpacity>
             </View>
-        </View>
-    );
+          </View>
+        </Pressable>
+      </Modal>
+    </ScrollView>
+  );
 }
 
-// ─── Tab: Xin nghỉ phép ──────────────────────────────────────────────────────
-
-function LeaveTab() {
-    const [form, setForm] = useState({ type: '', from: '', to: '', reason: '' });
-    const set = (k) => (v) => setForm((p) => ({ ...p, [k]: v }));
-
-    const handleSubmit = () => {
-        if (!form.type || !form.from || !form.to || !form.reason.trim()) {
-            Toast.show({ type: 'error', text1: 'Vui lòng điền đầy đủ thông tin' });
-            return;
-        }
-        Toast.show({ type: 'success', text1: 'Gửi yêu cầu nghỉ phép thành công!' });
-        setForm({ type: '', from: '', to: '', reason: '' });
-    };
-
-    return (
-        <>
-            <View style={styles.formCard}>
-                <SectionLabel>Tạo yêu cầu nghỉ phép</SectionLabel>
-                <Field label="Loại nghỉ phép">
-                    <TypeSelector options={LEAVE_TYPES} value={form.type} onSelect={set('type')} />
-                </Field>
-                <View style={styles.row}>
-                    <View style={{ flex: 1 }}>
-                        <Field label="Từ ngày">
-                            <StyledInput placeholder="DD/MM/YYYY" value={form.from} onChangeText={set('from')} />
-                        </Field>
-                    </View>
-                    <View style={styles.rowSpacer} />
-                    <View style={{ flex: 1 }}>
-                        <Field label="Đến ngày">
-                            <StyledInput placeholder="DD/MM/YYYY" value={form.to} onChangeText={set('to')} />
-                        </Field>
-                    </View>
-                </View>
-                <Field label="Lý do">
-                    <StyledInput placeholder="Nhập lý do xin nghỉ..." value={form.reason} onChangeText={set('reason')} multiline />
-                </Field>
-                <SubmitButton label="Gửi yêu cầu" onPress={handleSubmit} />
-            </View>
-
-            <SectionLabel>Lịch sử yêu cầu</SectionLabel>
-            {mockLeave.map((r) => (
-                <HistoryCard key={r.id}>
-                    <View style={styles.historyHeader}>
-                        <Text style={styles.historyType}>{r.type}</Text>
-                        <StatusBadge status={r.status} />
-                    </View>
-                    <Text style={styles.historyBody}>{r.from} → {r.to} · {r.days} ngày</Text>
-                    <Text style={styles.historyReason} numberOfLines={2}>{r.reason}</Text>
-                    <HistoryMeta left={`Ngày gửi: ${r.submitted}`} />
-                </HistoryCard>
-            ))}
-        </>
-    );
-}
-
-// ─── Tab: Đi muộn / Về sớm ───────────────────────────────────────────────────
-
-function LateTab() {
-    const [form, setForm] = useState({ type: '', date: '', time: '', reason: '' });
-    const set = (k) => (v) => setForm((p) => ({ ...p, [k]: v }));
-
-    const handleSubmit = () => {
-        if (!form.type || !form.date || !form.time.trim() || !form.reason.trim()) {
-            Toast.show({ type: 'error', text1: 'Vui lòng điền đầy đủ thông tin' });
-            return;
-        }
-        Toast.show({ type: 'success', text1: 'Gửi giải trình thành công!' });
-        setForm({ type: '', date: '', time: '', reason: '' });
-    };
-
-    return (
-        <>
-            <View style={styles.formCard}>
-                <SectionLabel>Giải trình đi muộn / về sớm</SectionLabel>
-                <Field label="Loại">
-                    <TypeSelector options={LATE_TYPES} value={form.type} onSelect={set('type')} />
-                </Field>
-                <View style={styles.row}>
-                    <View style={{ flex: 1 }}>
-                        <Field label="Ngày">
-                            <StyledInput placeholder="DD/MM/YYYY" value={form.date} onChangeText={set('date')} />
-                        </Field>
-                    </View>
-                    <View style={styles.rowSpacer} />
-                    <View style={{ flex: 1 }}>
-                        <Field label="Giờ thực tế">
-                            <StyledInput placeholder="VD: 08:45" value={form.time} onChangeText={set('time')} />
-                        </Field>
-                    </View>
-                </View>
-                <Field label="Lý do">
-                    <StyledInput placeholder="Nhập lý do..." value={form.reason} onChangeText={set('reason')} multiline />
-                </Field>
-                <SubmitButton label="Gửi giải trình" onPress={handleSubmit} />
-            </View>
-
-            <SectionLabel>Lịch sử giải trình</SectionLabel>
-            {mockLate.map((r) => (
-                <HistoryCard key={r.id}>
-                    <View style={styles.historyHeader}>
-                        <Text style={styles.historyType}>{r.type}</Text>
-                        <StatusBadge status={r.status} />
-                    </View>
-                    <Text style={styles.historyBody}>{r.date} · {r.time}</Text>
-                    <Text style={styles.historyReason} numberOfLines={2}>{r.reason}</Text>
-                    <HistoryMeta left={`Ngày gửi: ${r.submitted}`} />
-                </HistoryCard>
-            ))}
-        </>
-    );
-}
-
-// ─── Tab: Yêu cầu khác ───────────────────────────────────────────────────────
-
-function OtherTab() {
-    const [form, setForm] = useState({ title: '', content: '' });
-    const set = (k) => (v) => setForm((p) => ({ ...p, [k]: v }));
-
-    const handleSubmit = () => {
-        if (!form.title.trim() || !form.content.trim()) {
-            Toast.show({ type: 'error', text1: 'Vui lòng điền đầy đủ thông tin' });
-            return;
-        }
-        Toast.show({ type: 'success', text1: 'Gửi yêu cầu thành công!' });
-        setForm({ title: '', content: '' });
-    };
-
-    return (
-        <>
-            <View style={styles.formCard}>
-                <SectionLabel>Tạo yêu cầu khác</SectionLabel>
-                <Field label="Tiêu đề yêu cầu">
-                    <StyledInput placeholder="VD: Xin tăng ca, Đổi ca làm..." value={form.title} onChangeText={set('title')} />
-                </Field>
-                <Field label="Nội dung">
-                    <StyledInput placeholder="Mô tả chi tiết yêu cầu..." value={form.content} onChangeText={set('content')} multiline />
-                </Field>
-                <SubmitButton label="Gửi yêu cầu" onPress={handleSubmit} />
-            </View>
-
-            <SectionLabel>Lịch sử yêu cầu</SectionLabel>
-            {mockOther.map((r) => (
-                <HistoryCard key={r.id}>
-                    <View style={styles.historyHeader}>
-                        <Text style={styles.historyType}>{r.title}</Text>
-                        <StatusBadge status={r.status} />
-                    </View>
-                    <Text style={styles.historyReason} numberOfLines={3}>{r.content}</Text>
-                    <HistoryMeta left={`Ngày gửi: ${r.submitted}`} />
-                </HistoryCard>
-            ))}
-        </>
-    );
-}
-
-// ─── Main Screen ─────────────────────────────────────────────────────────────
-
-const TABS = [
-    { label: 'Xin nghỉ phép',      component: LeaveTab },
-    { label: 'Đi muộn / Về sớm',   component: LateTab  },
-    { label: 'Yêu cầu khác',       component: OtherTab },
-];
-
-export default function RequestScreen() {
-    const [activeTab, setActiveTab] = useState(0);
-    const ActiveTab = TABS[activeTab].component;
-
-    return (
-        <SafeAreaView style={styles.container} edges={[]}>
-            <Header
-                title="Gửi yêu cầu"
-                leftIconName="menu"
-                onLeftPress={openDrawer}
-            />
-
-            {/* Tab bar */}
-            <View style={styles.tabBar}>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabBarInner}>
-                    {TABS.map((t, i) => (
-                        <TouchableOpacity
-                            key={t.label}
-                            style={[styles.tabItem, activeTab === i && styles.tabItemActive]}
-                            onPress={() => setActiveTab(i)}
-                            activeOpacity={0.7}
-                        >
-                            <Text style={[styles.tabLabel, activeTab === i && styles.tabLabelActive]}>
-                                {t.label}
-                            </Text>
-                        </TouchableOpacity>
-                    ))}
-                </ScrollView>
-            </View>
-
-            <ScrollView contentContainerStyle={styles.scroll}>
-                <ActiveTab />
-            </ScrollView>
-        </SafeAreaView>
-    );
-}
-
+// ─── Styles ───────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
-    container:  { flex: 1, backgroundColor: '#F5F6FA' },
-    scroll:     { padding: 16, paddingBottom: 40 },
+  screen: { flex: 1, backgroundColor: "#F5F7FB" },
 
-    // Tab bar
-    tabBar:      { backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#E5E7EB' },
-    tabBarInner: { paddingHorizontal: 12, paddingVertical: 4, gap: 4 },
-    tabItem:     { paddingHorizontal: 14, paddingVertical: 9, borderRadius: 8 },
-    tabItemActive: { backgroundColor: '#FEF2F2' },
-    tabLabel:    { fontSize: 13, fontWeight: '600', color: '#6B7280' },
-    tabLabelActive: { color: PRIMARY },
+  // Header
+  header: { padding: 20, paddingBottom: 8 },
+  greeting: { fontSize: 22, fontWeight: "700", color: "#2A2A2A" },
+  subtitle: { marginTop: 4, fontSize: 14, color: "#9CA3AF", fontWeight: "500" },
 
-    // Form
-    formCard: {
-        backgroundColor: '#fff', borderRadius: 12, borderWidth: 1,
-        borderColor: '#E5E7EB', padding: 16, marginBottom: 20,
-    },
-    sectionLabel: {
-        fontSize: 14, fontWeight: '700', color: '#111827', marginBottom: 14,
-    },
+  // KPI
+  kpiRow: { paddingHorizontal: 10, paddingVertical: 8, gap: 12 },
 
-    field:      { marginBottom: 12 },
-    fieldLabel: { fontSize: 12, fontWeight: '600', color: '#374151', marginBottom: 6 },
+  // Card
+  card: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 12,
+    margin: 10,
+    marginTop: 8,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+  },
+  // Tabs
+  tabRow: {
+    flexDirection: "row",
+    borderBottomWidth: 1,
+    borderBottomColor: "#E5E7EB",
+    paddingHorizontal: 16,
+  },
+  tab: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingVertical: 14,
+    marginRight: 24,
+    borderBottomWidth: 2,
+    borderBottomColor: "transparent",
+  },
+  tabActive: { borderBottomColor: "#39C79A" },
+  tabText: { fontSize: 14, fontWeight: "700", color: "#9CA3AF" },
+  tabTextActive: { color: "#39C79A" },
+  tabDot: { width: 6, height: 6, borderRadius: 3 },
+  emptyBox: { height: 150, alignItems: "center", justifyContent: "center" },
 
-    input: {
-        borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 8,
-        paddingHorizontal: 12, paddingVertical: 10,
-        fontSize: 14, color: '#111827', backgroundColor: '#F9FAFB',
-    },
-    inputMulti: { height: 90, textAlignVertical: 'top' },
+  // Pagination
+  pagination: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 16,
+    padding: 14,
+    borderTopWidth: 1,
+    borderTopColor: "#E5E7EB",
+    backgroundColor: "#FFFFFF",
+  },
+  pageBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "#F3F4F6",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  pageInfo: { fontSize: 13, color: "#9CA3AF" },
 
-    row:        { flexDirection: 'row' },
-    rowSpacer:  { width: 10 },
-
-    typeList:   { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-    typeChip: {
-        paddingHorizontal: 12, paddingVertical: 7, borderRadius: 8,
-        borderWidth: 1, borderColor: '#E5E7EB', backgroundColor: '#F9FAFB',
-    },
-    typeChipActive:     { borderColor: PRIMARY, backgroundColor: '#FEF2F2' },
-    typeChipText:       { fontSize: 13, color: '#374151', fontWeight: '500' },
-    typeChipTextActive: { color: PRIMARY, fontWeight: '700' },
-
-    submitBtn: {
-        flexDirection: 'row', alignItems: 'center', gap: 8,
-        backgroundColor: PRIMARY, borderRadius: 8,
-        paddingHorizontal: 16, paddingVertical: 10, alignSelf: 'flex-start',
-        marginTop: 4,
-    },
-    submitBtnText: { color: '#fff', fontSize: 14, fontWeight: '700' },
-
-    // History cards
-    historyCard: {
-        backgroundColor: '#fff', borderRadius: 12, borderWidth: 1,
-        borderColor: '#E5E7EB', padding: 14, marginBottom: 10,
-    },
-    historyHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 },
-    historyType:   { fontSize: 14, fontWeight: '700', color: '#111827', flex: 1, marginRight: 8 },
-    historyBody:   { fontSize: 13, color: '#374151', marginBottom: 4 },
-    historyReason: { fontSize: 13, color: '#6B7280', marginBottom: 8 },
-    historyMeta:   { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-    historyMetaText: { fontSize: 12, color: '#9CA3AF' },
-    historyMetaRight: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-
-    // Badge
-    badge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 },
-    badgeText: { fontSize: 11, fontWeight: '700' },
+  // Modal
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.4)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  modalBox: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 18,
+    padding: 20,
+    width: 300,
+    elevation: 8,
+  },
+  modalTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#2A2A2A",
+    marginBottom: 8,
+  },
+  modalDesc: {
+    fontSize: 13,
+    color: "#9CA3AF",
+    lineHeight: 20,
+    marginBottom: 16,
+  },
+  modalActions: { flexDirection: "row", justifyContent: "flex-end", gap: 10 },
+  modalBtnSecondary: {
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+    borderRadius: 10,
+  },
+  modalBtnDanger: {
+    backgroundColor: "#EF4444",
+    paddingHorizontal: 16,
+    paddingVertical: 9,
+    borderRadius: 10,
+    minWidth: 80,
+    alignItems: "center",
+  },
 });

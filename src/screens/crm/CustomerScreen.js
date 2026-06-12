@@ -52,9 +52,11 @@ export default function CustomerScreen() {
 
   useEffect(() => {
     const statusVal =
-      filterType === "potential" ? "registered" :
-      filterType === "normal" ? "kyc_verified" :
-      undefined;
+      filterType === "potential"
+        ? "registered"
+        : filterType === "normal"
+          ? "kyc_verified"
+          : undefined;
 
     const params = {
       page,
@@ -103,18 +105,28 @@ export default function CustomerScreen() {
   }, []);
 
   const handlePress = useCallback(
-    (id) => navigation.navigate("CustomerDetailScreen", { customerId: id }),
+    (external_id, ma_nv) =>
+      navigation.navigate("CustomerDetailScreen", {
+        externalId: external_id,
+        ma_nv: ma_nv,
+      }),
     [navigation],
   );
 
   const renderItem = useCallback(
-    ({ item }) => (
-      <CustomerCard
-        key={item._id}
-        row={item}
-        onPress={() => handlePress(item._id)}
-      />
-    ),
+    ({ item }) => {
+      const ma_nv = item?.ref_code.split("-").pop() || "";
+      
+      return (
+        <CustomerCard
+          key={item._id}
+          row={item}
+          onPress={() =>
+            handlePress(item.external_id, ma_nv)
+          }
+        />
+      );
+    },
     [handlePress],
   );
 
@@ -123,7 +135,13 @@ export default function CustomerScreen() {
       <Header
         title="Danh sách khách hàng"
         rightIconName={canAddCustomer ? "person-add" : undefined}
-        onRightPress={canAddCustomer ? () => { translateCreateCustomerY.value = withTiming(0); } : undefined}
+        onRightPress={
+          canAddCustomer
+            ? () => {
+                translateCreateCustomerY.value = withTiming(0);
+              }
+            : undefined
+        }
       />
 
       <View style={{ width: "100%", paddingHorizontal: 20, marginTop: 8 }}>
@@ -178,9 +196,7 @@ export default function CustomerScreen() {
       </View>
 
       {/* ── List header ── */}
-      <Text style={styles.listHeaderText}>
-        Danh sách khách hàng ({total})
-      </Text>
+      <Text style={styles.listHeaderText}>Danh sách khách hàng ({total})</Text>
 
       <FlatList
         style={styles.container}

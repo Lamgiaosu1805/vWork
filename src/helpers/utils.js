@@ -71,6 +71,14 @@ const getStatusLaborContract = (status) => {
     }
 };
 
+const getGreeting = (fullName, sex) => {
+    const h = new Date().getHours();
+    const time    = h < 12 ? 'buổi sáng' : h < 18 ? 'buổi chiều' : 'buổi tối';
+    const pronoun = sex === 0 ? 'chị' : 'anh';
+    const name    = fullName?.trim().split(/\s+/).pop() ?? '';
+    return `Chào ${time}, ${pronoun} ${name}`;
+};
+
 export default {
     BASE_URL,
     renderMaritalStatus,
@@ -79,4 +87,5 @@ export default {
     getFileExtension,
     getStatusLaborContract,
     getTypeLaborContract,
+    getGreeting,
 };
