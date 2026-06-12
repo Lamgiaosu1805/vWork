@@ -174,7 +174,13 @@ export default function FeedScreen({ navigation }) {
 
   return (
     <View style={styles.safe}>
-      <Header title="Bảng tin" leftIconName="menu" onLeftPress={openDrawer} />
+      <Header
+        title="Bảng tin"
+        leftIconName="menu"
+        onLeftPress={openDrawer}
+        rightIconName={"person-circle-outline"}
+        onRightPress={() => navigation.navigate("WorkplaceProfileScreen")}
+      />
 
       {/* Banner bài mới */}
       {pendingPosts.length > 0 && (
