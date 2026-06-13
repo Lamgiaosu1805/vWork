@@ -110,7 +110,7 @@ export default function ProfileScreen({ navigation }) {
                             <Text style={styles.titleText}>{user?.full_name}</Text>
                             {user?.departments.map((item, index) => (
                                 <Text style={styles.infoText} key={index}>
-                                    {item.position.position_name} - {item.department.department_name}
+                                    {item?.position?.position_name} - {item?.department?.department_name}
                                 </Text>
                             ))}
                             <Text style={styles.infoText}>Mã NV: {user?.ma_nv}</Text>
