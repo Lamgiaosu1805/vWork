@@ -9,6 +9,7 @@ import {
   deleteConversation,
   deleteMessage,
   clearActiveConversationId,
+  updateMessage,
 } from "../redux/slice/chatSlice";
 
 let chatSocket = null;
@@ -38,6 +39,7 @@ const attachGlobalHandlers = () => {
   chatSocket.off("message:seen");
   chatSocket.off("conversation:deleted");
   chatSocket.off("message:deleted");
+  chatSocket.off("message:recalled");
 
   chatSocket.on("conversation:upserted", (payload) => {
     const conversation = payload?.conversation ?? payload?.data ?? payload;
@@ -86,6 +88,7 @@ const attachGlobalHandlers = () => {
   chatSocket.on("message:seen", (payload) => {
     const conversation =
       payload?.conversation ?? payload?.data?.conversation ?? null;
+        
     const conversationId =
       conversation?._id ?? null ?? payload?.conversationId ?? null;
     if (!conversationId) return;
@@ -109,6 +112,20 @@ const attachGlobalHandlers = () => {
     const messageId = payload?.messageId ?? payload?.data?.messageId ?? null;
     if (!conversationId || !messageId || !globalDispatch) return;
     globalDispatch(deleteMessage({ conversationId, messageId }));
+  });
+
+  chatSocket.on("message:recalled", (payload) => {
+    const conversationId = payload?.conversationId;
+    const message = payload?.message;
+
+    if (!conversationId || !message) return;
+
+    globalDispatch(
+      appendMessage({
+        conversationId,
+        message,
+      }),
+    );
   });
 };
 

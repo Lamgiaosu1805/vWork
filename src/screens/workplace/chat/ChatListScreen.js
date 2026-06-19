@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useRef } from "react";
+import React, { useCallback, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -51,6 +51,9 @@ export default function ChatListScreen({ navigation }) {
     [user],
   );
   const translateNewConversation = useSharedValue(HEIGHT_SHEET);
+
+  const [tabSelected, setTabSelected] = useState("all");
+
   const flatListRef = useRef(null);
 
   const handleSelectConversation = useCallback(
@@ -129,21 +132,30 @@ export default function ChatListScreen({ navigation }) {
       const doDelete = async () => {
         try {
           await chatApi.deleteConversation(conversationId);
-          dispatch({ type: "chat/deleteConversation", payload: conversationId });
+          dispatch({
+            type: "chat/deleteConversation",
+            payload: conversationId,
+          });
           Toast.show({ type: "success", text1: "Đã xoá cuộc trò chuyện" });
         } catch (error) {
           Toast.show({
             type: "error",
             text1:
-              error?.response?.data?.message ?? error?.message ?? "Xoá thất bại",
+              error?.response?.data?.message ??
+              error?.message ??
+              "Xoá thất bại",
           });
         }
       };
 
-      Alert.alert("Xoá cuộc trò chuyện", "Bạn có chắc muốn xoá cuộc trò chuyện này?", [
-        { text: "Huỷ", style: "cancel" },
-        { text: "Xoá", style: "destructive", onPress: doDelete },
-      ]);
+      Alert.alert(
+        "Xoá cuộc trò chuyện",
+        "Bạn có chắc muốn xoá cuộc trò chuyện này?",
+        [
+          { text: "Huỷ", style: "cancel" },
+          { text: "Xoá", style: "destructive", onPress: doDelete },
+        ],
+      );
     },
     [dispatch],
   );
@@ -175,7 +187,7 @@ export default function ChatListScreen({ navigation }) {
     useCallback(() => {
       let active = true;
       let socket = null;
-      
+
       requestAnimationFrame(() => {
         flatListRef.current?.scrollToOffset?.({ offset: 0, animated: false });
       });
@@ -277,6 +289,64 @@ export default function ChatListScreen({ navigation }) {
         onRightPress={openNewConversattion}
       />
 
+      <View
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "space-between",
+          paddingHorizontal: 16,
+          marginTop: 10,
+        }}
+      >
+        <TouchableOpacity
+          onPress={() => setTabSelected("all")}
+          style={{
+            flex: 1,
+            alignItems: "center",
+            paddingVertical: 12,
+            borderWidth: 1,
+            borderColor: "#F16733",
+            backgroundColor: tabSelected === "all" ? "#F16733" : "#FFFFFF",
+            borderTopLeftRadius: 12,
+            borderBottomLeftRadius: 12,
+          }}
+          activeOpacity={0.8}
+        >
+          <Text
+            children="Tất cả"
+            style={{
+              color: tabSelected === "all" ? "#FFFFFF" : "#000000",
+              fontSize: 14,
+              fontWeight: "700",
+            }}
+          />
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          onPress={() => setTabSelected("group")}
+          style={{
+            flex: 1,
+            alignItems: "center",
+            paddingVertical: 12,
+            borderWidth: 1,
+            borderColor: "#F16733",
+            backgroundColor: tabSelected === "group" ? "#F16733" : "#FFFFFF",
+            borderTopRightRadius: 12,
+            borderBottomRightRadius: 12,
+          }}
+          activeOpacity={0.8}
+        >
+          <Text
+            children="Nhóm"
+            style={{
+              color: tabSelected === "group" ? "#FFFFFF" : "#000000",
+              fontSize: 14,
+              fontWeight: "700",
+            }}
+          />
+        </TouchableOpacity>
+      </View>
+
       {loading && conversations.length === 0 ? (
         <View style={styles.loadingWrap}>
           <ActivityIndicator size="large" color="#0F766E" />
@@ -284,7 +354,9 @@ export default function ChatListScreen({ navigation }) {
       ) : (
         <FlatList
           ref={flatListRef}
-          data={conversations}
+          data={conversations.filter((c) =>
+            tabSelected === "all" ? true : c?.type === "group",
+          )}
           keyExtractor={(item, index) =>
             String(resolveConversationId(item) ?? index)
           }

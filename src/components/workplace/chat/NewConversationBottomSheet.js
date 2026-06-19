@@ -43,7 +43,6 @@ const NewConversationBottomSheet = ({ translateNewConversation, onSelect }) => {
 
   const handleClose = useCallback(
     (isGesture, shouldClose) => {
-      // only reset state when not a gesture (overlay/back/programmatic close)
       if (!isGesture) {
         translateNewConversation.value = withTiming(HEIGHT_SHEET);
       }
@@ -53,22 +52,20 @@ const NewConversationBottomSheet = ({ translateNewConversation, onSelect }) => {
         setSelectedUsers([]);
         setShowGroupName(false);
         setGroupName("");
+        setQuery("");
+        setPage(1);
       }
 
       Keyboard.dismiss();
     },
-    [translateNewConversation, setGroupMode, setSelectedUsers],
+    [translateNewConversation],
   );
 
   const handleSelect = (item) => {
-    console.log(item);
-
     if (groupMode) {
-      // toggle selection
       const exists = selectedUsers.find(
         (u) => u.id_account?._id === item.id_account?._id,
       );
-      console.log(item);
 
       if (exists) {
         setSelectedUsers((prev) =>
@@ -82,7 +79,7 @@ const NewConversationBottomSheet = ({ translateNewConversation, onSelect }) => {
 
     onSelect(item);
     Keyboard.dismiss();
-    handleClose();
+    handleClose(false, true);
   };
 
   const handleStartGroup = () => {
@@ -104,7 +101,7 @@ const NewConversationBottomSheet = ({ translateNewConversation, onSelect }) => {
     console.log(nameGroupEmpty);
 
     onSelect?.({ type: "group", members: selectedUsers, name: nameGroupEmpty });
-    handleClose(false);
+    handleClose(false, true);
   };
 
   const removeSelected = (id) => {
@@ -306,7 +303,7 @@ const NewConversationBottomSheet = ({ translateNewConversation, onSelect }) => {
             <>
               <Text style={styles.suggestTitle}>Gợi ý</Text>
 
-              {users.length === 0 ? (
+              {users?.length === 0 ? (
                 <View style={styles.emptyWrap}>
                   {loading ? (
                     <ActivityIndicator />
@@ -316,7 +313,7 @@ const NewConversationBottomSheet = ({ translateNewConversation, onSelect }) => {
                 </View>
               ) : (
                 <View>
-                  {users.map((item, index) => {
+                  {users?.map((item, index) => {
                     const id = item.id_account?._id;
                     const isSelected = selectedUsers.find(
                       (u) => u.id_account?._id === id,
@@ -329,7 +326,7 @@ const NewConversationBottomSheet = ({ translateNewConversation, onSelect }) => {
                           selected={!!isSelected}
                           groupMode={groupMode}
                         />
-                        {index < users.length - 1 ? (
+                        {index < users?.length - 1 ? (
                           <View style={styles.divider} />
                         ) : null}
                       </View>

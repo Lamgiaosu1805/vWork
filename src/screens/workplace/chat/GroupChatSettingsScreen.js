@@ -1,8 +1,11 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useMemo, useState, useCallback } from "react";
 import {
   ActivityIndicator,
+  Alert,
   KeyboardAvoidingView,
+  Modal,
   Platform,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -10,169 +13,574 @@ import {
   View,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { useDispatch } from "react-redux";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useDispatch, useSelector } from "react-redux";
 import Toast from "react-native-toast-message";
 
 import chatApi from "../../../api/chat";
-import { upsertConversation } from "../../../redux/slice/chatSlice";
+import {
+  deleteConversation,
+  upsertConversation,
+} from "../../../redux/slice/chatSlice";
+import { resolveGroupAvatars } from "../../../utils/chatUtils";
+import { AuthAvatar } from "../../../components/PostCard";
+import AvatarGroup from "../../../components/workplace/chat/AvatarGroup";
+import RenameModal from "../../../components/workplace/chat/setting/RenameModal";
+import MenuItem from "../../../components/workplace/chat/setting/MenuItem";
+import AccordionSection from "../../../components/workplace/chat/setting/AccordionSection";
+import ActionBtn from "../../../components/workplace/chat/setting/ActionBtn";
+import AddMembersModal from "../../../components/workplace/chat/setting/AddMembersModal";
 
 export default function GroupChatSettingsScreen({ route, navigation }) {
   const dispatch = useDispatch();
+  const insets = useSafeAreaInsets();
+  const currentUserInfoId = useSelector(
+    (state) => state.auth.user?._id ?? state.auth.user?.id,
+  );
+
   const { conversationId, conversation: initialConversation } =
     route.params ?? {};
 
-  const initialName = useMemo(
-    () => initialConversation?.name ?? initialConversation?.display_name ?? "",
-    [initialConversation],
+  const [conversation, setConversation] = useState(initialConversation ?? null);
+  const [renameVisible, setRenameVisible] = useState(false);
+  const [addMembersVisible, setAddMembersVisible] = useState(false);
+  const [leaving, setLeaving] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [memberActionId, setMemberActionId] = useState(null);
+
+  const displayName = conversation?.name ?? conversation?.display_name ?? "";
+  const members = conversation?.members ?? [];
+  const adminIds = useMemo(
+    () => new Set((conversation?.admins ?? []).map((a) => String(a?._id ?? a))),
+    [conversation?.admins],
   );
 
-  const [name, setName] = useState(initialName);
-  const [saving, setSaving] = useState(false);
+  const isCurrentUserAdmin = adminIds.has(String(currentUserInfoId));
 
-  useEffect(() => {
-    setName(initialName);
-  }, [initialName]);
+  const sortedMembers = useMemo(
+    () =>
+      [...members].sort((a, b) => {
+        const aA = adminIds.has(String(a?._id)) ? 0 : 1;
+        const bA = adminIds.has(String(b?._id)) ? 0 : 1;
+        return aA - bA;
+      }),
+    [members, adminIds],
+  );
 
-  const handleSave = async () => {
-    const nextName = name.trim();
-    if (!conversationId || !nextName || saving) return;
+  const groupAvatars =
+    conversation?.type === "group" && !conversation?.avatar
+      ? resolveGroupAvatars(conversation)
+      : [];
 
-    setSaving(true);
-    try {
-      const res = await chatApi.updateGroupConversationName(conversationId, {
-        name: nextName,
+  const handleSave = useCallback(
+    async (nextName) => {
+      if (!conversationId || !nextName || saving) return;
+      setSaving(true);
+      try {
+        const res = await chatApi.updateGroupConversationName(conversationId, {
+          name: nextName,
+        });
+        const updated = res?.data?.data ?? res?.data ?? res;
+        if (updated) {
+          dispatch(upsertConversation(updated));
+          setConversation((prev) => ({ ...prev, ...updated }));
+        }
+        setRenameVisible(false);
+        Toast.show({ type: "success", text1: "Đã đổi tên nhóm" });
+      } catch (error) {
+        Toast.show({
+          type: "error",
+          text1:
+            error?.response?.data?.message ??
+            error?.message ??
+            "Không thể đổi tên nhóm",
+        });
+      } finally {
+        setSaving(false);
+      }
+    },
+    [conversationId, saving, dispatch],
+  );
+
+  const handleAddMembers = useCallback(
+    async (memberIds) => {
+      if (!conversationId || !memberIds?.length) return;
+      try {
+        const res = await chatApi.addMembers(conversationId, {
+          member_ids: memberIds,
+        });
+        const updated = res?.data?.data ?? res?.data ?? res;
+        if (updated) {
+          dispatch(upsertConversation(updated));
+          setConversation((prev) => ({ ...prev, ...updated }));
+        }
+        setAddMembersVisible(false);
+        Toast.show({ type: "success", text1: "Đã thêm thành viên" });
+      } catch (error) {
+        Toast.show({
+          type: "error",
+          text1:
+            error?.response?.data?.message ??
+            error?.message ??
+            "Không thể thêm thành viên",
+        });
+      }
+    },
+    [conversationId, dispatch],
+  );
+
+  const handleKickMember = useCallback(
+    (member) => {
+      const memberId = String(member?._id);
+      Alert.alert(
+        "Xoá thành viên",
+        `Xoá ${member?.full_name ?? "thành viên này"} khỏi nhóm?`,
+        [
+          { text: "Huỷ", style: "cancel" },
+          {
+            text: "Xoá",
+            style: "destructive",
+            onPress: async () => {
+              setMemberActionId(memberId);
+              try {
+                const res = await chatApi.kickMember(conversationId, memberId);
+                const updated = res?.data?.data ?? res?.data ?? res;
+                if (updated) {
+                  dispatch(upsertConversation(updated));
+                  setConversation((prev) => ({ ...prev, ...updated }));
+                }
+                Toast.show({ type: "success", text1: "Đã xoá thành viên" });
+              } catch (error) {
+                Toast.show({
+                  type: "error",
+                  text1:
+                    error?.response?.data?.message ??
+                    error?.message ??
+                    "Không thể xoá thành viên",
+                });
+              } finally {
+                setMemberActionId(null);
+              }
+            },
+          },
+        ],
+      );
+    },
+    [conversationId, dispatch],
+  );
+
+  const handlePromoteMember = useCallback(
+    (member) => {
+      const memberId = String(member?._id);
+      Alert.alert(
+        "Thăng chức trưởng nhóm",
+        `Đặt ${member?.full_name ?? "thành viên này"} làm trưởng nhóm?`,
+        [
+          { text: "Huỷ", style: "cancel" },
+          {
+            text: "Xác nhận",
+            onPress: async () => {
+              setMemberActionId(memberId);
+              try {
+                const res = await chatApi.promoteMember(
+                  conversationId,
+                  memberId,
+                );
+                const updated = res?.data?.data ?? res?.data ?? res;
+                if (updated) {
+                  dispatch(upsertConversation(updated));
+                  setConversation((prev) => ({ ...prev, ...updated }));
+                }
+                Toast.show({
+                  type: "success",
+                  text1: "Đã thăng chức trưởng nhóm",
+                });
+              } catch (error) {
+                Toast.show({
+                  type: "error",
+                  text1:
+                    error?.response?.data?.message ??
+                    error?.message ??
+                    "Không thể thăng chức",
+                });
+              } finally {
+                setMemberActionId(null);
+              }
+            },
+          },
+        ],
+      );
+    },
+    [conversationId, dispatch],
+  );
+
+  const handleMemberOptions = useCallback(
+    (member, isMe, isMemberAdmin) => {
+      const buttons = [];
+
+      // Luôn có "Xem trang cá nhân" cho mọi member
+      buttons.push({
+        text: "Xem trang cá nhân",
+        onPress: () =>
+          navigation.navigate("WorkplaceProfileScreen", {
+            accountId: member?.id_account,
+          }),
       });
-      const updatedConversation = res?.data?.data ?? res?.data ?? res;
 
-      if (updatedConversation) {
-        dispatch(upsertConversation(updatedConversation));
+      // Chỉ admin mới được thao tác, và không thao tác lên chính mình, không thao tác lên admin khác
+      if (isCurrentUserAdmin && !isMe && !isMemberAdmin) {
+        buttons.push({
+          text: "Đặt làm trưởng nhóm",
+          onPress: () => handlePromoteMember(member),
+        });
+
+        buttons.push({
+          text: "Xoá khỏi nhóm",
+          style: "destructive",
+          onPress: () => handleKickMember(member),
+        });
       }
 
-      Toast.show({ type: "success", text1: "Đã đổi tên nhóm" });
-      navigation.goBack();
-    } catch (error) {
-      Toast.show({
-        type: "error",
-        text1:
-          error?.response?.data?.message ??
-          error?.message ??
-          "Không thể đổi tên nhóm",
-      });
-    } finally {
-      setSaving(false);
-    }
-  };
+      buttons.push({ text: "Huỷ", style: "cancel" });
+
+      Alert.alert(member?.full_name ?? "Thành viên", null, buttons);
+    },
+    [
+      adminIds,
+      currentUserInfoId,
+      isCurrentUserAdmin,
+      navigation,
+      handlePromoteMember,
+      handleKickMember,
+    ],
+  );
+
+  const handleLeaveGroup = useCallback(() => {
+    Alert.alert("Rời nhóm", "Bạn có chắc muốn rời nhóm này?", [
+      { text: "Huỷ", style: "cancel" },
+      {
+        text: "Rời nhóm",
+        style: "destructive",
+        onPress: async () => {
+          setLeaving(true);
+          try {
+            if (navigation.canGoBack()) {
+              navigation.pop(2);
+            } else {
+              navigation.navigate("ChatListScreen");
+            }
+            await chatApi.leaveGroup(conversationId);
+            dispatch(deleteConversation(conversationId));
+            Toast.show({ type: "success", text1: "Đã rời nhóm" });
+          } catch (error) {
+            Toast.show({
+              type: "error",
+              text1:
+                error?.response?.data?.message ??
+                error?.message ??
+                "Không thể rời nhóm",
+            });
+          } finally {
+            setLeaving(false);
+          }
+        },
+      },
+    ]);
+  }, [conversationId, dispatch, navigation]);
+
+  const heroAvatar = conversation?.avatar ? (
+    <AuthAvatar
+      filename={conversation.avatar}
+      name={displayName}
+      size={88}
+      cacheKey={conversation.updatedAt}
+    />
+  ) : groupAvatars.length > 1 ? (
+    <AvatarGroup
+      count={groupAvatars.length}
+      groupAvatars={groupAvatars}
+      width={88}
+      height={88}
+    />
+  ) : (
+    <View style={styles.heroAvatarFallback}>
+      <Ionicons name="people" size={44} color="#FFF" />
+    </View>
+  );
 
   return (
-    <View style={styles.container}>
-      <KeyboardAvoidingView
-        style={styles.flex}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
+    <View style={styles.root}>
+      <View style={[styles.header, { paddingTop: insets.top }]}>
+        <TouchableOpacity
+          style={styles.backBtn}
+          onPress={() => navigation.goBack()}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        >
+          <Ionicons name="chevron-back" size={24} color="#111827" />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Thông tin nhóm</Text>
+        <View style={{ width: 40 }} />
+      </View>
+
+      <ScrollView
+        contentContainerStyle={styles.scroll}
+        showsVerticalScrollIndicator={false}
       >
-        <View style={styles.header}>
-          <TouchableOpacity
-            style={styles.backButton}
-            onPress={() => navigation.goBack()}
-          >
-            <Ionicons name="chevron-back" size={24} color="#111827" />
-          </TouchableOpacity>
-          <Text style={styles.title}>Cài đặt nhóm</Text>
+        <View style={styles.hero}>
+          <View style={styles.heroAvatarWrap}>{heroAvatar}</View>
+
+          <View style={styles.nameRow}>
+            <Text style={styles.groupName} numberOfLines={1}>
+              {displayName || "Nhóm chat"}
+            </Text>
+          </View>
+
+          <Text style={styles.memberCount}>{members.length} thành viên</Text>
         </View>
 
-        <View style={styles.content}>
-          <Text style={styles.label}>Tên nhóm</Text>
-          <TextInput
-            value={name}
-            onChangeText={setName}
-            placeholder="Nhập tên nhóm"
-            placeholderTextColor="#9CA3AF"
-            style={styles.input}
-            maxLength={80}
+        <View style={styles.actions}>
+          {/* <ActionBtn
+            icon="search-outline"
+            label="Tìm kiếm"
+            onPress={() => {}}
+          /> */}
+          <ActionBtn
+            icon="notifications-outline"
+            label="Thông báo"
+            onPress={() => {}}
           />
-
-          <TouchableOpacity
-            style={[
-              styles.saveButton,
-              (!name.trim() || saving) && styles.saveButtonDisabled,
-            ]}
-            activeOpacity={0.85}
-            onPress={handleSave}
-            disabled={!name.trim() || saving}
-          >
-            {saving ? (
-              <ActivityIndicator color="#FFF" size="small" />
-            ) : (
-              <Text style={styles.saveButtonText}>Lưu thay đổi</Text>
-            )}
-          </TouchableOpacity>
+          <ActionBtn
+            icon="person-add-outline"
+            label="Thêm"
+            onPress={() => setAddMembersVisible(true)}
+          />
+          <ActionBtn
+            icon="exit-outline"
+            label="Rời nhóm"
+            danger
+            onPress={handleLeaveGroup}
+          />
         </View>
-      </KeyboardAvoidingView>
+
+        <AccordionSection
+          title={`Thành viên nhóm  ·  ${members.length}`}
+          defaultOpen
+        >
+          {sortedMembers.length === 0 ? (
+            <Text style={styles.emptyText}>Không có thành viên</Text>
+          ) : (
+            sortedMembers.slice(0, 10).map((m, idx) => {
+              const isAdmin = adminIds.has(String(m?._id));
+              const isMe = String(m?._id) === String(currentUserInfoId);
+              const isProcessing = memberActionId === String(m?._id);
+
+              return (
+                <View
+                  key={String(m?._id ?? idx)}
+                  style={[styles.memberRow, idx > 0 && styles.memberBorder]}
+                >
+                  <View style={styles.memberAvWrap}>
+                    <AuthAvatar
+                      filename={m.avatar}
+                      name={m.full_name}
+                      size={44}
+                      cacheKey={m.updatedAt}
+                    />
+                    {isAdmin && (
+                      <View style={styles.crownBadge}>
+                        <Ionicons name="star" size={8} color="#FFF" />
+                      </View>
+                    )}
+                  </View>
+
+                  <View style={styles.memberInfo}>
+                    <Text style={styles.memberName} numberOfLines={1}>
+                      {m?.full_name ?? "Thành viên"}
+                      {isMe ? " (Bạn)" : ""}
+                    </Text>
+                    <Text
+                      style={
+                        isAdmin ? styles.memberRoleAdmin : styles.memberRole
+                      }
+                    >
+                      {isAdmin ? "Trưởng nhóm" : "Thành viên"}
+                    </Text>
+                  </View>
+
+                  <TouchableOpacity
+                    onPress={() => handleMemberOptions(m, isMe, isAdmin)}
+                    disabled={isProcessing}
+                    activeOpacity={0.8}
+                  >
+                    <Ionicons
+                      name="ellipsis-horizontal-circle-outline"
+                      size={30}
+                      color={"#0F766E"}
+                    />
+                  </TouchableOpacity>
+                </View>
+              );
+            })
+          )}
+          {members.length > 10 && (
+            <TouchableOpacity style={styles.seeAllBtn} onPress={() => {}}>
+              <Text style={styles.seeAllText}>
+                Xem tất cả {members.length} thành viên
+              </Text>
+            </TouchableOpacity>
+          )}
+        </AccordionSection>
+
+        <AccordionSection title="Thông tin về đoạn chat">
+          <Text style={styles.emptyText}>
+            Tạo bởi {conversation?.createdBy?.full_name ?? "—"}
+          </Text>
+        </AccordionSection>
+
+        <AccordionSection title="Tuỳ chỉnh đoạn chat">
+          <MenuItem
+            icon="text-outline"
+            label="Đổi tên nhóm"
+            iconBg="teal"
+            onPress={() => setRenameVisible(true)}
+          />
+          <View style={styles.menuDivider} />
+        </AccordionSection>
+
+        <AccordionSection title="File phương tiện và file">
+          <Text style={styles.emptyText}>Chưa có file nào được chia sẻ</Text>
+        </AccordionSection>
+
+        <View style={{ height: insets.bottom + 24 }} />
+      </ScrollView>
+
+      <RenameModal
+        visible={renameVisible}
+        initialName={displayName}
+        onClose={() => setRenameVisible(false)}
+        onSave={handleSave}
+        saving={saving}
+      />
+
+      <AddMembersModal
+        visible={addMembersVisible}
+        existingMemberIds={members.map((m) => String(m?._id))}
+        onClose={() => setAddMembersVisible(false)}
+        onSubmit={handleAddMembers}
+      />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#F5F7FB" },
-  flex: { flex: 1 },
+  root: { flex: 1, backgroundColor: "#F3F4F6" },
+
   header: {
-    minHeight: 64,
-    paddingHorizontal: 12,
-    paddingTop: 48,
-    paddingBottom: 10,
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
+    justifyContent: "space-between",
+    paddingHorizontal: 12,
+    paddingVertical: 10,
     backgroundColor: "#FFF",
-    borderBottomWidth: 1,
+    borderBottomWidth: 0.5,
     borderBottomColor: "#E5E7EB",
   },
-  backButton: {
+  backBtn: {
     width: 40,
     height: 40,
     borderRadius: 20,
     alignItems: "center",
     justifyContent: "center",
   },
-  title: {
-    color: "#111827",
-    fontSize: 17,
-    fontWeight: "700",
-  },
-  content: {
-    flex: 1,
+  headerTitle: { fontSize: 17, fontWeight: "600", color: "#111827" },
+
+  scroll: { paddingBottom: 8 },
+
+  // Hero
+  hero: {
+    alignItems: "center",
+    paddingVertical: 28,
     paddingHorizontal: 16,
-    paddingTop: 18,
-  },
-  label: {
-    color: "#374151",
-    fontSize: 14,
-    fontWeight: "600",
-    marginBottom: 8,
-  },
-  input: {
-    minHeight: 48,
-    borderRadius: 14,
     backgroundColor: "#FFF",
-    borderWidth: 1,
-    borderColor: "#E5E7EB",
-    paddingHorizontal: 14,
-    color: "#111827",
-    fontSize: 15,
   },
-  saveButton: {
-    marginTop: 20,
-    height: 48,
-    borderRadius: 14,
+  heroAvatarWrap: {
+    width: 88,
+    height: 88,
+    borderRadius: 44,
+    overflow: "hidden",
+    marginBottom: 14,
+    shadowColor: "#000",
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 3,
+  },
+  heroAvatarFallback: {
+    width: 88,
+    height: 88,
+    borderRadius: 44,
+    backgroundColor: "#0F766E",
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#0F766E",
   },
-  saveButtonDisabled: {
-    opacity: 0.55,
+  nameRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginBottom: 5,
   },
-  saveButtonText: {
-    color: "#FFF",
-    fontSize: 15,
+  groupName: {
+    fontSize: 20,
     fontWeight: "700",
+    color: "#111827",
+    maxWidth: 240,
   },
+  memberCount: { fontSize: 13, color: "#6B7280" },
+
+  actions: {
+    flexDirection: "row",
+    justifyContent: "space-around",
+    paddingVertical: 16,
+    paddingHorizontal: 8,
+    backgroundColor: "#FFF",
+    borderTopWidth: 0.5,
+    borderTopColor: "#F3F4F6",
+  },
+
+  gap: { height: 10, backgroundColor: "#F3F4F6" },
+
+  memberRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    paddingVertical: 11,
+  },
+  memberBorder: {
+    borderTopWidth: 0.5,
+    borderTopColor: "#F3F4F6",
+  },
+  memberAvWrap: { position: "relative", width: 44, height: 44 },
+  crownBadge: {
+    position: "absolute",
+    bottom: -1,
+    right: -1,
+    width: 17,
+    height: 17,
+    borderRadius: 8.5,
+    backgroundColor: "#F59E0B",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 2,
+    borderColor: "#FFF",
+  },
+  memberInfo: { flex: 1, gap: 3 },
+  memberName: { fontSize: 14, fontWeight: "600", color: "#111827" },
+  memberRole: { fontSize: 12, color: "#9CA3AF" },
+  memberRoleAdmin: { fontSize: 12, color: "#0F766E", fontWeight: "500" },
+  seeAllBtn: { paddingTop: 12 },
+  seeAllText: { fontSize: 14, color: "#0F766E", fontWeight: "600" },
+
+  emptyText: { fontSize: 13, color: "#9CA3AF", paddingVertical: 4 },
+
+  menuDivider: { height: 0.5, backgroundColor: "#F3F4F6" },
 });

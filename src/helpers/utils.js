@@ -7,11 +7,11 @@ const renderMaritalStatus = (number) => {
     if (number == 0) {
         return "Độc thân";
     } else if (number == 1) {
-        return "Đã kết hôn";
+        return "Đã kết hôn";np
     } else {
         return "Khác";
     }
-};
+};  
 
 const formatDate = (dateString) => {
     const date = new Date(dateString);

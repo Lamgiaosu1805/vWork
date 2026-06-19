@@ -2,14 +2,23 @@ import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import React from "react";
 import { RectButton, Swipeable } from "react-native-gesture-handler";
 import { Ionicons } from "@expo/vector-icons";
-import { isCurrentUser, resolveConversationId, resolveGroupAvatars } from "../../../utils/chatUtils";
+import {
+  isCurrentUser,
+  resolveConversationId,
+  resolveGroupAvatars,
+} from "../../../utils/chatUtils";
 import dayjs from "dayjs";
 import { AuthAvatar } from "../../PostCard";
+import AvatarGroup from "./AvatarGroup";
 
 const resolveLastMessageText = (conversation) => {
   const lastMessage = conversation?.lastMessage ?? null;
+  const isRecalled = !!lastMessage?.recalled?.at;
+
   if (!lastMessage) return "Bắt đầu cuộc trò chuyện";
-  if (typeof lastMessage === "string") return lastMessage;
+  else if (isRecalled) return "Tin nhắn đã được thu hồi";
+  else if (lastMessage.type === "image" && !isRecalled) return "[Hình ảnh]";
+  else if (lastMessage.type === "text") return lastMessage.content;
 
   return lastMessage?.content ?? "Tin nhắn mới";
 };
@@ -141,50 +150,7 @@ const ConversationRow = ({
             cacheKey={item.updatedAt}
           />
         ) : groupAvatars.length > 0 ? (
-          <View style={styles.groupAvatarWrap}>
-            {count === 1 && (
-              <View style={styles.fullCell}>
-                {renderAvatarCell(groupAvatars[0])}
-              </View>
-            )}
-
-            {count === 2 && (
-              <>
-                <View style={styles.halfCell}>
-                  {renderAvatarCell(groupAvatars[0])}
-                </View>
-                <View style={styles.halfCell}>
-                  {renderAvatarCell(groupAvatars[1])}
-                </View>
-              </>
-            )}
-
-            {count === 3 && (
-              <>
-                <View style={styles.largeCell}>
-                  {renderAvatarCell(groupAvatars[0])}
-                </View>
-                <View style={styles.stackCell}>
-                  <View style={styles.stackHalf}>
-                    {renderAvatarCell(groupAvatars[1])}
-                  </View>
-                  <View style={styles.stackHalf}>
-                    {renderAvatarCell(groupAvatars[2])}
-                  </View>
-                </View>
-              </>
-            )}
-
-            {count >= 4 && (
-              <>
-                {groupAvatars.slice(0, 4).map((avatar) => (
-                  <View key={avatar.id} style={styles.quarterCell}>
-                    {renderAvatarCell(avatar)}
-                  </View>
-                ))}
-              </>
-            )}
-          </View>
+          <AvatarGroup count={count} groupAvatars={groupAvatars} />
         ) : (
           <View style={styles.avatarWrap}>
             <Ionicons name="person" size={24} color="#fff" />
@@ -244,45 +210,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     marginRight: 12,
   },
-  groupAvatarWrap: {
-    width: 46,
-    height: 46,
-    marginRight: 12,
-    borderRadius: 23,
-    overflow: "hidden",
-    backgroundColor: "#E5E7EB",
-    flexDirection: "row",
-    flexWrap: "wrap",
-  },
-  fullCell: {
-    width: "100%",
-    height: "100%",
-    overflow: "hidden",
-  },
-  halfCell: {
-    width: "50%",
-    height: "100%",
-    overflow: "hidden",
-  },
-  largeCell: {
-    width: "50%",
-    height: "100%",
-    overflow: "hidden",
-  },
-  stackCell: {
-    width: "50%",
-    height: "100%",
-  },
-  stackHalf: {
-    width: "100%",
-    height: "50%",
-    overflow: "hidden",
-  },
-  quarterCell: {
-    width: "50%",
-    height: "50%",
-    overflow: "hidden",
-  },
+
   groupAvatarFallback: {
     flex: 1,
     alignItems: "center",
