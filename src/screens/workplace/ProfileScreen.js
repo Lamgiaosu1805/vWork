@@ -7,7 +7,7 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useDispatch, useSelector } from 'react-redux';
 import * as ImagePicker from 'expo-image-picker';
@@ -18,12 +18,14 @@ import dayjs from 'dayjs';
 import 'dayjs/locale/vi';
 
 import api from '../../api/axiosInstance';
+import chatApi from '../../api/chat';
 import { updateUserFields } from '../../redux/slice/authSlice';
 import utils from '../../helpers/utils';
 import { canMgr } from '../../helpers/permissions';
 import Header from '../../components/Header';
 import PostCard, { AuthAvatar, AuthImage, BRAND } from '../../components/PostCard';
 import feedApi from '../../api/feedApi';
+import { resolveConversationId } from '../../utils/chatUtils';
 
 dayjs.locale('vi');
 
@@ -50,6 +52,7 @@ export default function ProfileScreen({ route, navigation }) {
     const [loadingMore, setLoadingMore] = useState(false);
     const [uploadingAvatar, setUploadingAvatar] = useState(false);
     const [uploadingCover, setUploadingCover] = useState(false);
+    const [creatingConversation, setCreatingConversation] = useState(false);
 
     const fetchProfile = useCallback(async () => {
         try {
@@ -178,7 +181,35 @@ export default function ProfileScreen({ route, navigation }) {
         }
     };
 
+        const handleChatPress = async () => {
+            if (!accountId && !profile) return;
+            const receiver = accountId || profile?.id_account?._id || profile?._id;
+            if (!receiver) {
+                Toast.show({ type: 'error', text1: 'Không tìm thấy người nhận' });
+                return;
+            }
+
+            try {
+                setCreatingConversation(true);
+                const res = await chatApi.createPrivateConversation({ receiver_id: receiver });
+                const conversation = res?.data?.data ?? res?.data ?? res;
+                const conversationId = resolveConversationId(conversation);
+
+                if (!conversationId) {
+                    Toast.show({ type: 'error', text1: 'Không thể mở cuộc trò chuyện' });
+                    return;
+                }
+
+                navigation.navigate('ChatRoomScreen', { conversationId, conversation });
+            } catch (err) {
+                Toast.show({ type: 'error', text1: err?.response?.data?.message ?? err?.message ?? 'Không thể tạo cuộc trò chuyện' });
+            } finally {
+                setCreatingConversation(false);
+            }
+        };
+
     const primaryDept = profile?.departments?.[0];
+    const insets = useSafeAreaInsets();
 
     const ListHeader = () => (
         <View>
@@ -312,6 +343,24 @@ export default function ProfileScreen({ route, navigation }) {
                 showsVerticalScrollIndicator={false}
                 ItemSeparatorComponent={() => <View style={{ height: 8 }} />}
             />
+            
+              {!isSelf && (
+              <TouchableOpacity
+                style={[
+                styles.messageButton,
+                { bottom: Math.max(16, insets.bottom + 12) },
+                ]}
+                activeOpacity={0.85}
+                onPress={handleChatPress}
+                disabled={creatingConversation}
+                >
+                {creatingConversation ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <Ionicons name="chatbubble-ellipses" size={20} color="#fff" />
+                )}
+              </TouchableOpacity>
+              )}
         </SafeAreaView>
     );
 }
@@ -358,4 +407,21 @@ const styles = StyleSheet.create({
 
     emptyPosts: { backgroundColor: '#fff', marginTop: 8, padding: 24, alignItems: 'center' },
     emptyText: { fontSize: 14, color: '#9CA3AF' },
+
+    messageButton: {
+    position: "absolute",
+    right: 16,
+    bottom: 24,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: "#0F766E",
+    alignItems: "center",
+    justifyContent: "center",
+    elevation: 6,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.12,
+    shadowRadius: 6,
+  },
 });

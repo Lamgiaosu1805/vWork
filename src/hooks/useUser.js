@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { getBirthdayThisMonthApi } from "../api/user";
+import { getBirthdayThisMonthApi, getUsersApi } from "../api/user";
 
 const useUser = () => {
   const [loading, setLoading] = useState(false);
@@ -17,8 +17,22 @@ const useUser = () => {
     }
   };
 
+  const getUsers = async (params = {}) => {
+    setLoading(true);
+    try {
+      const response = await getUsersApi(params);
+      return response;
+    } catch (error) {
+      console.log("[Error GET list users]", error);
+      return null;
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return {
     getBirthdayThisMonth,
+    getUsers,
     loading,
   };
 };

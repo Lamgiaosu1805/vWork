@@ -6,6 +6,7 @@ import notifyKit, {
 } from "react-native-notify-kit";
 import { PermissionsAndroid, Platform } from "react-native";
 import DeviceInfo from "react-native-device-info";
+import { navigationRef } from "../../helpers/navigationRef";
 import {
   registerDeviceTokenApi,
   unregisterDeviceTokenApi,
@@ -82,7 +83,6 @@ export async function saveNotificationTokenToServer(token) {
 }
 
 export async function syncFcmTokenWithServer() {
-  console.log("test token");
   const token =
     (await AsyncStorage.getItem(FCM_TOKEN_STORAGE_KEY)) ||
     (await getFcmToken());
@@ -104,8 +104,6 @@ export async function unregisterFcmTokenFromServer() {
 }
 
 export async function displayNotificationFromRemoteMessage(remoteMessage) {
-  console.log("onDisplayNotification:", JSON.stringify(remoteMessage?.data));
-
   const title = remoteMessage?.notification?.title;
   const body = remoteMessage?.notification?.body;
 
@@ -129,6 +127,25 @@ export async function displayNotificationFromRemoteMessage(remoteMessage) {
   }
 }
 
+function navigateToChatFromRemoteMessage(remoteMessage) {
+  const data = remoteMessage?.data ?? {};
+  const conversationId = data?.conversationId;
+
+  if (!conversationId || !navigationRef.isReady()) return false;
+
+  navigationRef.navigate("RootDrawer", {
+    screen: "WorkPlaceStackNavigator",
+    params: {
+      screen: "ChatRoomScreen",
+      params: {
+        conversationId,
+      },
+    },
+  });
+
+  return true;
+}
+
 export async function initNotifications() {
   await createDefaultNotificationChannel();
   return getFcmToken();
@@ -143,6 +160,13 @@ export function registerNotificationListeners() {
           "Notification opened from quit state:",
           JSON.stringify(remoteMessage),
         );
+        const tryNavigate = () => {
+          if (!navigateToChatFromRemoteMessage(remoteMessage)) {
+            setTimeout(tryNavigate, 300);
+          }
+        };
+
+        tryNavigate();
       }
     });
 
@@ -167,6 +191,8 @@ export function registerNotificationListeners() {
         "Notification opened from background:",
         JSON.stringify(remoteMessage),
       );
+
+      navigateToChatFromRemoteMessage(remoteMessage);
     },
   );
   const unsubscribeNotifyKitForeground = notifyKit.onForegroundEvent(
@@ -190,15 +216,6 @@ export function registerNotificationListeners() {
 
 export function registerNotificationBackgroundHandlers() {
   messaging().setBackgroundMessageHandler(async (remoteMessage) => {
-    console.log("Noti Background Data:", JSON.stringify(remoteMessage));
-  });
-
-  notifyKit.onBackgroundEvent(async ({ type, detail }) => {
-    if (type === EventType.PRESS || type === EventType.ACTION_PRESS) {
-      console.log(
-        "NotifyKit background event:",
-        JSON.stringify(detail.notification),
-      );
-    }
+    return remoteMessage;
   });
 }

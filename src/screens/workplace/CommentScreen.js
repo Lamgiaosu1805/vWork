@@ -263,7 +263,7 @@ export default function CommentScreen({ route, navigation }) {
             filename={user?.avatar}
             name={user?.full_name ?? user?.username ?? ""}
             size={32}
-            cacheKey={user?.avatarUpdatedAt}
+            cacheKey={user?.updatedAt}
           />
           <View style={styles.inputWrap}>
             <TextInput

@@ -164,7 +164,7 @@ export default function FeedScreen({ navigation }) {
         filename={user?.avatar}
         name={user?.full_name ?? user?.username ?? ""}
         size={36}
-        cacheKey={user?.avatarUpdatedAt}
+        cacheKey={user?.updatedAt}
       />
       <View style={styles.composePlaceholder}>
         <Text style={styles.composePlaceholderText}>Bạn đang nghĩ gì?</Text>
