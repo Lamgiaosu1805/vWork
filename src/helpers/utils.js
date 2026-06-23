@@ -7,7 +7,7 @@ const renderMaritalStatus = (number) => {
     if (number == 0) {
         return "Độc thân";
     } else if (number == 1) {
-        return "Đã kết hôn";np
+        return "Đã kết hôn";
     } else {
         return "Khác";
     }

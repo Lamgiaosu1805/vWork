@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
   Animated,
@@ -17,6 +17,7 @@ import RNBlobUtil from "react-native-blob-util";
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
 import "dayjs/locale/vi";
+import ImageView from "react-native-image-viewing";
 
 import { store } from "../redux/store";
 import utils from "../helpers/utils";
@@ -57,23 +58,31 @@ export function getTopReactions(reactions) {
 
 // ── AuthImage ─────────────────────────────────────────────────────────────────
 export const AuthImage = ({ filename, style, resizeMode = "cover" }) => {
-  const [uri, setUri] = useState(null);
-  useEffect(() => {
-    if (!filename) return;
-    let cancelled = false;
-    const { accessToken } = store.getState().auth;
-    const url = `${utils.BASE_URL}/document/getFile?filename=${encodeURIComponent(filename)}`;
-    RNBlobUtil.fetch("GET", url, { Authorization: `Bearer ${accessToken}` })
-      .then((res) => {
-        if (!cancelled) setUri(`data:image/jpeg;base64,${res.base64()}`);
-      })
-      .catch(() => {});
-    return () => {
-      cancelled = true;
-    };
-  }, [filename]);
-  if (!uri) return <View style={[style, s.imgPlaceholder]} />;
-  return <Image source={{ uri }} style={style} resizeMode={resizeMode} />;
+  // const [uri, setUri] = useState(null);
+  const url = `${utils.BASE_URL}/static/${filename}`;
+
+  // useEffect(() => {
+  //   if (!filename) return;
+  //   let cancelled = false;
+  //   const { accessToken } = store.getState().auth;
+  //   const url = `${utils.BASE_URL}/document/getFile?filename=${encodeURIComponent(filename)}`;
+
+  //   RNBlobUtil.fetch("GET", url, { Authorization: `Bearer ${accessToken}` })
+  //     .then((res) => {
+  //   console.log(res.base64());
+
+  //       if (!cancelled) setUri(`data:image/jpeg;base64,${res.base64()}`);
+  //     })
+  //     .catch((e) => {
+  //       console.error("Error fetching image:", e);
+  //     });
+  //   return () => {
+  //     cancelled = true;
+  //   };
+  // }, [filename]);
+  
+  if (!url) return <View style={[style, s.imgPlaceholder]} />;
+  return <Image source={{ uri: url }} style={style} resizeMode={resizeMode} />;
 };
 
 // ── AuthAvatar ────────────────────────────────────────────────────────────────
@@ -84,22 +93,24 @@ export const AuthAvatar = ({
   cacheKey,
   isFlex = false,
 }) => {
-  const [uri, setUri] = useState(null);
-  useEffect(() => {
-    if (!filename) return;
-    let cancelled = false;
-    setUri(null);
-    const { accessToken } = store.getState().auth;
-    const url = `${utils.BASE_URL}/document/getFile?filename=${encodeURIComponent(filename)}`;
-    RNBlobUtil.fetch("GET", url, { Authorization: `Bearer ${accessToken}` })
-      .then((res) => {
-        if (!cancelled) setUri(`data:image/jpeg;base64,${res.base64()}`);
-      })
-      .catch(() => {});
-    return () => {
-      cancelled = true;
-    };
-  }, [filename, cacheKey]);
+  const url = `${utils.BASE_URL}/static/${filename}`;
+
+  // const [uri, setUri] = useState(null);
+  // useEffect(() => {
+  //   if (!filename) return;
+  //   let cancelled = false;
+  //   setUri(null);
+  //   const { accessToken } = store.getState().auth;
+  //   const url = `${utils.BASE_URL}/document/getFile?filename=${encodeURIComponent(filename)}`;
+  //   RNBlobUtil.fetch("GET", url, { Authorization: `Bearer ${accessToken}` })
+  //     .then((res) => {
+  //       if (!cancelled) setUri(`data:image/jpeg;base64,${res.base64()}`);
+  //     })
+  //     .catch(() => {});
+  //   return () => {
+  //     cancelled = true;
+  //   };
+  // }, [filename, cacheKey]);
   const sz = isFlex
     ? {
         width: "100%",
@@ -113,7 +124,7 @@ export const AuthAvatar = ({
         borderRadius: size / 2,
         marginRight: 7,
       };
-  if (uri) return <Image source={{ uri }} style={sz} resizeMode="cover" />;
+  if (url) return <Image source={{ uri: url }} style={sz} resizeMode="cover" />;
   return (
     <View style={[s.avatarFallback, sz]}>
       <Text style={[s.avatarInitials, { fontSize: size * 0.38 }]}>
@@ -476,6 +487,14 @@ const PostCard = ({
     ]);
   };
 
+  const imageViewerData = useMemo(
+    () =>
+      (post.images ?? []).map((img) => ({
+        uri: `${utils.BASE_URL}/static/${img}`,
+      })),
+    [post.images],
+  );
+
   return (
     <View style={s.card}>
       {post.pinned && (
@@ -524,9 +543,9 @@ const PostCard = ({
           <Text style={s.content} numberOfLines={expanded ? undefined : 5}>
             {post.content}
           </Text>
-          {!expanded && post.content.length > 200 && (
-            <TouchableOpacity onPress={() => setExpanded(true)}>
-              <Text style={s.seeMore}>Xem thêm</Text>
+          {post.content.length > 200 && (
+            <TouchableOpacity onPress={() => setExpanded(!expanded)}>
+              <Text style={s.seeMore}>{expanded ? "Ẩn bớt" : "Xem thêm"}</Text>
             </TouchableOpacity>
           )}
         </View>
@@ -619,7 +638,7 @@ const PostCard = ({
         </View>
       )}
 
-      <Modal
+      {/* <Modal
         visible={lightboxIdx !== null}
         transparent
         animationType="fade"
@@ -634,7 +653,14 @@ const PostCard = ({
             />
           )}
         </Pressable>
-      </Modal>
+      </Modal> */}
+
+      <ImageView
+        images={imageViewerData}
+        imageIndex={lightboxIdx ?? 0}
+        visible={lightboxIdx !== null}
+        onRequestClose={() => setLightboxIdx(null)}
+      />
 
       <ReactionsModal
         visible={reactionsOpen}

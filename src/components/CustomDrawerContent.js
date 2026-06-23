@@ -8,6 +8,7 @@ import {
   StyleSheet,
   ActivityIndicator,
   Alert,
+  Linking,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -18,6 +19,7 @@ import api from "../api/axiosInstance";
 import { unregisterFcmTokenFromServer } from "../utils/notifications/fcmConfig";
 import { getPermissions } from "../helpers/permissions";
 import { disconnectChatSocket } from "../libs/chatSocket";
+import utils from "../helpers/utils";
 
 export default function CustomDrawerContent(props) {
   const { navigation, state } = props;
@@ -33,21 +35,26 @@ export default function CustomDrawerContent(props) {
   useEffect(() => {
     const fetchAvatar = async () => {
       if (!user?.avatar) return;
-      try {
-        const res = await api.get(`/document/getFile?filename=${user.avatar}`, {
-          requiresAuth: true,
-          responseType: "blob",
-        });
 
-        // Convert blob → base64
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          setAvatarBase64(reader.result);
-        };
-        reader.readAsDataURL(res.data);
-      } catch (error) {
-        console.log("fetchAvatar error:", error.message);
-      }
+      const url = `${utils.BASE_URL}/static/${user.avatar}`;
+
+      // try {
+      //   const res = await api.get(`/document/getFile?filename=${user.avatar}`, {
+      //     requiresAuth: true,
+      //     responseType: "blob",
+      //   });
+
+      //   // Convert blob → base64
+      //   const reader = new FileReader();
+      //   reader.onloadend = () => {
+      //     setAvatarBase64(reader.result);
+      //   };
+      //   reader.readAsDataURL(res.data);
+      // } catch (error) {
+      //   console.log("fetchAvatar error:", error.message);
+      // }
+
+      setAvatarBase64(url);
     };
 
     fetchAvatar();
@@ -57,7 +64,20 @@ export default function CustomDrawerContent(props) {
     // Xin quyền truy cập thư viện ảnh
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== "granted") {
-      alert("Cần cấp quyền truy cập thư viện ảnh để thay avatar");
+      Alert.alert(
+        "Cần cấp quyền truy cập ảnh",
+        "Vui lòng cấp quyền truy cập thư viện ảnh trong phần Cài đặt để thay đổi avatar.",
+        [
+          {
+            text: "Hủy",
+            style: "cancel",
+          },
+          {
+            text: "Mở Cài đặt",
+            onPress: () => Linking.openSettings(),
+          },
+        ],
+      );
       return;
     }
 
@@ -164,7 +184,12 @@ export default function CustomDrawerContent(props) {
             return;
           }
           // navigation.navigate(routeName);
-          Alert.alert(label, "Tính năng đang được phát triển", [{ text: "OK" }], { cancelable: true });
+          Alert.alert(
+            label,
+            "Tính năng đang được phát triển",
+            [{ text: "OK" }],
+            { cancelable: true },
+          );
         }}
       >
         <Ionicons
@@ -189,7 +214,7 @@ export default function CustomDrawerContent(props) {
           style={styles.avatarWrapper}
           activeOpacity={0.8}
         >
-          {avatarBase64 ? (
+          {user?.avatar ? (
             <Image source={{ uri: avatarBase64 }} style={styles.avatar} />
           ) : (
             <View style={[styles.avatar, styles.avatarPlaceholder]}>

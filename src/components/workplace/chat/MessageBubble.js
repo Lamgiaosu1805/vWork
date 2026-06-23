@@ -21,7 +21,7 @@ const resolveMessageTime = (message) => {
 const SCREEN_WIDTH = Dimensions.get("window").width;
 const MAX_IMAGE_WIDTH = SCREEN_WIDTH * 0.6;
 
-const MessageBubble = ({ item, isMine, onLongPress, sender }) => {
+const MessageBubble = ({ item, isMine, onLongPress, sender, onPressImage }) => {
   const accessToken = useSelector((state) => state.auth.accessToken);
 
   const statusText = useMemo(() => {
@@ -37,6 +37,7 @@ const MessageBubble = ({ item, isMine, onLongPress, sender }) => {
 
   const imageUri = useMemo(() => {
     if (!isImage) return null;
+    console.log(item?.attachment);
 
     if (
       item?.status === "sending" &&
@@ -80,21 +81,28 @@ const MessageBubble = ({ item, isMine, onLongPress, sender }) => {
       >
         {isImage ? (
           <View style={styles.imageWrap}>
-            <Image
-              source={{
-                uri: imageUri,
-                headers: { Authorization: `Bearer ${accessToken}` },
-              }}
-              style={[
-                styles.image,
-                {
-                  width: MAX_IMAGE_WIDTH,
-                  height: MAX_IMAGE_WIDTH / imageRatio,
-                },
-              ]}
-              contentFit="cover"
-              transition={150}
-            />
+            <TouchableOpacity
+              activeOpacity={0.95}
+              onPress={() => onPressImage(item._id)}
+            >
+              <Image
+                source={{
+                  uri: imageUri,
+                  headers: {
+                    Authorization: `Bearer ${accessToken}`,
+                  },
+                }}
+                style={[
+                  styles.image,
+                  {
+                    width: MAX_IMAGE_WIDTH,
+                    height: MAX_IMAGE_WIDTH,
+                  },
+                ]}
+                contentFit="cover"
+                transition={150}
+              />
+            </TouchableOpacity>
             {item?.status === "sending" && (
               <View style={styles.imageOverlay}>
                 <Text style={styles.imageOverlayText}>Đang gửi...</Text>

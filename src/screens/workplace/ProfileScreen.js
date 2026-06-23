@@ -16,7 +16,7 @@ import Toast from 'react-native-toast-message';
 import RNBlobUtil from 'react-native-blob-util';
 import dayjs from 'dayjs';
 import 'dayjs/locale/vi';
-
+import ImageView from "react-native-image-viewing";
 import api from '../../api/axiosInstance';
 import chatApi from '../../api/chat';
 import { updateUserFields } from '../../redux/slice/authSlice';
@@ -53,6 +53,15 @@ export default function ProfileScreen({ route, navigation }) {
     const [uploadingAvatar, setUploadingAvatar] = useState(false);
     const [uploadingCover, setUploadingCover] = useState(false);
     const [creatingConversation, setCreatingConversation] = useState(false);
+    const [previewImage, setPreviewImage] = useState(null);
+    const [previewVisible, setPreviewVisible] = useState(false);
+
+    const openImagePreview = (filename) => {
+      if (!filename) return;
+
+      setPreviewImage(`${utils.BASE_URL}/static/${filename}`);
+      setPreviewVisible(true);
+    };
 
     const fetchProfile = useCallback(async () => {
         try {
@@ -212,93 +221,133 @@ export default function ProfileScreen({ route, navigation }) {
     const insets = useSafeAreaInsets();
 
     const ListHeader = () => (
-        <View>
-            {/* Cover photo */}
-            <View style={styles.coverWrap}>
-                <AuthImage filename={profile?.cover_photo} style={styles.cover} />
-                {isSelf && (
-                    <TouchableOpacity style={styles.editCoverBtn} onPress={pickAndUploadCover} disabled={uploadingCover}>
-                        {uploadingCover
-                            ? <ActivityIndicator size="small" color="#fff" />
-                            : <Ionicons name="camera" size={16} color="#fff" />
-                        }
-                        <Text style={styles.editCoverText}>Đổi ảnh bìa</Text>
-                    </TouchableOpacity>
-                )}
-            </View>
-
-            {/* Avatar + name section */}
-            <View style={styles.infoSection}>
-                <View style={styles.avatarRow}>
-                    <View style={styles.avatarWrap}>
-                        <AuthAvatar
-                            filename={isSelf ? (profile?.avatar ?? currentUser?.avatar) : profile?.avatar}
-                            name={profile?.full_name}
-                            size={AVATAR_SIZE}
-                            cacheKey={isSelf ? currentUser?.avatarUpdatedAt : undefined}
-                        />
-                        {isSelf && (
-                            <TouchableOpacity style={styles.editAvatarBtn} onPress={pickAndUploadAvatar} disabled={uploadingAvatar}>
-                                {uploadingAvatar
-                                    ? <ActivityIndicator size="small" color="#fff" />
-                                    : <Ionicons name="camera" size={14} color="#fff" />
-                                }
-                            </TouchableOpacity>
-                        )}
-                    </View>
-                </View>
-
-                <Text style={styles.fullName}>{profile?.full_name}</Text>
-                {primaryDept && (
-                    <Text style={styles.deptText}>
-                        {primaryDept.position_name ? `${primaryDept.position_name} · ` : ''}{primaryDept.department_name}
-                    </Text>
-                )}
-                <Text style={styles.maNv}>{profile?.ma_nv}</Text>
-            </View>
-
-            {/* About card */}
-            <View style={styles.aboutCard}>
-                <Text style={styles.sectionTitle}>Giới thiệu</Text>
-                {profile?.departments?.map((d, i) => (
-                    <View key={i} style={styles.infoRow}>
-                        <Ionicons name="business-outline" size={16} color="#65676B" />
-                        <Text style={styles.infoText}>{d.department_name}</Text>
-                    </View>
-                ))}
-                {primaryDept?.position_name && (
-                    <View style={styles.infoRow}>
-                        <Ionicons name="briefcase-outline" size={16} color="#65676B" />
-                        <Text style={styles.infoText}>{primaryDept.position_name}</Text>
-                    </View>
-                )}
-                <View style={styles.infoRow}>
-                    <Ionicons name="person-outline" size={16} color="#65676B" />
-                    <Text style={styles.infoText}>{EMPLOYMENT_LABEL[profile?.employment_type] ?? profile?.employment_type}</Text>
-                </View>
-                {isSelf && profile?.phone_number && (
-                    <View style={styles.infoRow}>
-                        <Ionicons name="call-outline" size={16} color="#65676B" />
-                        <Text style={styles.infoText}>{profile.phone_number}</Text>
-                    </View>
-                )}
-                {profile?.date_of_birth && (
-                    <View style={styles.infoRow}>
-                        <Ionicons name="calendar-outline" size={16} color="#65676B" />
-                        <Text style={styles.infoText}>{dayjs(profile.date_of_birth).format('DD/MM/YYYY')}</Text>
-                    </View>
-                )}
-                <View style={styles.infoRow}>
-                    <Ionicons name="time-outline" size={16} color="#65676B" />
-                    <Text style={styles.infoText}>Gia nhập {dayjs(profile?.createdAt).format('MM/YYYY')}</Text>
-                </View>
-            </View>
-
-            {/* Posts section header */}
-            <View style={styles.postsHeader}>
-                <Text style={styles.sectionTitle}>Bài đăng</Text>
-            </View>
+      <View>
+        {/* Cover photo */}
+        <View style={styles.coverWrap}>
+          <TouchableOpacity
+            activeOpacity={0.95}
+            onPress={() => openImagePreview(profile?.cover_photo)}
+          >
+            <AuthImage filename={profile?.cover_photo} style={styles.cover} />
+          </TouchableOpacity>
+          {isSelf && (
+            <TouchableOpacity
+              style={styles.editCoverBtn}
+              onPress={pickAndUploadCover}
+              disabled={uploadingCover}
+            >
+              {uploadingCover ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <Ionicons name="camera" size={16} color="#fff" />
+              )}
+              <Text style={styles.editCoverText}>Đổi ảnh bìa</Text>
+            </TouchableOpacity>
+          )}
         </View>
+
+        {/* Avatar + name section */}
+        <View style={styles.infoSection}>
+          <View style={styles.avatarRow}>
+            <View style={styles.avatarWrap}>
+              <TouchableOpacity
+                activeOpacity={0.9}
+                onPress={() =>
+                  openImagePreview(
+                    isSelf
+                      ? (profile?.avatar ?? currentUser?.avatar)
+                      : profile?.avatar,
+                  )
+                }
+              >
+                <AuthAvatar
+                  filename={
+                    isSelf
+                      ? (profile?.avatar ?? currentUser?.avatar)
+                      : profile?.avatar
+                  }
+                  name={profile?.full_name}
+                  size={AVATAR_SIZE}
+                  cacheKey={isSelf ? currentUser?.avatarUpdatedAt : undefined}
+                />
+              </TouchableOpacity>
+              {isSelf && (
+                <TouchableOpacity
+                  style={styles.editAvatarBtn}
+                  onPress={pickAndUploadAvatar}
+                  disabled={uploadingAvatar}
+                >
+                  {uploadingAvatar ? (
+                    <ActivityIndicator size="small" color="#fff" />
+                  ) : (
+                    <Ionicons name="camera" size={14} color="#fff" />
+                  )}
+                </TouchableOpacity>
+              )}
+            </View>
+          </View>
+
+          <Text style={styles.fullName}>{profile?.full_name}</Text>
+          {primaryDept && (
+            <Text style={styles.deptText}>
+              {primaryDept.position_name
+                ? `${primaryDept.position_name} · `
+                : ""}
+              {primaryDept.department_name}
+            </Text>
+          )}
+          <Text style={styles.maNv}>{profile?.ma_nv}</Text>
+        </View>
+
+        {/* About card */}
+        <View style={styles.aboutCard}>
+          <Text style={styles.sectionTitle}>Giới thiệu</Text>
+          {profile?.departments?.map((d, i) => (
+            <View key={i} style={styles.infoRow}>
+              <Ionicons name="business-outline" size={16} color="#65676B" />
+              <Text style={styles.infoText}>{d.department_name}</Text>
+            </View>
+          ))}
+          {primaryDept?.position_name && (
+            <View style={styles.infoRow}>
+              <Ionicons name="briefcase-outline" size={16} color="#65676B" />
+              <Text style={styles.infoText}>{primaryDept.position_name}</Text>
+            </View>
+          )}
+          <View style={styles.infoRow}>
+            <Ionicons name="person-outline" size={16} color="#65676B" />
+            <Text style={styles.infoText}>
+              {EMPLOYMENT_LABEL[profile?.employment_type] ??
+                profile?.employment_type}
+            </Text>
+          </View>
+          {isSelf && profile?.phone_number && (
+            <View style={styles.infoRow}>
+              <Ionicons name="call-outline" size={16} color="#65676B" />
+              <Text style={styles.infoText}>{profile.phone_number}</Text>
+            </View>
+          )}
+          {profile?.date_of_birth && (
+            <View style={styles.infoRow}>
+              <Ionicons name="calendar-outline" size={16} color="#65676B" />
+              <Text style={styles.infoText}>
+                {dayjs(profile.date_of_birth).format("DD/MM/YYYY")}
+              </Text>
+            </View>
+          )}
+          <View style={styles.infoRow}>
+            <Ionicons name="time-outline" size={16} color="#65676B" />
+            <Text style={styles.infoText}>
+              Gia nhập {dayjs(profile?.createdAt).format("MM/YYYY")}
+            </Text>
+          </View>
+        </View>
+
+        {/* Posts section header */}
+        <View style={styles.postsHeader}>
+          <Text style={styles.sectionTitle}>Bài đăng</Text>
+        </View>
+      </View>
     );
 
     if (loading) {
@@ -313,55 +362,72 @@ export default function ProfileScreen({ route, navigation }) {
     }
 
     return (
-        <SafeAreaView style={styles.safe} edges={['bottom']}>
-            <Header title="Trang cá nhân" leftIconName="chevron-back" onLeftPress={() => navigation.goBack()} />
-            <FlatList
-                data={posts}
-                keyExtractor={(item) => item._id}
-                ListHeaderComponent={<ListHeader />}
-                renderItem={({ item }) => (
-                    <PostCard
-                        post={item}
-                        currentUser={currentUser}
-                        onReact={handleReact}
-                        onDelete={handleDelete}
-                        onCommentPress={(p) => navigation.navigate('FeedCommentScreen', { post: p })}
-                        onAuthorPress={(id) => navigation.navigate('WorkplaceProfileScreen', { accountId: id })}
-                        canManage={canManagePost}
-                    />
-                )}
-                ListEmptyComponent={
-                    <View style={styles.emptyPosts}>
-                        <Text style={styles.emptyText}>Chưa có bài đăng nào</Text>
-                    </View>
-                }
-                ListFooterComponent={
-                    loadingMore ? <ActivityIndicator color={BRAND} style={{ marginVertical: 16 }} /> : null
-                }
-                onEndReached={handleLoadMore}
-                onEndReachedThreshold={0.4}
-                showsVerticalScrollIndicator={false}
-                ItemSeparatorComponent={() => <View style={{ height: 8 }} />}
+      <SafeAreaView style={styles.safe} edges={["bottom"]}>
+        <Header
+          title="Trang cá nhân"
+          leftIconName="chevron-back"
+          onLeftPress={() => navigation.goBack()}
+        />
+        <FlatList
+          data={posts}
+          keyExtractor={(item) => item._id}
+          ListHeaderComponent={<ListHeader />}
+          renderItem={({ item }) => (
+            <PostCard
+              post={item}
+              currentUser={currentUser}
+              onReact={handleReact}
+              onDelete={handleDelete}
+              onCommentPress={(p) =>
+                navigation.navigate("FeedCommentScreen", { post: p })
+              }
+              onAuthorPress={(id) =>
+                navigation.navigate("WorkplaceProfileScreen", { accountId: id })
+              }
+              canManage={canManagePost}
             />
-            
-              {!isSelf && (
-              <TouchableOpacity
-                style={[
-                styles.messageButton,
-                { bottom: Math.max(16, insets.bottom + 12) },
-                ]}
-                activeOpacity={0.85}
-                onPress={handleChatPress}
-                disabled={creatingConversation}
-                >
-                {creatingConversation ? (
-                  <ActivityIndicator color="#fff" />
-                ) : (
-                  <Ionicons name="chatbubble-ellipses" size={20} color="#fff" />
-                )}
-              </TouchableOpacity>
-              )}
-        </SafeAreaView>
+          )}
+          ListEmptyComponent={
+            <View style={styles.emptyPosts}>
+              <Text style={styles.emptyText}>Chưa có bài đăng nào</Text>
+            </View>
+          }
+          ListFooterComponent={
+            loadingMore ? (
+              <ActivityIndicator color={BRAND} style={{ marginVertical: 16 }} />
+            ) : null
+          }
+          onEndReached={handleLoadMore}
+          onEndReachedThreshold={0.4}
+          showsVerticalScrollIndicator={false}
+          ItemSeparatorComponent={() => <View style={{ height: 8 }} />}
+        />
+
+        <ImageView
+          images={[{ uri: previewImage }]}
+          imageIndex={0}
+          visible={previewVisible}
+          onRequestClose={() => setPreviewVisible(false)}
+        />
+
+        {!isSelf && (
+          <TouchableOpacity
+            style={[
+              styles.messageButton,
+              { bottom: Math.max(16, insets.bottom + 12) },
+            ]}
+            activeOpacity={0.85}
+            onPress={handleChatPress}
+            disabled={creatingConversation}
+          >
+            {creatingConversation ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Ionicons name="chatbubble-ellipses" size={20} color="#fff" />
+            )}
+          </TouchableOpacity>
+        )}
+      </SafeAreaView>
     );
 }
 

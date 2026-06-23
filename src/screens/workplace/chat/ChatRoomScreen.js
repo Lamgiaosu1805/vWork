@@ -5,6 +5,7 @@ import {
   Alert,
   Clipboard,
   KeyboardAvoidingView,
+  Linking,
   Platform,
   StyleSheet,
   TextInput,
@@ -36,6 +37,8 @@ import dayjs from "dayjs";
 import Toast from "react-native-toast-message";
 import AvatarGroup from "../../../components/workplace/chat/AvatarGroup";
 import * as ImagePicker from "expo-image-picker";
+import ImageViewing from "react-native-image-viewing";
+import utils from "../../../helpers/utils";
 
 export default function ChatRoomScreen({ route, navigation }) {
   const {
@@ -52,7 +55,9 @@ export default function ChatRoomScreen({ route, navigation }) {
 
   const [text, setText] = useState("");
   const [conversation, setConversation] = useState(initialConversation ?? null);
-
+  const [viewerImages, setViewerImages] = useState([]);
+  const [viewerIndex, setViewerIndex] = useState(0);
+  const [viewerVisible, setViewerVisible] = useState(false);
   const flatListRef = useRef(null);
   const endReachedDuringMomentumRef = useRef(false);
 
@@ -76,6 +81,37 @@ export default function ChatRoomScreen({ route, navigation }) {
   const timelineItems = useMemo(
     () => buildTimelineItems(messagesDescending),
     [messagesDescending],
+  );
+
+  const imageMessages = useMemo(() => {
+    return messages.filter(
+      (msg) =>
+        msg?.type === "image" &&
+        !msg?.recalled?.at &&
+        msg?._id &&
+        msg?.conversationId,
+    );
+  }, [messages]);
+
+  const openImageViewer = useCallback(
+    (messageId) => {
+      const images = imageMessages.map((msg) => ({
+        uri:
+          msg?.status === "sending" && msg?.attachment?.url?.startsWith("file:")
+            ? msg.attachment.url
+            : `${utils.BASE_URL}/chat/conversations/${msg.conversationId}/messages/${msg._id}/image`,
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      }));
+
+      const index = imageMessages.findIndex((msg) => msg._id === messageId);
+
+      setViewerImages(images);
+      setViewerIndex(index < 0 ? 0 : index);
+      setViewerVisible(true);
+    },
+    [imageMessages, accessToken],
   );
 
   const scrollToBottom = useCallback(() => {
@@ -134,7 +170,20 @@ export default function ChatRoomScreen({ route, navigation }) {
   const pickImage = async () => {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) {
-      Toast.show({ type: "error", text1: "Cần quyền truy cập ảnh để gửi" });
+      Alert.alert(
+        "Cần cấp quyền truy cập ảnh",
+        "Vui lòng cấp quyền truy cập thư viện ảnh trong phần Cài đặt để thay đổi avatar.",
+        [
+          {
+            text: "Hủy",
+            style: "cancel",
+          },
+          {
+            text: "Mở Cài đặt",
+            onPress: () => Linking.openSettings(),
+          },
+        ],
+      );
       return;
     }
 
@@ -363,6 +412,7 @@ export default function ChatRoomScreen({ route, navigation }) {
             loadMore={loadMore}
             endReachedDuringMomentumRef={endReachedDuringMomentumRef}
             messages={messages}
+            onPressImage={openImageViewer}
           />
         )}
 
@@ -408,6 +458,15 @@ export default function ChatRoomScreen({ route, navigation }) {
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
+
+      <ImageViewing
+        images={viewerImages}
+        imageIndex={viewerIndex}
+        visible={viewerVisible}
+        onRequestClose={() => setViewerVisible(false)}
+        swipeToCloseEnabled
+        doubleTapToZoomEnabled
+      />
     </View>
   );
 }

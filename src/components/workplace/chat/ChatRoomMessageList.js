@@ -20,6 +20,7 @@ const ChatRoomMessageList = ({
   loadMore,
   endReachedDuringMomentumRef,
   messages,
+  onPressImage,
 }) => {
   return (
     <FlatList
@@ -50,6 +51,7 @@ const ChatRoomMessageList = ({
             sender={sender}
             isMine={isMine}
             onLongPress={() => handleMessageLongPress(item.message)}
+            onPressImage={onPressImage}
           />
         );
       }}
