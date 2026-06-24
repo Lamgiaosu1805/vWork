@@ -26,23 +26,9 @@ export default function ProfileScreen({ navigation }) {
     }, [user?.avatar]);
 
     const fetchAvatar = async () => {
+        
         if (!user?.avatar) return;
-        try {
-            setAvatarLoading(true);
-            const res = await api.get(
-                `/document/getFile?filename=${user.avatar}`,
-                { requiresAuth: true, responseType: "blob" }
-            );
-            const reader = new FileReader();
-            reader.onloadend = () => {
-                setAvatarBase64(reader.result);
-                setAvatarLoading(false);
-            };
-            reader.readAsDataURL(res.data);
-        } catch (error) {
-            console.log("fetchAvatar error:", error.message);
-            setAvatarLoading(false);
-        }
+         setAvatarBase64(user?.avatar);
     };
 
     // Gọi lại getUserInfo và cập nhật redux
@@ -240,7 +226,7 @@ const styles = StyleSheet.create({
     infoText: {
         fontSize: 14,
         marginTop: 8,
-        color: '#004643'
+        color: '#004643',
     },
     infoItem: {
         flexDirection: 'row',
