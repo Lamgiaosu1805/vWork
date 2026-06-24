@@ -59,28 +59,8 @@ export function getTopReactions(reactions) {
 // ── AuthImage ─────────────────────────────────────────────────────────────────
 export const AuthImage = ({ filename, style, resizeMode = "cover" }) => {
   // const [uri, setUri] = useState(null);
-  const url = `${utils.BASE_URL}/static/${filename}`;
+  const url = filename;
 
-  // useEffect(() => {
-  //   if (!filename) return;
-  //   let cancelled = false;
-  //   const { accessToken } = store.getState().auth;
-  //   const url = `${utils.BASE_URL}/document/getFile?filename=${encodeURIComponent(filename)}`;
-
-  //   RNBlobUtil.fetch("GET", url, { Authorization: `Bearer ${accessToken}` })
-  //     .then((res) => {
-  //   console.log(res.base64());
-
-  //       if (!cancelled) setUri(`data:image/jpeg;base64,${res.base64()}`);
-  //     })
-  //     .catch((e) => {
-  //       console.error("Error fetching image:", e);
-  //     });
-  //   return () => {
-  //     cancelled = true;
-  //   };
-  // }, [filename]);
-  
   if (!url) return <View style={[style, s.imgPlaceholder]} />;
   return <Image source={{ uri: url }} style={style} resizeMode={resizeMode} />;
 };
@@ -93,24 +73,8 @@ export const AuthAvatar = ({
   cacheKey,
   isFlex = false,
 }) => {
-  const url = `${utils.BASE_URL}/static/${filename}`;
+  const url = filename;
 
-  // const [uri, setUri] = useState(null);
-  // useEffect(() => {
-  //   if (!filename) return;
-  //   let cancelled = false;
-  //   setUri(null);
-  //   const { accessToken } = store.getState().auth;
-  //   const url = `${utils.BASE_URL}/document/getFile?filename=${encodeURIComponent(filename)}`;
-  //   RNBlobUtil.fetch("GET", url, { Authorization: `Bearer ${accessToken}` })
-  //     .then((res) => {
-  //       if (!cancelled) setUri(`data:image/jpeg;base64,${res.base64()}`);
-  //     })
-  //     .catch(() => {});
-  //   return () => {
-  //     cancelled = true;
-  //   };
-  // }, [filename, cacheKey]);
   const sz = isFlex
     ? {
         width: "100%",
@@ -490,7 +454,7 @@ const PostCard = ({
   const imageViewerData = useMemo(
     () =>
       (post.images ?? []).map((img) => ({
-        uri: `${utils.BASE_URL}/static/${img}`,
+        uri: img,
       })),
     [post.images],
   );

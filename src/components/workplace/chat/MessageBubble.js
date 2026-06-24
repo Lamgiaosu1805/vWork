@@ -37,7 +37,6 @@ const MessageBubble = ({ item, isMine, onLongPress, sender, onPressImage }) => {
 
   const imageUri = useMemo(() => {
     if (!isImage) return null;
-    console.log(item?.attachment);
 
     if (
       item?.status === "sending" &&

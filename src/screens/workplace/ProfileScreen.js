@@ -59,7 +59,7 @@ export default function ProfileScreen({ route, navigation }) {
     const openImagePreview = (filename) => {
       if (!filename) return;
 
-      setPreviewImage(`${utils.BASE_URL}/static/${filename}`);
+      setPreviewImage(filename);
       setPreviewVisible(true);
     };
 

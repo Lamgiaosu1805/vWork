@@ -36,25 +36,7 @@ export default function CustomDrawerContent(props) {
     const fetchAvatar = async () => {
       if (!user?.avatar) return;
 
-      const url = `${utils.BASE_URL}/static/${user.avatar}`;
-
-      // try {
-      //   const res = await api.get(`/document/getFile?filename=${user.avatar}`, {
-      //     requiresAuth: true,
-      //     responseType: "blob",
-      //   });
-
-      //   // Convert blob → base64
-      //   const reader = new FileReader();
-      //   reader.onloadend = () => {
-      //     setAvatarBase64(reader.result);
-      //   };
-      //   reader.readAsDataURL(res.data);
-      // } catch (error) {
-      //   console.log("fetchAvatar error:", error.message);
-      // }
-
-      setAvatarBase64(url);
+      setAvatarBase64(user?.avatar);
     };
 
     fetchAvatar();
