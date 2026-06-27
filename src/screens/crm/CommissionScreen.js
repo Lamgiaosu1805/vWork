@@ -9,6 +9,8 @@ import api from '../../api/axiosInstance';
 import Header from '../../components/Header';
 import dayjs from 'dayjs';
 import { canMgr } from '../../helpers/permissions';
+import { CalendarDays, ChevronLeft, Menu } from 'lucide-react-native';
+import { openDrawer } from '../../helpers/navigationRef';
 
 const PRIMARY = '#0052CC';
 
@@ -223,8 +225,10 @@ export default function CommissionScreen() {
 
     const renderHeader = () => (
         <Header
+            LeftIcon={Menu}
+            onLeftPress={openDrawer}
             title="Thu nhập & Hoa hồng"
-            rightIconName="calendar-outline"
+            RightIcon={CalendarDays}
             onRightPress={openFilter}
         />
     );

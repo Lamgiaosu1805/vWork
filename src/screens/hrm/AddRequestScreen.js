@@ -28,6 +28,7 @@ import useGetAllShift from "../../hooks/requests/useGetAllShift";
 import useGetEligibleReviewers from "../../hooks/requests/useGetEligibleReviewers";
 import useCreateRequest from "../../hooks/requests/useCreateRequest";
 import PickerTimeModal from "../../components/hrm/leaveRequest/PickerTimeModal";
+import { ChevronLeft } from "lucide-react-native";
 
 const AddRequestScreen = ({ navigation }) => {
   const [selectedDate, setSelectedDate] = useState(null);
@@ -231,7 +232,7 @@ const AddRequestScreen = ({ navigation }) => {
         >
           <Header
             title="Tạo Đơn Giải Trình / Nghỉ Phép"
-            leftIconName="chevron-back-outline"
+            LeftIcon={ChevronLeft}
             onLeftPress={() => navigation.goBack()}
           />
 

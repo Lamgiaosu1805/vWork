@@ -8,6 +8,7 @@ import utils from '../../helpers/utils'
 import { useCustomAlert } from '../../components/CustomAlertProvider'
 import api from '../../api/axiosInstance'
 import { setCredentials } from '../../redux/slice/authSlice'
+import { Bell, Menu } from 'lucide-react-native'
 
 export default function ProfileScreen({ navigation }) {
     const dispatch = useDispatch();
@@ -54,9 +55,9 @@ export default function ProfileScreen({ navigation }) {
         <View style={styles.container}>
             <Header
                 title="Hồ sơ cá nhân"
-                leftIconName="menu"
+                LeftIcon={Menu}
                 onLeftPress={() => openDrawer()}
-                rightIconName="notifications"
+                RightIcon={Bell}
                 onRightPress={() => Alert.alert('Notifications Pressed')}
             />
             <ScrollView

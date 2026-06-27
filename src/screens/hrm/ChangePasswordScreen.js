@@ -16,6 +16,7 @@ import useAuth from "../../hooks/useAuth";
 import Header from "../../components/Header";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { unregisterFcmTokenFromServer } from "../../utils/notifications/fcmConfig";
+import { ChevronLeft } from "lucide-react-native";
 
 const ChangePasswordScreen = () => {
   const navigation = useNavigation();
@@ -90,7 +91,7 @@ const ChangePasswordScreen = () => {
       <KeyboardAvoidingView style={styles.flex} behavior={"padding"}>
         <Header
           title={"Đổi mật khẩu"}
-          leftIconName="chevron-back-outline"
+          LeftIcon={ChevronLeft}
           onLeftPress={() => {
             navigation.goBack();
           }}

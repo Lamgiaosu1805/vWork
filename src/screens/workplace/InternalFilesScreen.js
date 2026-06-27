@@ -30,6 +30,7 @@ import { openDrawer } from '../../helpers/navigationRef';
 import { getPermissions } from '../../helpers/permissions';
 import workplaceApi from '../../api/workplaceApi';
 import utils from '../../helpers/utils';
+import { ChevronLeft, Menu } from 'lucide-react-native';
 
 dayjs.locale('vi');
 
@@ -526,7 +527,7 @@ export default function InternalFilesScreen() {
         <View style={styles.safeArea}>
             <Header
                 title="Ổ File Nội Bộ"
-                leftIconName={folderStack.length > 0 ? 'arrow-back' : 'menu'}
+                LeftIcon={folderStack.length > 0 ? ChevronLeft : Menu}
                 onLeftPress={folderStack.length > 0 ? handleGoBack : () => openDrawer()}
             />
 

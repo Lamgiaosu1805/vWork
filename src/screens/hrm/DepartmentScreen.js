@@ -13,6 +13,7 @@ import { openDrawer } from '../../helpers/navigationRef';
 import { getPermissions } from '../../helpers/permissions';
 import departmentApi from '../../api/departmentApi';
 import positionApi from '../../api/positionApi';
+import { Menu, Plus } from 'lucide-react-native';
 
 const DEPT_TYPE_OPTIONS = [
   { value: 'holding',    label: 'Tập đoàn' },
@@ -436,9 +437,9 @@ export default function DepartmentScreen() {
     <SafeAreaView style={styles.container} edges={['bottom']}>
       <Header
         title="Cơ cấu & Chức vụ"
-        leftIconName="menu"
+         LeftIcon={Menu}
         onLeftPress={openDrawer}
-        {...(showAddOnHeader ? { rightIconName: 'add', onRightPress: openAdd } : {})}
+        {...(showAddOnHeader ? { RightIcon: Plus, onRightPress: openAdd } : {})}
       />
 
       {/* Tab bar */}

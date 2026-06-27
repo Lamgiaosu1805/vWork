@@ -26,6 +26,7 @@ import Header from '../../components/Header';
 import PostCard, { AuthAvatar, AuthImage, BRAND } from '../../components/PostCard';
 import feedApi from '../../api/feedApi';
 import { resolveConversationId } from '../../utils/chatUtils';
+import { ChevronLeft } from 'lucide-react-native';
 
 dayjs.locale('vi');
 
@@ -353,7 +354,7 @@ export default function ProfileScreen({ route, navigation }) {
     if (loading) {
         return (
             <SafeAreaView style={styles.safe} edges={['bottom']}>
-                <Header title="Trang cá nhân" leftIconName="chevron-back" onLeftPress={() => navigation.goBack()} />
+                <Header title="Trang cá nhân" LeftIcon={ChevronLeft} onLeftPress={() => navigation.goBack()} />
                 <View style={styles.center}>
                     <ActivityIndicator size="large" color={BRAND} />
                 </View>
@@ -365,7 +366,7 @@ export default function ProfileScreen({ route, navigation }) {
       <SafeAreaView style={styles.safe} edges={["bottom"]}>
         <Header
           title="Trang cá nhân"
-          leftIconName="chevron-back"
+          LeftIcon={ChevronLeft}
           onLeftPress={() => navigation.goBack()}
         />
         <FlatList

@@ -20,6 +20,7 @@ import { unregisterFcmTokenFromServer } from "../utils/notifications/fcmConfig";
 import { getPermissions } from "../helpers/permissions";
 import { disconnectChatSocket } from "../libs/chatSocket";
 import utils from "../helpers/utils";
+import { COLORS } from "../assets/theme/colors";
 
 export default function CustomDrawerContent(props) {
   const { navigation, state } = props;
@@ -139,7 +140,7 @@ export default function CustomDrawerContent(props) {
         <Ionicons
           name={icon}
           size={22}
-          color={isActive ? "#004643" : "#555"}
+          color={isActive ? COLORS.Primary : "#555"}
           style={{ marginRight: 10 }}
         />
         <Text style={[styles.menuLabel, isActive && styles.menuLabelActive]}>
@@ -279,7 +280,7 @@ export default function CustomDrawerContent(props) {
           style={styles.changePassBtn}
           onPress={handleChangePassword}
         >
-          <Ionicons name="lock-closed-outline" size={20} color="#E63946" />
+          <Ionicons name="lock-closed-outline" size={20} color={COLORS.Primary} />
           <Text style={styles.changePassText}>Đổi mật khẩu</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
@@ -323,7 +324,7 @@ const styles = StyleSheet.create({
     position: "absolute",
     bottom: 0,
     right: 0,
-    backgroundColor: "#004643",
+    backgroundColor: COLORS.Primary,
     width: 22,
     height: 22,
     borderRadius: 11,
@@ -354,7 +355,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
   },
   menuItemActive: {
-    backgroundColor: "#E8F5F2",
+    backgroundColor: COLORS.Tertiary,
   },
   menuLabel: {
     fontSize: 15,
@@ -362,7 +363,7 @@ const styles = StyleSheet.create({
   },
   menuLabelActive: {
     fontWeight: "600",
-    color: "#004643",
+    color: COLORS.Primary,
   },
   footer: {
     marginTop: "auto",
@@ -371,7 +372,7 @@ const styles = StyleSheet.create({
   },
   logoutBtn: {
     flexDirection: "row",
-    backgroundColor: "#E63946",
+    backgroundColor: COLORS.Primary,
     padding: 10,
     borderRadius: 8,
     alignItems: "center",
@@ -390,10 +391,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 1,
-    borderColor: "#E63946",
+    borderColor: COLORS.Primary,
   },
   changePassText: {
-    color: "#E63946",
+    color: COLORS.Primary,
     fontSize: 15,
     marginLeft: 6,
   },

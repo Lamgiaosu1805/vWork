@@ -12,6 +12,7 @@ import Header from '../../components/Header';
 import { openDrawer } from '../../helpers/navigationRef';
 import { getPermissions } from '../../helpers/permissions';
 import branchApi from '../../api/branchApi';
+import { Menu, Plus } from 'lucide-react-native';
 
 export default function BranchScreen() {
   const user = useSelector(s => s.auth.user);
@@ -146,9 +147,9 @@ export default function BranchScreen() {
     <SafeAreaView style={styles.container} edges={['bottom']}>
       <Header
         title="Chi nhánh"
-        leftIconName="menu"
+        LeftIcon={Menu}
         onLeftPress={openDrawer}
-        {...(perms.showHrmMgmt ? { rightIconName: 'add', onRightPress: openAdd } : {})}
+        {...(perms.showHrmMgmt ? { RightIcon: Plus, onRightPress: openAdd } : {})}
       />
 
       {loading ? (

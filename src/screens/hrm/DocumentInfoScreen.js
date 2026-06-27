@@ -4,6 +4,7 @@ import Header from '../../components/Header'
 import api from '../../api/axiosInstance'
 import { store } from '../../redux/store'
 import utils from '../../helpers/utils'
+import { ChevronLeft } from 'lucide-react-native'
 
 export default function DocumentInfoScreen({ navigation }) {
     const [listDocument, setListDocument] = useState([])
@@ -66,7 +67,7 @@ export default function DocumentInfoScreen({ navigation }) {
         <View style={styles.container}>
             <Header
                 title="Tài liệu hồ sơ"
-                leftIconName="chevron-back-outline"
+                LeftIcon={ChevronLeft}
                 onLeftPress={() => {
                     navigation.goBack()
                 }}

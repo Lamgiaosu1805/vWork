@@ -20,6 +20,8 @@ import { Dropdown } from "react-native-element-dropdown";
 import Header from "../../components/Header";
 import { useSharedValue, withTiming } from "react-native-reanimated";
 import CreateCustomerBottomSheet from "../../components/crm/customer/bottomsheet/CreateCustomerBottomSheet";
+import { Menu, UserRoundPlus } from "lucide-react-native";
+import { openDrawer } from "../../helpers/navigationRef";
 
 const ITEMS_PER_PAGE = 5;
 
@@ -133,8 +135,10 @@ export default function CustomerScreen() {
   return (
     <View style={{ flex: 1, alignItems: "center" }}>
       <Header
+      LeftIcon={Menu}
+      onLeftPress={openDrawer}
         title="Danh sách khách hàng"
-        rightIconName={canAddCustomer ? "person-add" : undefined}
+        RightIcon={canAddCustomer ? UserRoundPlus : undefined}
         onRightPress={
           canAddCustomer
             ? () => {

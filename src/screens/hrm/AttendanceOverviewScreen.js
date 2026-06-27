@@ -10,6 +10,7 @@ import dayjs from 'dayjs';
 import 'dayjs/locale/vi';
 import api from '../../api/axiosInstance';
 import Header from '../../components/Header';
+import { ChevronLeft } from 'lucide-react-native';
 
 dayjs.locale('vi');
 
@@ -102,7 +103,7 @@ export default function AttendanceOverviewScreen() {
         <SafeAreaView style={styles.safe} edges={['bottom']}>
             <Header
                 title="Tình trạng chấm công"
-                leftIconName="arrow-back"
+                LeftIcon={ChevronLeft}
                 onLeftPress={() => navigation.goBack()}
             />
 

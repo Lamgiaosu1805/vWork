@@ -11,6 +11,7 @@ import dayjs from 'dayjs';
 import { canMgr } from '../../helpers/permissions';
 import api from '../../api/axiosInstance';
 import Header from '../../components/Header';
+import { ChevronLeft, SlidersHorizontal } from 'lucide-react-native';
 
 const PRIMARY = '#0052CC';
 
@@ -281,9 +282,9 @@ export default function InvestmentScreen() {
         <SafeAreaView style={styles.safeArea} edges={['bottom']}>
             <Header
                 title="Quản lý đầu tư"
-                leftIconName="arrow-back"
+                 LeftIcon={ChevronLeft}
                 onLeftPress={() => navigation.goBack()}
-                rightIconName="options-outline"
+                RightIcon={SlidersHorizontal}
                 onRightPress={() => setFilterVisible(true)}
             />
 
