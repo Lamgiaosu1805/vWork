@@ -2,7 +2,9 @@ import React, { useMemo, useState, useCallback } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Image,
   KeyboardAvoidingView,
+  Linking,
   Modal,
   Platform,
   ScrollView,
@@ -30,6 +32,11 @@ import MenuItem from "../../../components/workplace/chat/setting/MenuItem";
 import AccordionSection from "../../../components/workplace/chat/setting/AccordionSection";
 import ActionBtn from "../../../components/workplace/chat/setting/ActionBtn";
 import AddMembersModal from "../../../components/workplace/chat/setting/AddMembersModal";
+import { Edit, ImageUp } from "lucide-react-native";
+import { COLORS } from "../../../assets/theme/colors";
+import * as ImagePicker from "expo-image-picker";
+import * as ImageManipulator from "expo-image-manipulator";
+import useGetImageMessage from "../../../hooks/useGetImageMessage";
 
 export default function GroupChatSettingsScreen({ route, navigation }) {
   const dispatch = useDispatch();
@@ -66,6 +73,8 @@ export default function GroupChatSettingsScreen({ route, navigation }) {
       }),
     [members, adminIds],
   );
+  const { uri: groupAvatarUri, headers: groupAvatarHeaders } =
+    useGetImageMessage(conversation);
 
   const groupAvatars =
     conversation?.type === "group" && !conversation?.avatar
@@ -288,6 +297,78 @@ export default function GroupChatSettingsScreen({ route, navigation }) {
     ]);
   }, [conversationId, dispatch, navigation]);
 
+  const handlePickAvatar = useCallback(async () => {
+    try {
+      const permission =
+        await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!permission.granted) {
+        Alert.alert(
+          "Cần cấp quyền truy cập ảnh",
+          "Vui lòng cấp quyền truy cập thư viện ảnh trong phần Cài đặt để thay đổi avatar.",
+          [
+            {
+              text: "Hủy",
+              style: "cancel",
+            },
+            {
+              text: "Mở Cài đặt",
+              onPress: () => Linking.openSettings(),
+            },
+          ],
+        );
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+      });
+
+      if (result.canceled) return;
+
+      const asset = result.assets[0];
+
+      const manipulated = await ImageManipulator.manipulateAsync(
+        asset.uri,
+        [{ resize: { width: 400, height: 400 } }],
+        { compress: 0.8, format: ImageManipulator.SaveFormat.JPEG },
+      );
+
+      const formData = new FormData();
+
+      formData.append("group-avatar", {
+        uri: manipulated.uri,
+        name: asset.fileName ?? asset.name ?? "photo.jpg",
+        type: asset.type ?? asset.mimeType ?? "image/jpeg",
+      });
+
+      const res = await chatApi.updateGroupConversationAvatar(
+        conversationId,
+        formData,
+      );
+
+      const updated = res?.data?.data ?? res?.data ?? res;
+
+      if (updated) {
+        dispatch(upsertConversation(updated));
+        setConversation((prev) => ({ ...prev, ...updated }));
+      }
+
+      Toast.show({ type: "success", text1: "Đã đổi avatar nhóm" });
+    } catch (error) {
+      Toast.show({
+        type: "error",
+        text1:
+          error?.response?.data?.message ??
+          error?.message ??
+          "Không thể đổi avatar nhóm",
+      });
+    }
+  }, [conversationId, dispatch]);
+
+
   const heroAvatar = conversation?.avatar ? (
     <AuthAvatar
       filename={conversation.avatar}
@@ -327,7 +408,24 @@ export default function GroupChatSettingsScreen({ route, navigation }) {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.hero}>
-          <View style={styles.heroAvatarWrap}>{heroAvatar}</View>
+          <View style={styles.heroAvatarWrap}>
+            {heroAvatar}
+
+            <TouchableOpacity
+              onPress={handlePickAvatar}
+              activeOpacity={0.8}
+              style={{
+                position: "absolute",
+                bottom: 0,
+                right: 0,
+                backgroundColor: COLORS.Primary,
+                borderRadius: 20,
+                padding: 4,
+              }}
+            >
+              <ImageUp size={18} color={COLORS.white} />
+            </TouchableOpacity>
+          </View>
 
           <View style={styles.nameRow}>
             <Text style={styles.groupName} numberOfLines={1}>
@@ -507,7 +605,6 @@ const styles = StyleSheet.create({
     width: 88,
     height: 88,
     borderRadius: 44,
-    overflow: "hidden",
     marginBottom: 14,
     shadowColor: "#000",
     shadowOpacity: 0.1,

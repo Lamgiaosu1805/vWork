@@ -12,6 +12,7 @@ import dayjs from "dayjs";
 import { AuthAvatar } from "../../PostCard";
 import { useSelector } from "react-redux";
 import utils from "../../../helpers/utils"; // chứa BASE_URL
+import useGetImageMessage from "../../../hooks/useGetImageMessage";
 
 const resolveMessageTime = (message) => {
   const value = message?.createdAt;
@@ -35,20 +36,7 @@ const MessageBubble = ({ item, isMine, onLongPress, sender, onPressImage }) => {
   const isRecalled = !!item?.recalled?.at;
   const isImage = item?.type === "image" && !isRecalled;
 
-  const imageUri = useMemo(() => {
-    if (!isImage) return null;
-
-    if (
-      item?.status === "sending" &&
-      item?.attachment?.url?.startsWith("file:")
-    ) {
-      return item.attachment.url;
-    }
-
-    if (!item?._id || !item?.conversationId) return null;
-
-    return `${utils.BASE_URL}/chat/conversations/${item.conversationId}/messages/${item._id}/image`;
-  }, [item, isImage]);
+  const { uri: imageUri, headers: imageHeaders } = useGetImageMessage(item);
 
   const imageRatio = useMemo(() => {
     const w = item?.attachment?.width;
@@ -83,13 +71,12 @@ const MessageBubble = ({ item, isMine, onLongPress, sender, onPressImage }) => {
             <TouchableOpacity
               activeOpacity={0.95}
               onPress={() => onPressImage(item._id)}
+              onLongPress={onLongPress}
             >
               <Image
                 source={{
                   uri: imageUri,
-                  headers: {
-                    Authorization: `Bearer ${accessToken}`,
-                  },
+                  headers: imageHeaders,
                 }}
                 style={[
                   styles.image,

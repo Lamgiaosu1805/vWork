@@ -6,6 +6,7 @@ import api from "./axiosInstance";
  * @typedef {{ receiver_id: string }} CreatePrivatePayload
  * @typedef {{ name: string, members: string[] }} CreateGroupPayload
  * @typedef {{ name: string }} UpdateGroupNamePayload
+ * @typedef {{ avatar: string }} UpdateGroupAvatarPayload
  * @typedef {{ content: string, type: string, clientMessageId?: string }} SendMessagePayload
  * @typedef {{ member_ids: string[] }} AddMembersPayload
  * @typedef {{ search?: string }} GetConversationsQuery
@@ -39,6 +40,16 @@ const chatApi = {
   updateGroupConversationName: (conversationId, payload) =>
     api.patch(`/chat/conversations/${conversationId}/group-name`, payload, {
       requiresAuth: true,
+    }),
+
+  /**
+   * @param {string} conversationId
+   * @param {FormData} payload
+   */
+  updateGroupConversationAvatar: (conversationId, payload) =>
+    api.patch(`/chat/conversations/${conversationId}/group-avatar`, payload, {
+      requiresAuth: true,
+      headers: { "Content-Type": "multipart/form-data" },
     }),
 
   /** @param {string} conversationId */
@@ -131,6 +142,14 @@ const chatApi = {
       requiresAuth: true,
       params: query,
     }),
+
+  getImageUrl: (conversationId, messageId) =>
+    api.get(
+      `/chat/conversations/${conversationId}/messages/${messageId}/image`,
+      {
+        requiresAuth: true,
+      },
+    ),
 };
 
 export default chatApi;
