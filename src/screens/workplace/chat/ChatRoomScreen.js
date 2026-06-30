@@ -106,6 +106,7 @@ export default function ChatRoomScreen({ route, navigation }) {
       }));
 
       const index = imageMessages.findIndex((msg) => msg._id === messageId);
+      const safeIndex = index < 0 ? 0 : index;
 
       setViewerImages(images);
       setViewerIndex(index < 0 ? 0 : index);
@@ -296,19 +297,44 @@ export default function ChatRoomScreen({ route, navigation }) {
       if (!msgId) {
         Toast.show({ type: "error", text1: "Không thể thao tác tin nhắn này" });
         return;
-      } // Kiểm tra tin nhắn có phải của mình không
+      }
       const sender = resolveMessageSender(message);
       const isMine = isCurrentUser(currentUserKeys, sender);
       const sentAt = message?.createdAt ? dayjs(message.createdAt) : null;
       const canRecall =
         isMine && sentAt ? dayjs().diff(sentAt, "minute") <= 60 : false;
+      const isImage = message.type === "image";
+
       if (Platform.OS === "ios" && ActionSheetIOS) {
-        const options = ["Sao chép"];
-        if (canRecall) options.push("Thu hồi");
-        options.push("Xóa với tôi");
-        options.push("Huỷ");
+        const actions = [];
+
+        if (!isImage) {
+          actions.push({
+            label: "Sao chép",
+            destructive: false,
+            onPress: () => handleCopy(message.content),
+          });
+        }
+        if (canRecall) {
+          actions.push({
+            label: "Thu hồi",
+            destructive: true,
+            onPress: () => showRecalledConfirm(msgId, message._id),
+          });
+        }
+        actions.push({
+          label: "Xóa với tôi",
+          destructive: true,
+          onPress: () => showDeleteWithMeConfirm(msgId, message._id),
+        });
+        actions.push({ label: "Huỷ", destructive: false, onPress: null });
+
+        const options = actions.map((a) => a.label);
         const cancelIndex = options.length - 1;
-        const destructiveIndex = canRecall ? [1, 2] : [1];
+        const destructiveIndex = actions
+          .map((a, i) => (a.destructive ? i : null))
+          .filter((i) => i !== null);
+
         ActionSheetIOS.showActionSheetWithOptions(
           {
             options,
@@ -316,31 +342,28 @@ export default function ChatRoomScreen({ route, navigation }) {
             cancelButtonIndex: cancelIndex,
           },
           (buttonIndex) => {
-            if (buttonIndex === 0) {
-              handleCopy(message.content);
-            } else if (canRecall && buttonIndex === 1) {
-              showRecalledConfirm(msgId, message._id);
-            } else if (
-              (canRecall && buttonIndex === 2) ||
-              (!canRecall && buttonIndex === 1)
-            ) {
-              showDeleteWithMeConfirm(msgId, message._id);
-            }
+            actions[buttonIndex]?.onPress?.();
           },
         );
       } else {
-        const alertButtons = [{ text: "Sao chép", onPress: handleCopy }];
+        const alertButtons = [];
+        if (!isImage) {
+          alertButtons.push({
+            text: "Sao chép",
+            onPress: () => handleCopy(message.content),
+          });
+        }
         if (canRecall) {
           alertButtons.push({
             text: "Thu hồi",
             style: "destructive",
-            onPress: showRecalledConfirm,
+            onPress: () => showRecalledConfirm(msgId, message._id),
           });
         }
         alertButtons.push({
           text: "Xóa với tôi",
           style: "destructive",
-          onPress: showDeleteWithMeConfirm,
+          onPress: () => showDeleteWithMeConfirm(msgId, message._id),
         });
         alertButtons.push({ text: "Huỷ", style: "cancel" });
         Alert.alert("Tuỳ chọn", null, alertButtons, { cancelable: true });

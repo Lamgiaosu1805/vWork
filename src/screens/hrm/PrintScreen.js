@@ -19,6 +19,7 @@ import Toast from 'react-native-toast-message';
 import Header from '../../components/Header';
 import api from '../../api/axiosInstance';
 import dayjs from 'dayjs';
+import { ChevronLeft } from 'lucide-react-native';
 
 const decodeFilename = (name) => {
     if (!name) return '';
@@ -183,7 +184,7 @@ export default function PrintScreen({ navigation }) {
 
     return (
         <SafeAreaView style={styles.container} edges={['bottom']}>
-            <Header title="In tài liệu" leftIconName="arrow-back" onLeftPress={() => navigation.goBack()} />
+            <Header title="In tài liệu" LeftIcon={ChevronLeft} onLeftPress={() => navigation.goBack()} />
             <ScrollView
                 contentContainerStyle={styles.scroll}
                 refreshControl={

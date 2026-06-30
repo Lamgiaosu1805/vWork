@@ -22,6 +22,7 @@ import { getPermissions } from "../../helpers/permissions";
 import api from "../../api/axiosInstance";
 import Toast from "react-native-toast-message";
 import CustomerCard from "../../components/crm/customer/CustomerCard";
+import { ChevronLeft } from "lucide-react-native";
 
 const LIMIT = 5;
 const PRIMARY = "#ED2E30";
@@ -409,7 +410,7 @@ export default function AdminCustomerScreen() {
     <View style={{ flex: 1, alignItems: "center" }}>
       <Header
         title="Quản lý khách hàng"
-        leftIconName="arrow-back"
+        LeftIcon={ChevronLeft}
         onLeftPress={() => navigation.goBack()}
       />
 

@@ -30,6 +30,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { pushLichCong, setCurrentWorkSheetAttendance } from '../../redux/slice/attendanceSlice';
 import BirthdayPanel from '../../components/hrm/BirthdayPanel';
 import useUser from '../../hooks/useUser';
+import { Bell, Menu } from 'lucide-react-native';
 
 const getGreeting = (fullName, sex) => {
     const h = new Date().getHours();
@@ -443,9 +444,9 @@ export default function DashboardHRMScreen() {
         <View style={styles.container}>
             <Header
                 title="HRM"
-                leftIconName="menu"
+                LeftIcon={Menu}
                 onLeftPress={() => { openDrawer(); }}
-                rightIconName="notifications"
+                RightIcon={Bell}
                 onRightPress={() => Alert.alert('Notifications Pressed')}
             />
 

@@ -18,6 +18,7 @@ import Header from "../../components/Header";
 import PostCard, { AuthAvatar, BRAND } from "../../components/PostCard";
 import feedApi from "../../api/feedApi";
 import socket from "../../libs/socket";
+import { CircleUserRound, Menu } from "lucide-react-native";
 
 const PAGE_SIZE = 10;
 
@@ -176,9 +177,9 @@ export default function FeedScreen({ navigation }) {
     <View style={styles.safe}>
       <Header
         title="Bảng tin"
-        leftIconName="menu"
+        LeftIcon={Menu}
         onLeftPress={openDrawer}
-        rightIconName={"person-circle-outline"}
+        RightIcon={CircleUserRound}
         onRightPress={() => navigation.navigate("WorkplaceProfileScreen")}
       />
 

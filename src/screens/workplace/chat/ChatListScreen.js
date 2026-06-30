@@ -35,6 +35,7 @@ import ConversationRow from "../../../components/workplace/chat/ConversationRow"
 import { HEIGHT_SHEET } from "../../crm/CustomerScreen";
 import { useSharedValue, withTiming } from "react-native-reanimated";
 import NewConversationBottomSheet from "../../../components/workplace/chat/NewConversationBottomSheet";
+import { Menu, Send } from "lucide-react-native";
 
 dayjs.extend(relativeTime);
 dayjs.locale("vi");
@@ -283,9 +284,9 @@ export default function ChatListScreen({ navigation }) {
     <View style={styles.container}>
       <Header
         title="Tin nhắn"
-        leftIconName="menu"
+        LeftIcon={Menu}
         onLeftPress={() => openDrawer()}
-        rightIconName="chatbubbles"
+        RightIcon={Send}
         onRightPress={openNewConversattion}
       />
 

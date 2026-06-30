@@ -13,6 +13,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import api from '../../api/axiosInstance';
 import Header from '../../components/Header';
+import { ChevronLeft } from 'lucide-react-native';
 
 export default function ListAgentScreen() {
     const navigation = useNavigation();
@@ -67,7 +68,7 @@ export default function ListAgentScreen() {
     };
 
     const renderHeader = () => (
-        <Header title="Danh sách đại lý" leftIconName="arrow-back" onLeftPress={() => navigation.goBack()} />
+        <Header title="Danh sách đại lý" LeftIcon={ChevronLeft} onLeftPress={() => navigation.goBack()} />
     );
 
     const renderAgentItem = ({ item }) => (

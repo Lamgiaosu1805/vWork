@@ -11,22 +11,17 @@ import * as Location from 'expo-location';
 import Toast from 'react-native-toast-message';
 import { useDispatch, useSelector } from 'react-redux';
 import utils from '../../helpers/utils';
+import { Bell, Calendar, ChevronLeft, ChevronRight, Menu } from 'lucide-react-native';
+import useTheme from '../../assets/theme/useTheme';
+import { Images } from '../../assets/images';
+import { COLORS } from '../../assets/theme/colors';
 
 dayjs.locale('vi');
 
 const capitalizeFirstLetter = (string) => {
     if (!string) return '';
+    
     return string.charAt(0).toUpperCase() + string.slice(1);
-};
-
-const mockTodayData = {
-    gioVao: '08 : 03',
-    gioRa: '-:-',
-    soGioLam: '05 : 28',
-    isCheckIn: true,
-    isCheckOut: false,
-    lateMinutes: '00:00',
-    isLate: false,
 };
 
 const getAttendanceRangePayroll = (year, month) => {
@@ -87,16 +82,16 @@ const getDotColor = (day, lichCongList, statMonth, statYear) => {
 const statusStyles = StyleSheet.create({
     statusBox: {
         flex: 1,
-        backgroundColor: '#E0F2F2',
-        borderRadius: 10,
+        backgroundColor: COLORS.white,
+        borderRadius: 24,
         padding: 12,
         justifyContent: 'space-between',
         minHeight: 120,
-        alignItems: 'flex-start',
+        alignItems: 'center',
     },
-    statusValue: { fontSize: 24, color: '#000000', marginVertical: 16 },
-    statusTitle: { fontSize: 12, color: '#374151', fontWeight: '500' },
-    statusLabelText: { fontSize: 10 },
+    statusValue: { fontSize: 24, color: '#000000', marginVertical: 20, fontWeight: '600' },
+    statusTitle: { fontSize: 13, color: COLORS.text.bland, fontWeight: '500' },
+    statusLabelText: { fontSize: 11, fontWeight: '400' },
 });
 
 const InlineStatusBox = ({ title, value, statusLabel, statusColor, showClockIcon = false }) => (
@@ -141,22 +136,20 @@ const calcWorkingHours = (ws) => {
 };
 
 const renderFullStatusSection = (currentWorkSheet) => (
-    <View style={{ marginTop: 12, backgroundColor: 'white', borderRadius: 16, padding: 16 }}>
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+    <View style={{ marginTop: 12, }}>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 11 }}>
             <InlineStatusBox
                 title="Giờ vào"
                 value={utils.formatTime(currentWorkSheet?.check_in, false) || "-:-"}
                 statusLabel={currentWorkSheet?.check_in ? 'Đã check in' : 'Chưa check in'}
                 statusColor={!currentWorkSheet?.check_in ? '#FF0000' : '#00A896'}
             />
-            <View style={{ width: 10 }} />
             <InlineStatusBox
                 title="Giờ ra"
                 value={utils.formatTime(currentWorkSheet?.check_out, false) || "-:-"}
                 statusLabel={currentWorkSheet?.check_out ? 'Đã check out' : 'Chưa check out'}
                 statusColor={!currentWorkSheet?.check_out ? '#FF0000' : '#00A896'}
             />
-            <View style={{ width: 10 }} />
             <InlineStatusBox
                 title="Số giờ làm"
                 value={calcWorkingHours(currentWorkSheet)}
@@ -165,12 +158,6 @@ const renderFullStatusSection = (currentWorkSheet) => (
                 showClockIcon={true}
             />
         </View>
-        {
-            currentWorkSheet?.minutes_late > 0 && (<Text style={{ color: '#FF0000', marginTop: 12 }}>Bạn đã check in muộn {currentWorkSheet?.minutes_late} phút!</Text>)
-        }
-        {
-            currentWorkSheet?.minute_early > 0 && (<Text style={{ color: '#FFA500', marginTop: 8 }}>Bạn đã check out sớm {currentWorkSheet?.minute_early} phút!</Text>)
-        }
     </View>
 );
 
@@ -194,8 +181,8 @@ const TimeDisplay = ({ IMAGE_HEIGHT }) => {
             </View>
             <View style={styles.illustrationWrapper}>
                 <Image
-                    source={require('../../../assets/images/OBJECTS.png')}
-                    style={{ height: IMAGE_HEIGHT, width: null, aspectRatio: 1.5 }}
+                    source={Images.DecoAttendance}
+                    style={{ height: IMAGE_HEIGHT, width: null, aspectRatio: 178 / IMAGE_HEIGHT  }}
                     resizeMode="contain"
                 />
             </View>
@@ -256,7 +243,8 @@ function getCurrentPayrollMonth(today = dayjs()) {
 }
 
 export default function AttendanceScreen() {
-    const IMAGE_HEIGHT = 134;
+    const {colors} = useTheme();
+    const IMAGE_HEIGHT = 199;
     const today = dayjs();
 
     // Tháng/ Năm thống kê hiện tại
@@ -414,71 +402,58 @@ export default function AttendanceScreen() {
         }
     };
 
+    const disableCheckIn =
+    currentWorkSheet?.check_in != null || currentWorkSheet?.check_out != null;
+      
     return (
-        <View style={styles.container}>
+        <View style={[styles.container, {backgroundColor: colors.main}]}>
             <Header
                 title="Chấm công"
-                leftIconName="menu"
+                LeftIcon={Menu}
                 onLeftPress={() => openDrawer()}
-                rightIconName="notifications"
+                RightIcon={Bell}
                 onRightPress={() => Alert.alert('Notifications Pressed')}
             />
 
             <ScrollView
                 showsVerticalScrollIndicator={false}
                 style={{ flex: 1 }}
-                contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 20, paddingBottom: 30 }}
+                contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 25, paddingBottom: 30 }}
             >
                 <TimeDisplay IMAGE_HEIGHT={IMAGE_HEIGHT} />
 
-                <View style={{ marginTop: 20, flexDirection: 'row', justifyContent: 'space-between' }}>
-                    <TouchableOpacity style={styles.checkButton} activeOpacity={0.7} onPress={() => { checkIn() }}>
+                <View style={{ marginTop: 12, flexDirection: 'row', justifyContent: 'space-between', gap: 16 }}>
+                    <TouchableOpacity disabled={disableCheckIn} style={[styles.checkButton, disableCheckIn && { backgroundColor: COLORS.Secondary }]} activeOpacity={0.7} onPress={() => { checkIn() }}>
                         <Text style={styles.checkButtonText}>CHECK IN</Text>
                     </TouchableOpacity>
-                    <View style={{ width: 16 }} />
-                    <TouchableOpacity style={styles.checkButton} activeOpacity={0.7} onPress={() => attendanceApi.checkOut(dispatch, currentWorkSheet)}>
+                    <TouchableOpacity disabled={currentWorkSheet?.check_out != null} style={[styles.checkButton, currentWorkSheet?.check_out != null && { backgroundColor: COLORS.Secondary }]} activeOpacity={0.7} onPress={() => attendanceApi.checkOut(dispatch, currentWorkSheet)}>
                         <Text style={styles.checkButtonText}>CHECK OUT</Text>
                     </TouchableOpacity>
                 </View>
-
-                <Text style={{
-                    fontSize: 14,
-                    color: '#B9B9B9',
-                    fontStyle: 'italic',
-                    fontWeight: '500',
-                    marginTop: 16,
-                    lineHeight: 20
-                }}>
-                    *Lưu ý: Giờ hành chính làm việc từ 08 giờ và kết thúc lúc 17 giờ, được phép chấm công muộn 5 phút so với giờ bắt đầu làm việc.
-                </Text>
 
                 {renderFullStatusSection(currentWorkSheet)}
 
                 {/* Bảng công */}
                 <View style={{ marginTop: 16 }}>
-                    <Text style={{ fontSize: 16, color: '#374151', fontWeight: '500' }}>Bảng công</Text>
+                    <Text style={{ fontSize: 16, color: COLORS.black, fontWeight: '600' }}>Bảng công của tôi</Text>
                     <View style={{ padding: 16, backgroundColor: 'white', borderRadius: 16, marginTop: 10 }}>
                         <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                            <Text style={{ fontWeight: '500', fontSize: 16, color: '#374151' }}>
+                            <Text style={{ fontWeight: '500', fontSize: 16, color: COLORS.neutral.neutral700 }}>
                                 Thống kê T{statMonth}, {statYear}
                             </Text>
                             <View style={{ flexDirection: 'row' }}>
                                 <TouchableOpacity activeOpacity={0.7} onPress={handleBack}>
-                                    <Ionicons name="chevron-back-outline" size={20} color="#000000" />
+                                    <ChevronLeft size={20} color={COLORS.black} />
                                 </TouchableOpacity>
                                 <TouchableOpacity
                                     activeOpacity={0.7}
                                     style={{ marginLeft: 24 }}
                                     onPress={handleForward}
                                 >
-                                    <Ionicons
-                                        name="chevron-forward-outline"
-                                        size={20}
-                                        color={canForward() ? '#000000' : '#B9B9B9'}
-                                    />
+                                    <ChevronRight size={20} color={canForward() ? COLORS.black : "#B9B9B9"} />
                                 </TouchableOpacity>
                                 <TouchableOpacity activeOpacity={0.7} style={{ marginLeft: 34 }}>
-                                    <Ionicons name="calendar-outline" size={20} color="#000000" />
+                                    <Calendar size={20} color={COLORS.black}/>
                                 </TouchableOpacity>
                             </View>
                         </View>
@@ -486,24 +461,24 @@ export default function AttendanceScreen() {
                         <View style={{ marginTop: 16, height: 169, width: '100%', flexDirection: 'row' }}>
                             <View style={{
                                 flex: 1,
-                                backgroundColor: '#F0FDF4',
+                                backgroundColor: COLORS.Tertiary,
                                 borderRadius: 16,
                                 justifyContent: 'center',
                                 alignItems: 'center'
                             }}>
-                                <Ionicons name="calendar" size={50} color="#22C55E" />
+                                <Ionicons name="calendar" size={50} color={COLORS.Primary} />
                                 <Text style={{ marginTop: 4, fontSize: 12, color: '#4D4D4D' }}>Số công thực tế</Text>
                                 <Text style={{ marginTop: 4, fontSize: 20, color: '#4D4D4D', fontWeight: '500' }}>12/24</Text>
                             </View>
                             <View style={{ width: 24, backgroundColor: 'white' }} />
                             <View style={{
                                 flex: 1,
-                                backgroundColor: '#EFF6FF',
+                                backgroundColor: COLORS.Tertiary,
                                 borderRadius: 16,
                                 justifyContent: 'center',
                                 alignItems: 'center'
                             }}>
-                                <Ionicons name="time" size={50} color="#2563EB" />
+                                <Ionicons name="time" size={50} color={COLORS.Primary}  />
                                 <Text style={{ marginTop: 4, fontSize: 12, color: '#4D4D4D' }}>Số giờ làm thực tế</Text>
                                 <Text style={{ marginTop: 4, fontSize: 20, color: '#4D4D4D', fontWeight: '500' }}>12/24</Text>
                             </View>
@@ -521,56 +496,84 @@ export default function AttendanceScreen() {
                             </TouchableOpacity>
                         )}
 
-                        {showDetail && (
-                            <View style={{ marginTop: 16, backgroundColor: "#FFFFFF", padding: 12, borderRadius: 12 }}>
-                                <View style={{ flexDirection: "row", flexWrap: "wrap", marginTop: 12 }}>
-                                    {days.map((d, index) => {
-                                        const dotColor = getDotColor(d, lichCong, statMonth, statYear);
-                                        const isToday = dayjs(d.full).isSame(dayjs(), 'day');
-                                        return (
-                                            <TouchableOpacity
-                                                key={index}
-                                                activeOpacity={0.7}
-                                                onPress={() => handleDayPress(d)}
-                                                style={{
-                                                    width: "20%",
-                                                    borderWidth: 1,
-                                                    borderColor: isToday ? '#2563EB' : "#E5E7EB",
-                                                    borderRadius: 8,
-                                                    paddingVertical: 10,
-                                                    justifyContent: "center",
-                                                    alignItems: "center",
-                                                }}
-                                            >
-                                                <Text style={{ fontSize: 12, color: "#6B7280" }}>{d.weekday}</Text>
-                                                <Text style={{ fontSize: 14, color: "#111827", fontWeight: "600", marginTop: 2 }}>
-                                                    {d.date}
-                                                </Text>
-                                                <View
-                                                    style={{
-                                                        width: 8,
-                                                        height: 8,
-                                                        borderRadius: 50,
-                                                        backgroundColor: dotColor,
-                                                        marginTop: 6,
-                                                    }}
-                                                />
-                                            </TouchableOpacity>
-                                        );
-                                    })}
-                                </View>
+               {showDetail && (
+                    <View style={calStyles.wrapper}>
 
-                                <TouchableOpacity
-                                    style={{ alignSelf: 'center', padding: 8, marginTop: 12 }}
-                                    activeOpacity={0.7}
-                                    onPress={() => setShowDetail(false)}
-                                >
-                                    <Text style={{ fontSize: 16, color: '#3B82F6', fontWeight: '500' }}>
-                                        Thu gọn
-                                    </Text>
-                                </TouchableOpacity>
+                        {/* Legend */}
+                        <View style={calStyles.legendRow}>
+                        {[
+                            { color: '#00A896', label: 'Đủ công' },
+                            { color: '#FFD700', label: 'Thiếu chấm' },
+                            { color: '#FF4D4F', label: 'Nghỉ/vắng' },
+                            { color: '#3B82F6', label: 'Chủ nhật' },
+                        ].map(({ color, label }) => (
+                            <View key={label} style={calStyles.legendItem}>
+                            <View style={[calStyles.legendDot, { backgroundColor: color }]} />
+                            <Text style={calStyles.legendText}>{label}</Text>
                             </View>
-                        )}
+                        ))}
+                        </View>
+
+                        {/* Day cells */}
+                        <View style={calStyles.grid}>
+                        {days.map((d, index) => {
+                            const dotColor = getDotColor(d, lichCong, statMonth, statYear);
+                            const isToday   = dayjs(d.full).isSame(dayjs(), 'day');
+                            const isSunday  = d.dow === 0;
+                            const isFuture  = dayjs(d.full).isAfter(dayjs(), 'day');
+
+                            return (
+                            <TouchableOpacity
+                                key={index}
+                                activeOpacity={0.7}
+                                onPress={() => handleDayPress(d)}
+                                style={[
+                                calStyles.cell,
+                                isSunday  && calStyles.cellSunday,
+                                isFuture  && calStyles.cellFuture,
+                                isToday   && calStyles.cellToday,
+                                ]}
+                            >
+                                {/* Thứ */}
+                                <Text style={[
+                                calStyles.dowText,
+                                isSunday && { color: '#3B82F6' },
+                                ]}>
+                                {d.weekday}
+                                </Text>
+
+                                {/* Ngày */}
+                                <Text style={[
+                                calStyles.dayNum,
+                                isToday  && { color: COLORS.Primary },
+                                isSunday && { color: '#3B82F6' },
+                                ]}>
+                                {d.date}
+                                </Text>
+
+                                {/* Chấm trạng thái */}
+                                <View style={[calStyles.dot, { backgroundColor: dotColor }]} />
+                            </TouchableOpacity>
+                            );
+                        })}
+                        </View>
+
+                        {/* Thu gọn */}
+                        <TouchableOpacity
+                        style={calStyles.collapseBtn}
+                        activeOpacity={0.7}
+                        onPress={() => setShowDetail(false)}
+                        >
+                        <ChevronLeft
+                            size={14}
+                            color={COLORS.Primary}
+                            style={{ transform: [{ rotate: '90deg' }], marginRight: 4 }}
+                        />
+                        <Text style={calStyles.collapseText}>Thu gọn</Text>
+                        </TouchableOpacity>
+
+                    </View>
+                )}
 
                     </View>
                 </View>
@@ -581,21 +584,104 @@ export default function AttendanceScreen() {
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#F7F7F7' },
+    container: { flex: 1,  },
     timeAndImageContainer: {
-        height: 170,
+        height: 150,
         width: '100%',
-        backgroundColor: 'white',
-        marginTop: 16,
-        borderRadius: 16,
+        backgroundColor: COLORS.Tertiary,
+        marginTop: 13,
+        borderRadius: 28,
         flexDirection: 'row',
         alignItems: 'center',
         overflow: 'hidden',
     },
-    timeInfo: { flex: 1, justifyContent: 'center', marginLeft: 24 },
-    currentTimeText: { fontSize: 32, fontWeight: 'bold', color: '#212121', fontFamily: 'sans-serif-light', marginBottom: 12 },
-    currentDateText: { fontSize: 16, fontWeight: '500', color: '#757575', marginTop: -5 },
-    illustrationWrapper: { height: '100%', flex: 1, justifyContent: 'flex-end', alignItems: 'flex-end', paddingBottom: 4 },
-    checkButton: { flex: 1, height: 71, justifyContent: 'center', alignItems: 'center', backgroundColor: '#09A896', borderRadius: 9999 },
+    timeInfo: { flex: 1, height: '100%', justifyContent: 'center', alignItems: 'flex-start', paddingRight: 8, paddingLeft: 20 },
+    currentTimeText: { fontSize: 28, fontWeight: '600', color: COLORS.text.dark,  marginBottom: 5 },
+    currentDateText: { fontSize: 13, fontWeight: '500', color: COLORS.text.dark},
+    illustrationWrapper: {top: 199 * (8 / 199) },
+    checkButton: { flex: 1, height: 71, justifyContent: 'center', alignItems: 'center', backgroundColor: COLORS.Primary, borderRadius: 9999 },
     checkButtonText: { fontSize: 18, fontWeight: '600', color: '#FFFFFF' },
+});
+
+const calStyles = StyleSheet.create({
+  wrapper: {
+    marginTop: 16,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 14,
+  },
+  legendRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+    marginBottom: 14,
+  },
+  legendItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  legendDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  legendText: {
+    fontSize: 11,
+    color: '#6B7280',
+    fontWeight: '500',
+  },
+  grid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 5,
+  },
+  cell: {
+    width: '18.5%',
+    backgroundColor: '#F9FAFB',
+    borderRadius: 10,
+    paddingVertical: 8,
+    alignItems: 'center',
+    gap: 3,
+    borderWidth: 1.5,
+    borderColor: 'transparent',
+  },
+  cellSunday: {
+    backgroundColor: '#EFF6FF',
+  },
+  cellFuture: {
+    opacity: 0.5,
+  },
+  cellToday: {
+    borderColor: COLORS.Primary,   
+    backgroundColor: '#FFF5F5',
+  },
+  dowText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#9CA3AF',
+  },
+  dayNum: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#111827',
+  },
+  dot: {
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+    marginTop: 1,
+  },
+  collapseBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 14,
+    paddingVertical: 6,
+  },
+  collapseText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: COLORS.Primary,
+  },
 });

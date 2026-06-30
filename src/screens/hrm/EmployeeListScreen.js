@@ -8,6 +8,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import Header from '../../components/Header';
 import { getUsersApi } from '../../api/user';
+import { ChevronLeft } from 'lucide-react-native';
 
 const LIMIT = 20;
 
@@ -100,7 +101,7 @@ export default function EmployeeListScreen() {
         <SafeAreaView style={styles.safe} edges={['bottom']}>
             <Header
                 title="Cán bộ Nhân viên"
-                leftIconName="arrow-back"
+                LeftIcon={ChevronLeft}
                 onLeftPress={() => navigation.goBack()}
             />
 

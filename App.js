@@ -18,6 +18,7 @@ import {
   disconnectChatSocket,
   registerGlobalChatHandlers,
 } from "./src/libs/chatSocket";
+import { ThemeProvider } from "./src/assets/theme/ThemeProvider";
 
 // export const navigationRef = React.createRef();
 
@@ -39,7 +40,7 @@ const ChatSocketBootstrapper = () => {
   }, [accessToken]);
 
   return null;
-}
+};
 
 export default function App() {
   useEffect(() => {
@@ -53,16 +54,18 @@ export default function App() {
   }, []);
 
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
-      <CustomAlertProvider>
-        <SafeAreaProvider>
-          <Provider store={store}>
-            <ChatSocketBootstrapper />
-            <RootStackNavigator />
-            <Toast />
-          </Provider>
-        </SafeAreaProvider>
-      </CustomAlertProvider>
-    </GestureHandlerRootView>
+    <ThemeProvider>
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        <CustomAlertProvider>
+          <SafeAreaProvider>
+            <Provider store={store}>
+              <ChatSocketBootstrapper />
+              <RootStackNavigator />
+              <Toast />
+            </Provider>
+          </SafeAreaProvider>
+        </CustomAlertProvider>
+      </GestureHandlerRootView>
+    </ThemeProvider>
   );
 }

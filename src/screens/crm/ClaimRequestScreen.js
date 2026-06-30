@@ -11,6 +11,7 @@ import { canMgr } from '../../helpers/permissions';
 import api from '../../api/axiosInstance';
 import Header from '../../components/Header';
 import Toast from 'react-native-toast-message';
+import { ChevronLeft } from 'lucide-react-native';
 
 const APP_CODE = 'tikluy';
 const PRIMARY = '#ED2E30';
@@ -577,7 +578,7 @@ export default function ClaimRequestScreen() {
         <SafeAreaView style={styles.safe} edges={['bottom']}>
             <Header
                 title="Yêu cầu nhận KH"
-                leftIconName="arrow-back"
+                LeftIcon={ChevronLeft}
                 onLeftPress={() => navigation.goBack()}
             />
 

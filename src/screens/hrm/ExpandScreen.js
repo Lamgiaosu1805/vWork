@@ -5,6 +5,7 @@ import { useSelector } from 'react-redux';
 import Header from '../../components/Header';
 import { openDrawer } from '../../helpers/navigationRef';
 import { getPermissions } from '../../helpers/permissions';
+import { Menu } from 'lucide-react-native';
 
 const MenuItem = ({ icon, label, description, onPress, color = '#ED2E30' }) => (
   <TouchableOpacity style={styles.menuItem} onPress={onPress} activeOpacity={0.7}>
@@ -27,7 +28,7 @@ export default function ExpandScreen({ navigation }) {
     <View style={styles.container}>
       <Header
         title="Mở rộng"
-        leftIconName="menu"
+        LeftIcon={Menu}
         onLeftPress={openDrawer}
       />
       <ScrollView contentContainerStyle={styles.scroll}>

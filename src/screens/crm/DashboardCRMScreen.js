@@ -22,6 +22,7 @@ import api from "../../api/axiosInstance";
 import Header from "../../components/Header";
 import { getPermissions } from "../../helpers/permissions";
 import SalesSummaryChart from "../../components/crm/dashboard/SalesSummaryChart";
+import { Menu } from "lucide-react-native";
 
 dayjs.locale("vi");
 
@@ -209,7 +210,7 @@ export default function DashboardCRMScreen() {
 
   return (
     <View style={styles.container}>
-      <Header title="CRM" leftIconName="menu" onLeftPress={() => openDrawer()} />
+      <Header title="CRM" LeftIcon={Menu} onLeftPress={() => openDrawer()} />
 
       <ScrollView
         showsVerticalScrollIndicator={false}

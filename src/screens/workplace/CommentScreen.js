@@ -24,6 +24,7 @@ import socket from "../../libs/socket";
 import { canMgr } from "../../helpers/permissions";
 import Header from "../../components/Header";
 import PostCard, { AuthAvatar, BRAND } from "../../components/PostCard";
+import { ChevronLeft } from "lucide-react-native";
 
 dayjs.extend(relativeTime);
 dayjs.locale("vi");
@@ -226,7 +227,7 @@ export default function CommentScreen({ route, navigation }) {
     <SafeAreaView style={styles.safe} edges={["bottom"]}>
       <Header
         title="Bài viết"
-        leftIconName="chevron-back"
+        LeftIcon={ChevronLeft}
         onLeftPress={() => navigation.goBack()}
       />
 
