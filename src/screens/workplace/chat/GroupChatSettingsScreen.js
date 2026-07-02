@@ -24,7 +24,11 @@ import {
   deleteConversation,
   upsertConversation,
 } from "../../../redux/slice/chatSlice";
-import { resolveGroupAvatars } from "../../../utils/chatUtils";
+import {
+  resolveConversationDisplayName,
+  resolveConversationTitle,
+  resolveGroupAvatars,
+} from "../../../utils/chatUtils";
 import { AuthAvatar } from "../../../components/PostCard";
 import AvatarGroup from "../../../components/workplace/chat/AvatarGroup";
 import RenameModal from "../../../components/workplace/chat/setting/RenameModal";
@@ -32,11 +36,19 @@ import MenuItem from "../../../components/workplace/chat/setting/MenuItem";
 import AccordionSection from "../../../components/workplace/chat/setting/AccordionSection";
 import ActionBtn from "../../../components/workplace/chat/setting/ActionBtn";
 import AddMembersModal from "../../../components/workplace/chat/setting/AddMembersModal";
+import NicknameModal from "../../../components/workplace/chat/setting/NicknameModal";
+import NicknamePickerModal from "../../../components/workplace/chat/setting/NicknamePickerModal";
 import { Edit, ImageUp } from "lucide-react-native";
 import { COLORS } from "../../../assets/theme/colors";
 import * as ImagePicker from "expo-image-picker";
 import * as ImageManipulator from "expo-image-manipulator";
 import useGetImageMessage from "../../../hooks/useGetImageMessage";
+import {
+  resolveDisplayName,
+  useNicknameMap,
+} from "../../../hooks/workplace/useNicknameMap";
+import { HEIGHT_SHEET } from "../../crm/CustomerScreen";
+import { runOnJS, useSharedValue, withTiming } from "react-native-reanimated";
 
 export default function GroupChatSettingsScreen({ route, navigation }) {
   const dispatch = useDispatch();
@@ -48,14 +60,43 @@ export default function GroupChatSettingsScreen({ route, navigation }) {
   const { conversationId, conversation: initialConversation } =
     route.params ?? {};
 
-  const [conversation, setConversation] = useState(initialConversation ?? null);
+  const reduxConversation = useSelector((state) =>
+    state.chat.conversations?.find(
+      (c) => String(c?._id) === String(conversationId),
+    ),
+  );
+
+  const [localConversation, setLocalConversation] = useState(
+    initialConversation ?? null,
+  );
+
+  const conversation = reduxConversation ?? localConversation;
+  const isGroup = conversation.type === "group";
+
   const [renameVisible, setRenameVisible] = useState(false);
   const [addMembersVisible, setAddMembersVisible] = useState(false);
   const [leaving, setLeaving] = useState(false);
   const [saving, setSaving] = useState(false);
   const [memberActionId, setMemberActionId] = useState(null);
 
-  const displayName = conversation?.name ?? conversation?.display_name ?? "";
+  const [nicknameModalVisible, setNicknameModalVisible] = useState(false);
+  const [nicknameMember, setNicknameMember] = useState(null);
+  const [nicknameSaving, setNicknameSaving] = useState(false);
+
+  const translateNicknamePickerY = useSharedValue(HEIGHT_SHEET);
+
+  const nicknameMap = useNicknameMap(conversation);
+
+  const displayName = useMemo(
+    () =>
+      resolveConversationDisplayName(
+        conversation,
+        currentUserInfoId,
+        nicknameMap,
+      ),
+    [conversation, currentUserInfoId, nicknameMap],
+  );
+
   const members = conversation?.members ?? [];
   const adminIds = useMemo(
     () => new Set((conversation?.admins ?? []).map((a) => String(a?._id ?? a))),
@@ -92,7 +133,7 @@ export default function GroupChatSettingsScreen({ route, navigation }) {
         const updated = res?.data?.data ?? res?.data ?? res;
         if (updated) {
           dispatch(upsertConversation(updated));
-          setConversation((prev) => ({ ...prev, ...updated }));
+          setLocalConversation((prev) => ({ ...prev, ...updated }));
         }
         setRenameVisible(false);
         Toast.show({ type: "success", text1: "Đã đổi tên nhóm" });
@@ -121,7 +162,7 @@ export default function GroupChatSettingsScreen({ route, navigation }) {
         const updated = res?.data?.data ?? res?.data ?? res;
         if (updated) {
           dispatch(upsertConversation(updated));
-          setConversation((prev) => ({ ...prev, ...updated }));
+          setLocalConversation((prev) => ({ ...prev, ...updated }));
         }
         setAddMembersVisible(false);
         Toast.show({ type: "success", text1: "Đã thêm thành viên" });
@@ -156,7 +197,7 @@ export default function GroupChatSettingsScreen({ route, navigation }) {
                 const updated = res?.data?.data ?? res?.data ?? res;
                 if (updated) {
                   dispatch(upsertConversation(updated));
-                  setConversation((prev) => ({ ...prev, ...updated }));
+                  setLocalConversation((prev) => ({ ...prev, ...updated }));
                 }
                 Toast.show({ type: "success", text1: "Đã xoá thành viên" });
               } catch (error) {
@@ -198,7 +239,7 @@ export default function GroupChatSettingsScreen({ route, navigation }) {
                 const updated = res?.data?.data ?? res?.data ?? res;
                 if (updated) {
                   dispatch(upsertConversation(updated));
-                  setConversation((prev) => ({ ...prev, ...updated }));
+                  setLocalConversation((prev) => ({ ...prev, ...updated }));
                 }
                 Toast.show({
                   type: "success",
@@ -223,11 +264,78 @@ export default function GroupChatSettingsScreen({ route, navigation }) {
     [conversationId, dispatch],
   );
 
+  const handleOpenNicknameModal = useCallback((member) => {
+    if (!member) return;
+    setNicknameMember(member);
+    setNicknameModalVisible(true);
+  }, []);
+
+  const handleCloseNicknameModal = useCallback(() => {
+    setNicknameModalVisible(false);
+    setNicknameMember(null);
+  }, []);
+
+  const handleOpenNicknamePicker = useCallback(() => {
+    translateNicknamePickerY.value = withTiming(0);
+  }, []);
+
+  const handlePickMemberForNickname = useCallback(
+    (member) => {
+      translateNicknamePickerY.value = withTiming(
+        HEIGHT_SHEET,
+        { duration: 250 },
+        (finished) => {
+          if (finished) {
+            runOnJS(handleOpenNicknameModal)(member);
+          }
+        },
+      );
+    },
+    [handleOpenNicknameModal],
+  );
+
+  const handleSaveNickname = useCallback(
+    async (nicknameValue) => {
+      if (!conversationId || !nicknameMember?._id || nicknameSaving) return;
+      setNicknameSaving(true);
+      try {
+        const res = await chatApi.updateMemberNickname(
+          conversationId,
+          nicknameMember._id,
+          nicknameValue,
+        );
+        const updated = res?.data?.data ?? res?.data ?? res;
+        if (updated) {
+          dispatch(upsertConversation(updated));
+          setLocalConversation((prev) => ({ ...prev, ...updated }));
+        }
+        handleCloseNicknameModal();
+        Toast.show({ type: "success", text1: "Đã cập nhật biệt danh" });
+      } catch (error) {
+        Toast.show({
+          type: "error",
+          text1:
+            error?.response?.data?.message ??
+            error?.message ??
+            "Không thể cập nhật biệt danh",
+        });
+      } finally {
+        setNicknameSaving(false);
+      }
+    },
+    [
+      conversationId,
+      nicknameMember,
+      nicknameSaving,
+      dispatch,
+      handleCloseNicknameModal,
+    ],
+  );
+
   const handleMemberOptions = useCallback(
     (member, isMe, isMemberAdmin) => {
       const buttons = [];
 
-      // Luôn có "Xem trang cá nhân" cho mọi member
       buttons.push({
         text: "Xem trang cá nhân",
         onPress: () =>
@@ -236,7 +344,11 @@ export default function GroupChatSettingsScreen({ route, navigation }) {
           }),
       });
 
-      // Chỉ admin mới được thao tác, và không thao tác lên chính mình, không thao tác lên admin khác
+      buttons.push({
+        text: "Biệt danh",
+        onPress: () => handleOpenNicknameModal(member),
+      });
+
       if (isCurrentUserAdmin && !isMe && !isMemberAdmin) {
         buttons.push({
           text: "Đặt làm trưởng nhóm",
@@ -261,6 +373,7 @@ export default function GroupChatSettingsScreen({ route, navigation }) {
       navigation,
       handlePromoteMember,
       handleKickMember,
+      handleOpenNicknameModal,
     ],
   );
 
@@ -353,7 +466,7 @@ export default function GroupChatSettingsScreen({ route, navigation }) {
 
       if (updated) {
         dispatch(upsertConversation(updated));
-        setConversation((prev) => ({ ...prev, ...updated }));
+        setLocalConversation((prev) => ({ ...prev, ...updated }));
       }
 
       Toast.show({ type: "success", text1: "Đã đổi avatar nhóm" });
@@ -367,7 +480,6 @@ export default function GroupChatSettingsScreen({ route, navigation }) {
       });
     }
   }, [conversationId, dispatch]);
-
 
   const heroAvatar = conversation?.avatar ? (
     <AuthAvatar
@@ -411,20 +523,22 @@ export default function GroupChatSettingsScreen({ route, navigation }) {
           <View style={styles.heroAvatarWrap}>
             {heroAvatar}
 
-            <TouchableOpacity
-              onPress={handlePickAvatar}
-              activeOpacity={0.8}
-              style={{
-                position: "absolute",
-                bottom: 0,
-                right: 0,
-                backgroundColor: COLORS.Primary,
-                borderRadius: 20,
-                padding: 4,
-              }}
-            >
-              <ImageUp size={18} color={COLORS.white} />
-            </TouchableOpacity>
+            {isGroup && (
+              <TouchableOpacity
+                onPress={handlePickAvatar}
+                activeOpacity={0.8}
+                style={{
+                  position: "absolute",
+                  bottom: 0,
+                  right: 0,
+                  backgroundColor: COLORS.Primary,
+                  borderRadius: 20,
+                  padding: 4,
+                }}
+              >
+                <ImageUp size={18} color={COLORS.white} />
+              </TouchableOpacity>
+            )}
           </View>
 
           <View style={styles.nameRow}>
@@ -437,11 +551,6 @@ export default function GroupChatSettingsScreen({ route, navigation }) {
         </View>
 
         <View style={styles.actions}>
-          {/* <ActionBtn
-            icon="search-outline"
-            label="Tìm kiếm"
-            onPress={() => {}}
-          /> */}
           <ActionBtn
             icon="notifications-outline"
             label="Thông báo"
@@ -460,74 +569,97 @@ export default function GroupChatSettingsScreen({ route, navigation }) {
           />
         </View>
 
-        <AccordionSection
-          title={`Thành viên nhóm  ·  ${members.length}`}
-          defaultOpen
-        >
-          {sortedMembers.length === 0 ? (
-            <Text style={styles.emptyText}>Không có thành viên</Text>
-          ) : (
-            sortedMembers.slice(0, 10).map((m, idx) => {
-              const isAdmin = adminIds.has(String(m?._id));
-              const isMe = String(m?._id) === String(currentUserInfoId);
-              const isProcessing = memberActionId === String(m?._id);
+        {isGroup && (
+          <AccordionSection
+            title={`Thành viên nhóm  ·  ${members.length}`}
+            defaultOpen
+          >
+            {sortedMembers.length === 0 ? (
+              <Text style={styles.emptyText}>Không có thành viên</Text>
+            ) : (
+              sortedMembers.slice(0, 5).map((m, idx) => {
+                const isAdmin = adminIds.has(String(m?._id));
+                const isMe = String(m?._id) === String(currentUserInfoId);
+                const isProcessing = memberActionId === String(m?._id);
+                const memberDisplayName = resolveDisplayName(
+                  nicknameMap,
+                  m?._id,
+                  m?.full_name ?? "Thành viên",
+                );
+                const hasNickname = !!nicknameMap?.get(String(m?._id));
 
-              return (
-                <View
-                  key={String(m?._id ?? idx)}
-                  style={[styles.memberRow, idx > 0 && styles.memberBorder]}
-                >
-                  <View style={styles.memberAvWrap}>
-                    <AuthAvatar
-                      filename={m.avatar}
-                      name={m.full_name}
-                      size={44}
-                      cacheKey={m.updatedAt}
-                    />
-                    {isAdmin && (
-                      <View style={styles.crownBadge}>
-                        <Ionicons name="star" size={8} color="#FFF" />
-                      </View>
-                    )}
-                  </View>
-
-                  <View style={styles.memberInfo}>
-                    <Text style={styles.memberName} numberOfLines={1}>
-                      {m?.full_name ?? "Thành viên"}
-                      {isMe ? " (Bạn)" : ""}
-                    </Text>
-                    <Text
-                      style={
-                        isAdmin ? styles.memberRoleAdmin : styles.memberRole
-                      }
-                    >
-                      {isAdmin ? "Trưởng nhóm" : "Thành viên"}
-                    </Text>
-                  </View>
-
-                  <TouchableOpacity
-                    onPress={() => handleMemberOptions(m, isMe, isAdmin)}
-                    disabled={isProcessing}
-                    activeOpacity={0.8}
+                return (
+                  <View
+                    key={String(m?._id ?? idx)}
+                    style={[styles.memberRow, idx > 0 && styles.memberBorder]}
                   >
-                    <Ionicons
-                      name="ellipsis-horizontal-circle-outline"
-                      size={30}
-                      color={"#0F766E"}
-                    />
-                  </TouchableOpacity>
-                </View>
-              );
-            })
-          )}
-          {members.length > 10 && (
-            <TouchableOpacity style={styles.seeAllBtn} onPress={() => {}}>
-              <Text style={styles.seeAllText}>
-                Xem tất cả {members.length} thành viên
-              </Text>
-            </TouchableOpacity>
-          )}
-        </AccordionSection>
+                    <View style={styles.memberAvWrap}>
+                      <AuthAvatar
+                        filename={m.avatar}
+                        name={memberDisplayName}
+                        size={44}
+                        cacheKey={m.updatedAt}
+                      />
+                      {isAdmin && (
+                        <View style={styles.crownBadge}>
+                          <Ionicons name="star" size={8} color="#FFF" />
+                        </View>
+                      )}
+                    </View>
+
+                    <View style={styles.memberInfo}>
+                      <Text style={styles.memberName} numberOfLines={1}>
+                        {memberDisplayName}
+                        {isMe ? " (Bạn)" : ""}
+                      </Text>
+                      <Text numberOfLines={1} style={styles.memberRole}>
+                        {hasNickname ? m?.full_name : "Chưa có biệt danh"}
+                      </Text>
+                      <Text
+                        style={
+                          isAdmin ? styles.memberRoleAdmin : styles.memberRole
+                        }
+                      >
+                        {isAdmin ? "Trưởng nhóm" : "Thành viên"}
+                      </Text>
+                    </View>
+
+                    <TouchableOpacity
+                      onPress={() => handleMemberOptions(m, isMe, isAdmin)}
+                      disabled={isProcessing}
+                      activeOpacity={0.8}
+                    >
+                      <Ionicons
+                        name="ellipsis-horizontal-circle-outline"
+                        size={30}
+                        color={"#0F766E"}
+                      />
+                    </TouchableOpacity>
+                  </View>
+                );
+              })
+            )}
+            {members.length > 5 && (
+              <TouchableOpacity
+                style={styles.seeAllBtn}
+                onPress={() =>
+                  navigation.navigate("GroupMembersListScreen", {
+                    conversationId,
+                    members,
+                    admins: conversation?.admins ?? [],
+                    currentUserInfoId,
+                    isCurrentUserAdmin,
+                    conversation,
+                  })
+                }
+              >
+                <Text style={styles.seeAllText}>
+                  Xem tất cả {members.length} thành viên
+                </Text>
+              </TouchableOpacity>
+            )}
+          </AccordionSection>
+        )}
 
         <AccordionSection title="Thông tin về đoạn chat">
           <Text style={styles.emptyText}>
@@ -537,10 +669,16 @@ export default function GroupChatSettingsScreen({ route, navigation }) {
 
         <AccordionSection title="Tuỳ chỉnh đoạn chat">
           <MenuItem
-            icon="text-outline"
+            icon="pencil-sharp"
             label="Đổi tên nhóm"
             iconBg="teal"
             onPress={() => setRenameVisible(true)}
+          />
+          <MenuItem
+            icon="text-sharp"
+            label="Biệt danh"
+            iconBg="teal"
+            onPress={handleOpenNicknamePicker}
           />
           <View style={styles.menuDivider} />
         </AccordionSection>
@@ -566,13 +704,33 @@ export default function GroupChatSettingsScreen({ route, navigation }) {
         onClose={() => setAddMembersVisible(false)}
         onSubmit={handleAddMembers}
       />
+
+      <NicknamePickerModal
+        translateY={translateNicknamePickerY}
+        members={members}
+        nicknameMap={nicknameMap}
+        onSelect={handlePickMemberForNickname}
+      />
+
+      <NicknameModal
+        visible={nicknameModalVisible}
+        member={nicknameMember}
+        initialValue={
+          resolveDisplayName(nicknameMap, nicknameMember?._id, "") ===
+          nicknameMember?.full_name
+            ? ""
+            : (nicknameMap.get(String(nicknameMember?._id)) ?? "")
+        }
+        onClose={handleCloseNicknameModal}
+        onSave={handleSaveNickname}
+        saving={nicknameSaving}
+      />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: "#F3F4F6" },
-
   header: {
     flexDirection: "row",
     alignItems: "center",
@@ -591,10 +749,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   headerTitle: { fontSize: 17, fontWeight: "600", color: "#111827" },
-
   scroll: { paddingBottom: 8 },
-
-  // Hero
   hero: {
     alignItems: "center",
     paddingVertical: 28,
@@ -633,7 +788,6 @@ const styles = StyleSheet.create({
     maxWidth: 240,
   },
   memberCount: { fontSize: 13, color: "#6B7280" },
-
   actions: {
     flexDirection: "row",
     justifyContent: "space-around",
@@ -643,9 +797,7 @@ const styles = StyleSheet.create({
     borderTopWidth: 0.5,
     borderTopColor: "#F3F4F6",
   },
-
   gap: { height: 10, backgroundColor: "#F3F4F6" },
-
   memberRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -676,8 +828,6 @@ const styles = StyleSheet.create({
   memberRoleAdmin: { fontSize: 12, color: "#0F766E", fontWeight: "500" },
   seeAllBtn: { paddingTop: 12 },
   seeAllText: { fontSize: 14, color: "#0F766E", fontWeight: "600" },
-
   emptyText: { fontSize: 13, color: "#9CA3AF", paddingVertical: 4 },
-
   menuDivider: { height: 0.5, backgroundColor: "#F3F4F6" },
 });
