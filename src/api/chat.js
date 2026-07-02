@@ -150,6 +150,18 @@ const chatApi = {
         requiresAuth: true,
       },
     ),
+
+  /**
+   * @param {string} conversationId
+   * @param {string} memberId
+   * @param {string} nickname
+   */
+  updateMemberNickname: (conversationId, memberId, nickname) =>
+    api.patch(
+      `/chat/conversations/${conversationId}/members/${memberId}/nickname`,
+      { nickname },
+      { requiresAuth: true },
+    ),
 };
 
 export default chatApi;

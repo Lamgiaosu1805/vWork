@@ -1,15 +1,21 @@
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
-import React from "react";
+import React, { useMemo } from "react";
 import { RectButton, Swipeable } from "react-native-gesture-handler";
 import { Ionicons } from "@expo/vector-icons";
 import {
   isCurrentUser,
+  resolveConversationDisplayName,
   resolveConversationId,
+  resolveConversationTitle,
   resolveGroupAvatars,
 } from "../../../utils/chatUtils";
 import dayjs from "dayjs";
 import { AuthAvatar } from "../../PostCard";
 import AvatarGroup from "./AvatarGroup";
+import {
+  resolveDisplayName,
+  useNicknameMap,
+} from "../../../hooks/workplace/useNicknameMap";
 
 const resolveLastMessageText = (conversation) => {
   const lastMessage = conversation?.lastMessage ?? null;
@@ -115,6 +121,8 @@ const ConversationRow = ({
     currentUserKeys,
     currentUserInfoId,
   );
+  const nicknameMap = useNicknameMap(item);
+
   const time = resolveLastMessageTime(item);
   const isUnread = isConversationUnread(
     item,
@@ -125,6 +133,11 @@ const ConversationRow = ({
   const groupAvatars =
     item?.type === "group" && !item?.avatar ? resolveGroupAvatars(item) : [];
   const count = groupAvatars.length;
+
+  const displayName = useMemo(
+    () => resolveConversationDisplayName(item, currentUserKeys, nicknameMap),
+    [item, currentUserKeys, nicknameMap],
+  );
 
   return (
     <Swipeable
@@ -163,7 +176,7 @@ const ConversationRow = ({
               style={[styles.title, isUnread && styles.titleUnread]}
               numberOfLines={1}
             >
-              {item.display_name ?? "Cuộc trò chuyện"}
+              {displayName}
             </Text>
             <View style={styles.timeWrap}>
               {isUnread && <View style={styles.unreadDot} />}

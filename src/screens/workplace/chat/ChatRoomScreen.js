@@ -17,13 +17,14 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useDispatch, useSelector } from "react-redux";
 import {
   buildTimelineItems,
-  getCurrentUserKeys,
   resolveConversationAccountId,
   resolveConversationId,
   resolveConversationTitle,
   resolveGroupAvatars,
   resolveMessageSender,
   isCurrentUser,
+  getCurrentUserKeys,
+  resolveConversationDisplayName,
 } from "../../../utils/chatUtils";
 import { getChatSocket } from "../../../libs/chatSocket";
 import chatApi from "../../../api/chat";
@@ -39,6 +40,10 @@ import AvatarGroup from "../../../components/workplace/chat/AvatarGroup";
 import * as ImagePicker from "expo-image-picker";
 import ImageViewing from "react-native-image-viewing";
 import utils from "../../../helpers/utils";
+import {
+  resolveDisplayName,
+  useNicknameMap,
+} from "../../../hooks/workplace/useNicknameMap";
 
 export default function ChatRoomScreen({ route, navigation }) {
   const {
@@ -61,7 +66,26 @@ export default function ChatRoomScreen({ route, navigation }) {
   const flatListRef = useRef(null);
   const endReachedDuringMomentumRef = useRef(false);
 
+  const nicknameMap = useNicknameMap(conversation);
+
   const currentUserKeys = useMemo(() => getCurrentUserKeys(user), [user]);
+
+  const otherMember = useMemo(() => {
+    if (conversation?.type === "group") return null;
+    return (conversation?.members ?? []).find(
+      (m) => !isCurrentUser(currentUserKeys, m),
+    );
+  }, [conversation, currentUserKeys]);
+
+  const headerTitle = useMemo(
+    () =>
+      resolveConversationDisplayName(
+        conversation,
+        currentUserKeys,
+        nicknameMap,
+      ),
+    [conversation, currentUserKeys, nicknameMap],
+  );
 
   const conversationId = useMemo(
     () =>
@@ -399,24 +423,15 @@ export default function ChatRoomScreen({ route, navigation }) {
         behavior={Platform.OS === "ios" ? "padding" : "height"}
       >
         <ChatRoomHeader
-          title={resolveConversationTitle(conversation, currentUserKeys)}
+          title={headerTitle}
           avatar={avatar}
           insets={insets}
           onBack={() => navigation.goBack()}
           onPressProfile={() => {
-            if (conversation?.type === "group") {
-              navigation.navigate("GroupChatSettingsScreen", {
-                conversationId,
-                conversation,
-              });
-            } else {
-              navigation.navigate("WorkplaceProfileScreen", {
-                accountId: resolveConversationAccountId(
-                  conversation,
-                  currentUserKeys,
-                ),
-              });
-            }
+            navigation.navigate("GroupChatSettingsScreen", {
+              conversationId,
+              conversation,
+            });
           }}
         />
 
