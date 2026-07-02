@@ -2,7 +2,6 @@ import React, { useMemo, useState } from "react";
 import {
   KeyboardAvoidingView,
   Platform,
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
@@ -17,6 +16,7 @@ import Header from "../../components/Header";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { unregisterFcmTokenFromServer } from "../../utils/notifications/fcmConfig";
 import { ChevronLeft } from "lucide-react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 const ChangePasswordScreen = () => {
   const navigation = useNavigation();
@@ -87,7 +87,7 @@ const ChangePasswordScreen = () => {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView edges={['bottom']} style={styles.safeArea}>
       <KeyboardAvoidingView style={styles.flex} behavior={"padding"}>
         <Header
           title={"Đổi mật khẩu"}
