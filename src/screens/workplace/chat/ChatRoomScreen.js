@@ -456,6 +456,8 @@ export default function ChatRoomScreen({ route, navigation }) {
             endReachedDuringMomentumRef={endReachedDuringMomentumRef}
             messages={messages}
             onPressImage={openImageViewer}
+            nicknameMap={nicknameMap}
+            conversation={conversation}
           />
         )}
 

@@ -8,7 +8,20 @@ import {
 } from "react-native";
 import MessageBubble from "./MessageBubble";
 import DateSeparator from "./DateSeparator";
-import { isCurrentUser, resolveMessageSender } from "../../../utils/chatUtils";
+import {
+  isCurrentUser,
+  resolveConversationDisplayName,
+  resolveMessageSender,
+} from "../../../utils/chatUtils";
+import { resolveDisplayName } from "../../../hooks/workplace/useNicknameMap";
+
+const getMessageSenderKey = (message) => {
+  const sender = resolveMessageSender(message);
+  return sender?._id ?? sender?.accountId ?? sender?.id ?? null;
+};
+
+const isGroupableItem = (item) =>
+  !!item && item.type !== "separator" && item.message?.type !== "system";
 
 const ChatRoomMessageList = ({
   flatListRef,
@@ -21,7 +34,10 @@ const ChatRoomMessageList = ({
   endReachedDuringMomentumRef,
   messages,
   onPressImage,
+  nicknameMap,
+  conversation,
 }) => {
+  const isGroup = conversation?.type === "group";
   return (
     <FlatList
       contentContainerStyle={{ paddingHorizontal: 12 }}
@@ -29,7 +45,7 @@ const ChatRoomMessageList = ({
       data={timelineItems}
       inverted
       keyExtractor={(item, index) => String(item?.key) + index.toString()}
-      renderItem={({ item }) => {
+      renderItem={({ item, index }) => {
         if (item.type === "separator") {
           return <DateSeparator label={item.label} />;
         }
@@ -42,8 +58,24 @@ const ChatRoomMessageList = ({
         }
 
         const sender = resolveMessageSender(item.message);
-
         const isMine = isCurrentUser(currentUserKeys, sender);
+        const senderKey = getMessageSenderKey(item.message);
+
+        const belowItem = timelineItems[index - 1];
+        const aboveItem = timelineItems[index + 1];
+
+        const isLastInGroup =
+          !isGroupableItem(belowItem) ||
+          getMessageSenderKey(belowItem.message) !== senderKey;
+
+        const isFirstInGroup =
+          !isGroupableItem(aboveItem) ||
+          getMessageSenderKey(aboveItem.message) !== senderKey;
+
+        const showSenderName = !!isGroup && !isMine && isFirstInGroup;
+        const displayName = showSenderName
+          ? resolveDisplayName(nicknameMap, sender?._id, sender?.full_name ?? "Thành Viên")
+          : null;
 
         return (
           <MessageBubble
@@ -52,6 +84,10 @@ const ChatRoomMessageList = ({
             isMine={isMine}
             onLongPress={() => handleMessageLongPress(item.message)}
             onPressImage={onPressImage}
+            showAvatar={isLastInGroup}
+            isLastInGroup={isLastInGroup}
+            showSenderName={showSenderName}
+            displayName={displayName}
           />
         );
       }}
@@ -94,17 +130,14 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingVertical: 12,
   },
-
   footerText: {
     color: "#9CA3AF",
     fontSize: 12,
   },
-
   systemWrap: {
     alignItems: "center",
     paddingVertical: 8,
   },
-
   systemText: {
     color: "#9CA3AF",
     fontSize: 12,

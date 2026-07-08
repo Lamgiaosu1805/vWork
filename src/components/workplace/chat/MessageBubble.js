@@ -21,8 +21,19 @@ const resolveMessageTime = (message) => {
 
 const SCREEN_WIDTH = Dimensions.get("window").width;
 const MAX_IMAGE_WIDTH = SCREEN_WIDTH * 0.6;
+const AVATAR_SIZE = 40;
 
-const MessageBubble = ({ item, isMine, onLongPress, sender, onPressImage }) => {
+const MessageBubble = ({
+  item,
+  isMine,
+  onLongPress,
+  sender,
+  onPressImage,
+  showAvatar = true,
+  showSenderName = false,
+  displayName,
+  isLastInGroup = true,
+}) => {
   const accessToken = useSelector((state) => state.auth.accessToken);
 
   const statusText = useMemo(() => {
@@ -51,21 +62,31 @@ const MessageBubble = ({ item, isMine, onLongPress, sender, onPressImage }) => {
       style={[
         styles.messageRow,
         isMine ? styles.messageRowMine : styles.messageRowOther,
+        !isLastInGroup && styles.messageRowGrouped,
       ]}
       onLongPress={isRecalled ? undefined : onLongPress}
     >
-      {!isMine && (
-        <AuthAvatar
-          filename={sender?.avatar}
-          name={sender?.full_name}
-          size={40}
-          cacheKey={sender?.updatedAt}
-        />
-      )}
+      {!isMine &&
+        (showAvatar ? (
+          <AuthAvatar
+            filename={sender?.avatar}
+            name={sender?.full_name}
+            size={AVATAR_SIZE}
+            cacheKey={sender?.updatedAt}
+          />
+        ) : (
+          <View style={styles.avatarSpacer} />
+        ))}
 
       <View
         style={[styles.column, isMine ? styles.columnMine : styles.columnOther]}
       >
+        {!isMine && showSenderName && !!displayName && (
+          <Text style={styles.senderNameText} numberOfLines={1}>
+            {displayName}
+          </Text>
+        )}
+
         {isImage ? (
           <View style={styles.imageWrap}>
             <TouchableOpacity
@@ -147,12 +168,22 @@ export default MessageBubble;
 
 const styles = StyleSheet.create({
   messageRow: { marginBottom: 10, flexDirection: "row" },
+  messageRowGrouped: { marginBottom: 2 },
   messageRowMine: { justifyContent: "flex-end" },
   messageRowOther: { justifyContent: "flex-start" },
+
+  avatarSpacer: { width: AVATAR_SIZE + 6 },
 
   column: { maxWidth: "82%" },
   columnMine: { alignItems: "flex-end" },
   columnOther: { alignItems: "flex-start" },
+
+  senderNameText: {
+    fontSize: 12,
+    color: "#6B7280",
+    marginBottom: 3,
+    marginLeft: 6,
+  },
 
   bubble: {
     borderRadius: 18,
@@ -201,21 +232,4 @@ const styles = StyleSheet.create({
   },
   imageTimeText: { fontSize: 11, color: "#6B7280" },
   imageStatusText: { fontSize: 11, color: "#6B7280", marginLeft: 6 },
-
-  seenAvatarsRow: {
-    flexDirection: "row",
-    marginTop: 4,
-    marginRight: 4,
-  },
-  seenAvatarWrap: {
-    width: 16,
-    height: 16,
-    borderRadius: 8,
-    overflow: "hidden",
-    borderWidth: 1,
-    borderColor: "#FFF",
-  },
-  seenAvatarOverlap: {
-    marginLeft: -6,
-  },
 });
