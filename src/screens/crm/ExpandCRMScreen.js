@@ -8,6 +8,8 @@ import { useNavigation } from '@react-navigation/native';
 import { useSelector } from 'react-redux';
 import Header from '../../components/Header';
 import { getPermissions } from '../../helpers/permissions';
+import { Menu } from 'lucide-react-native';
+import { openDrawer } from '../../helpers/navigationRef';
 
 const { width } = Dimensions.get('window');
 const CARD_WIDTH = (width - 48 - 12) / 2;
@@ -86,7 +88,7 @@ export default function ExpandCRMScreen() {
 
     return (
         <View style={styles.safeArea}>
-            <Header title="Mở rộng" />
+            <Header title="Mở rộng"  LeftIcon={Menu} onLeftPress={() => openDrawer()}/>
 
             <ScrollView
                 style={styles.scroll}

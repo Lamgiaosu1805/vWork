@@ -25,6 +25,7 @@ import Header from '../../components/Header';
 import { openDrawer } from '../../helpers/navigationRef';
 import { getPermissions } from '../../helpers/permissions';
 import workplaceApi from '../../api/workplaceApi';
+import { Menu } from 'lucide-react-native';
 
 dayjs.locale('vi');
 
@@ -238,7 +239,7 @@ export default function WeeklyReportScreen() {
     if (loading) {
         return (
             <SafeAreaView style={styles.safeArea} edges={['bottom']}>
-                <Header title="Báo Cáo Tuần" leftIconName="menu" onLeftPress={() => openDrawer()} />
+                <Header title="Báo Cáo Tuần" LeftIcon={Menu} onLeftPress={() => openDrawer()} />
                 <View style={styles.centered}><ActivityIndicator size="large" color="#007AFF" /></View>
             </SafeAreaView>
         );
@@ -250,7 +251,7 @@ export default function WeeklyReportScreen() {
         <SafeAreaView style={styles.safeArea} edges={['bottom']}>
             <Header
                 title="Báo Cáo Tuần"
-                leftIconName="menu"
+                LeftIcon={Menu}
                 onLeftPress={() => openDrawer()}
             />
 

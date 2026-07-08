@@ -1,0 +1,28 @@
+export default {
+  dark: false,
+
+  colors: {
+    main: "#F3F2F6",
+    red: "#FF383C",
+    orange: "#FF8D28",
+    yellow: "#FFCC00",
+    green: "#34C759",
+    mint: "#00C8B3",
+    teal: "#00C3D0",
+    cyan: "#00C0E8",
+    blue: "#0088FF",
+    indigo: "#6155F5",
+    purple: "#CB30E0",
+    pink: "#FF2D55",
+    brown: "#AC7F5E",
+    black: "#000000",
+    gray: "#8E8E93",
+    gray2: "#AEAEB2",
+    gray3: "#C7C7CC",
+    gray4: "#D1D1D6",
+    gray5: "#E5E5EA",
+    gray6: "#F2F2F7",
+    white: "#FFFFFF",
+    alert: "#FFFFFF",
+  },
+};

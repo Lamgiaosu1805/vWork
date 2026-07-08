@@ -24,6 +24,9 @@ import socket from "../../libs/socket";
 import { canMgr } from "../../helpers/permissions";
 import Header from "../../components/Header";
 import PostCard, { AuthAvatar, BRAND } from "../../components/PostCard";
+import { ChevronLeft } from "lucide-react-native";
+import ConnectionStatusBar from "../../components/workplace/chat/ConnectionStatusBar";
+import useSocketStatus from "../../hooks/workplace/useSocketStatus";
 
 dayjs.extend(relativeTime);
 dayjs.locale("vi");
@@ -77,6 +80,7 @@ export default function CommentScreen({ route, navigation }) {
   const isAdmin = user?.role === "admin";
   const userId = user?.user_id ?? "";
   const canManagePost = canMgr(user, "workplace");
+  const socketStatus = useSocketStatus();
 
   const [postState, setPostState] = useState(initialPost);
   const [comments, setComments] = useState([]);
@@ -226,9 +230,11 @@ export default function CommentScreen({ route, navigation }) {
     <SafeAreaView style={styles.safe} edges={["bottom"]}>
       <Header
         title="Bài viết"
-        leftIconName="chevron-back"
+        LeftIcon={ChevronLeft}
         onLeftPress={() => navigation.goBack()}
       />
+
+      <ConnectionStatusBar status={socketStatus} />
 
       <KeyboardAvoidingView
         style={styles.flex}

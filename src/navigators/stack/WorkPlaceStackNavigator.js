@@ -8,6 +8,7 @@ import AnnouncementsScreen from "../../screens/workplace/AnnouncementsScreen";
 import ProfileScreen from "../../screens/workplace/ProfileScreen";
 import ChatRoomScreen from "../../screens/workplace/chat/ChatRoomScreen";
 import GroupChatSettingsScreen from "../../screens/workplace/chat/GroupChatSettingsScreen";
+import GroupMembersListScreen from "../../screens/workplace/chat/GroupMembersListScreen";
 
 const Stack = createNativeStackNavigator();
 
@@ -30,6 +31,10 @@ export default function WorkPlaceStackNavigator() {
       <Stack.Screen
         name="GroupChatSettingsScreen"
         component={GroupChatSettingsScreen}
+      />
+      <Stack.Screen
+        name="GroupMembersListScreen"
+        component={GroupMembersListScreen}
       />
     </Stack.Navigator>
   );

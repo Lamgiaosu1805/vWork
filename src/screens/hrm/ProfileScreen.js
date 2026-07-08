@@ -8,6 +8,7 @@ import utils from '../../helpers/utils'
 import { useCustomAlert } from '../../components/CustomAlertProvider'
 import api from '../../api/axiosInstance'
 import { setCredentials } from '../../redux/slice/authSlice'
+import { Bell, Menu } from 'lucide-react-native'
 
 export default function ProfileScreen({ navigation }) {
     const dispatch = useDispatch();
@@ -26,23 +27,9 @@ export default function ProfileScreen({ navigation }) {
     }, [user?.avatar]);
 
     const fetchAvatar = async () => {
+        
         if (!user?.avatar) return;
-        try {
-            setAvatarLoading(true);
-            const res = await api.get(
-                `/document/getFile?filename=${user.avatar}`,
-                { requiresAuth: true, responseType: "blob" }
-            );
-            const reader = new FileReader();
-            reader.onloadend = () => {
-                setAvatarBase64(reader.result);
-                setAvatarLoading(false);
-            };
-            reader.readAsDataURL(res.data);
-        } catch (error) {
-            console.log("fetchAvatar error:", error.message);
-            setAvatarLoading(false);
-        }
+         setAvatarBase64(user?.avatar);
     };
 
     // Gọi lại getUserInfo và cập nhật redux
@@ -68,9 +55,9 @@ export default function ProfileScreen({ navigation }) {
         <View style={styles.container}>
             <Header
                 title="Hồ sơ cá nhân"
-                leftIconName="menu"
+                LeftIcon={Menu}
                 onLeftPress={() => openDrawer()}
-                rightIconName="notifications"
+                RightIcon={Bell}
                 onRightPress={() => Alert.alert('Notifications Pressed')}
             />
             <ScrollView
@@ -110,7 +97,7 @@ export default function ProfileScreen({ navigation }) {
                             <Text style={styles.titleText}>{user?.full_name}</Text>
                             {user?.departments.map((item, index) => (
                                 <Text style={styles.infoText} key={index}>
-                                    {item.position.position_name} - {item.department.department_name}
+                                    {item?.position?.position_name} - {item?.department?.department_name}
                                 </Text>
                             ))}
                             <Text style={styles.infoText}>Mã NV: {user?.ma_nv}</Text>
@@ -240,7 +227,7 @@ const styles = StyleSheet.create({
     infoText: {
         fontSize: 14,
         marginTop: 8,
-        color: '#004643'
+        color: '#004643',
     },
     infoItem: {
         flexDirection: 'row',

@@ -25,10 +25,14 @@ import { openDrawer } from "../../helpers/navigationRef";
 import useCancelLeaveRequest from "../../hooks/requests/useCancelLeaveRequest";
 import { useFocusEffect } from "@react-navigation/native";
 import Toast from "react-native-toast-message";
+import { Menu, Plus, SquarePlus } from "lucide-react-native";
+import useTheme from "../../assets/theme/useTheme";
+import { COLORS } from "../../assets/theme/colors";
 
 dayjs.extend(isBetween);
 
 export default function RequestScreen({ navigation }) {
+  const { colors } = useTheme();
   const [requestStatus, setRequestStatus] = useState("pending");
   const [filterType] = useState("");
   const [fromFilter] = useState(dayjs().startOf("month").format("YYYY-MM-DD"));
@@ -92,23 +96,25 @@ export default function RequestScreen({ navigation }) {
   );
 
   return (
-    <ScrollView style={styles.screen} showsVerticalScrollIndicator={false}>
+    <ScrollView
+      style={[styles.screen, { backgroundColor: colors.main }]}
+      showsVerticalScrollIndicator={false}
+    >
       <SafeAreaView edges={[]}>
         <Header
-          title="Gửi yêu cầu"
-          leftIconName="menu"
+          title="Yêu cầu"
+          LeftIcon={Menu}
           onLeftPress={() => {
             openDrawer();
           }}
-          rightIconName="add-sharp"
-          onRightPress={() => navigation.navigate("AddRequestScreen")}
         />
         <View style={styles.header}>
           <Text style={styles.greeting}>
-            {utils.getGreeting(auth.user?.full_name, auth.user?.sex)}
+            Mọi yêu cầu của bạn, xử lý tại một nơi.
           </Text>
           <Text style={styles.subtitle}>
-            Tổng quan hệ thống quản lý nhân sự
+            Tạo và theo dõi các yêu cầu nhân sự nhanh chóng, minh bạch và thuận
+            tiện.
           </Text>
         </View>
 
@@ -146,6 +152,29 @@ export default function RequestScreen({ navigation }) {
           />
         </ScrollView>
 
+        <TouchableOpacity
+          onPress={() => navigation.navigate("AddRequestScreen")}
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 8,
+            backgroundColor: COLORS.Primary,
+            marginHorizontal: 10,
+            borderRadius: 16,
+            height: 104,
+            marginTop: 4,
+          }}
+          activeOpacity={0.85}
+        >
+          <SquarePlus size={24} color={COLORS.white} />
+
+          <Text
+            style={{ color: COLORS.white, fontWeight: "500", fontSize: 16 }}
+          >
+            Tạo yêu cầu mới
+          </Text>
+        </TouchableOpacity>
         <View style={[styles.card, { padding: 0, overflow: "hidden" }]}>
           <View style={styles.tabRow}>
             {[
@@ -178,7 +207,7 @@ export default function RequestScreen({ navigation }) {
             {isLoadingRequests ? (
               <ActivityIndicator
                 style={{ marginVertical: 40 }}
-                color={"#39C79A"}
+                color={COLORS.Primary}
               />
             ) : myRequests.length === 0 ? (
               <View style={styles.emptyBox}>
@@ -282,7 +311,7 @@ export default function RequestScreen({ navigation }) {
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: "#F5F7FB" },
+  screen: { flex: 1 },
 
   // Header
   header: { padding: 20, paddingBottom: 8 },
@@ -297,7 +326,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#FFFFFF",
     borderRadius: 12,
     margin: 10,
-    marginTop: 8,
+    marginTop: 12,
     padding: 16,
     borderWidth: 1,
     borderColor: "#E5E7EB",
@@ -318,9 +347,9 @@ const styles = StyleSheet.create({
     borderBottomWidth: 2,
     borderBottomColor: "transparent",
   },
-  tabActive: { borderBottomColor: "#39C79A" },
+  tabActive: { borderBottomColor: COLORS.Primary },
   tabText: { fontSize: 14, fontWeight: "700", color: "#9CA3AF" },
-  tabTextActive: { color: "#39C79A" },
+  tabTextActive: { color: COLORS.Primary },
   tabDot: { width: 6, height: 6, borderRadius: 3 },
   emptyBox: { height: 150, alignItems: "center", justifyContent: "center" },
 

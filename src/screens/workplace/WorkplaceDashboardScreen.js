@@ -19,6 +19,7 @@ import Header from '../../components/Header';
 import { openDrawer } from '../../helpers/navigationRef';
 import { getPermissions } from '../../helpers/permissions';
 import workplaceApi from '../../api/workplaceApi';
+import { Bell, Menu } from 'lucide-react-native';
 
 dayjs.locale('vi');
 
@@ -154,7 +155,7 @@ export default function WorkplaceDashboardScreen() {
     if (loading) {
         return (
             <View style={styles.safeArea}>
-                <Header title="Workplace" leftIconName="menu" onLeftPress={() => openDrawer()} />
+                <Header title="Workplace" LeftIcon={Menu} onLeftPress={() => openDrawer()} />
                 <View style={styles.centered}>
                     <ActivityIndicator size="large" color="#007AFF" />
                 </View>
@@ -166,9 +167,9 @@ export default function WorkplaceDashboardScreen() {
         <View style={styles.safeArea}>
             <Header
                 title="Workplace"
-                leftIconName="menu"
+                LeftIcon={Menu}
                 onLeftPress={() => openDrawer()}
-                rightIconName="notifications-outline"
+                RightIcon={Bell}
                 onRightPress={() => Alert.alert('Thông báo')}
             />
             <ScrollView

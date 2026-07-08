@@ -136,12 +136,22 @@ function navigateToChatFromRemoteMessage(remoteMessage) {
   navigationRef.navigate("RootDrawer", {
     screen: "WorkPlaceStackNavigator",
     params: {
-      screen: "ChatRoomScreen",
+      screen: "WorkPlaceBottomTab",
       params: {
-        conversationId,
+        screen: "ChatScreen",
       },
     },
   });
+
+  setTimeout(() => {
+    navigationRef.navigate("RootDrawer", {
+      screen: "WorkPlaceStackNavigator",
+      params: {
+        screen: "ChatRoomScreen",
+        params: { conversationId },
+      },
+    });
+  }, 50);
 
   return true;
 }

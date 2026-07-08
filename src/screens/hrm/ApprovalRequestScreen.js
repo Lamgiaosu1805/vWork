@@ -23,6 +23,7 @@ import RequestApprovalCard from "../../components/hrm/approvalRequest/RequestApp
 import useReviewRequest from "../../hooks/requests/useReviewRequest";
 import Toast from "react-native-toast-message";
 import DatePickerApprovalModal from "../../components/hrm/approvalRequest/DatePickerApprovalModal";
+import { ChevronLeft } from "lucide-react-native";
 
 const ApprovalRequestScreen = ({ navigation }) => {
   const [status, setStatus] = useState("");
@@ -135,7 +136,7 @@ const ApprovalRequestScreen = ({ navigation }) => {
     <View style={styles.screen}>
       <Header
         title="Xử lý yêu cầu"
-        leftIconName="chevron-back-outline"
+        LeftIcon={ChevronLeft}
         onLeftPress={() => navigation.goBack()}
       />
 

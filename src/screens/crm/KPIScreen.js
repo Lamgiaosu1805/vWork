@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { StyleSheet, Text, View, ScrollView, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Header from '../../components/Header';
+import { Menu } from 'lucide-react-native';
+import { openDrawer } from '../../helpers/navigationRef';
 
 export default function KPIScreen() {
     const [currentMonth] = useState(5);
@@ -17,7 +19,7 @@ export default function KPIScreen() {
 
     return (
         <View style={styles.safeArea}>
-            <Header title="KPI & Hiệu suất" />
+            <Header title="KPI & Hiệu suất" LeftIcon={Menu} onLeftPress={() => openDrawer()}/>
 
             <ScrollView
                 style={styles.container}

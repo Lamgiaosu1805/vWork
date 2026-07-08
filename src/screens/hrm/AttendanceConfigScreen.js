@@ -8,6 +8,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import api from '../../api/axiosInstance';
 import Header from '../../components/Header';
+import { ChevronLeft } from 'lucide-react-native';
 
 const Section = ({ title, icon, color, children }) => (
     <View style={styles.section}>
@@ -74,7 +75,7 @@ export default function AttendanceConfigScreen() {
         <SafeAreaView style={styles.safe} edges={['bottom']}>
             <Header
                 title="Cấu hình chấm công"
-                leftIconName="arrow-back"
+                LeftIcon={ChevronLeft}
                 onLeftPress={() => navigation.goBack()}
             />
 

@@ -11,7 +11,7 @@ const renderMaritalStatus = (number) => {
     } else {
         return "Khác";
     }
-};
+};  
 
 const formatDate = (dateString) => {
     const date = new Date(dateString);

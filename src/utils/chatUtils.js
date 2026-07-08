@@ -1,4 +1,5 @@
 import dayjs from "dayjs";
+import { resolveDisplayName } from "../hooks/workplace/useNicknameMap";
 
 const resolveConversationId = (conversation) => conversation?._id ?? null;
 
@@ -49,7 +50,7 @@ const getCurrentUserKeys = (user) =>
     .filter(Boolean)
     .map(String);
 
-const resolveConversationTitle = (conversation, currentUserKeys) => {
+const resolveConversationTitle = (conversation) => {
   if (!conversation) return "Cuộc trò chuyện";
 
   if (conversation?.display_name) return conversation.display_name;
@@ -158,6 +159,34 @@ const resolveGroupAvatars = (conversation) => {
     }));
 };
 
+const resolveConversationDisplayName = (
+  conversation,
+  currentUserKeys,
+  nicknameMap,
+) => {
+  if (!conversation) return "Cuộc trò chuyện";
+
+  if (conversation.type === "group") {
+    return resolveConversationTitle(conversation) ?? "Nhóm chat";
+  }
+
+  const otherMember = (conversation.members ?? []).find(
+    (member) => !isCurrentUser(currentUserKeys, member),
+  );
+
+  if (!otherMember) {
+    return resolveConversationTitle(conversation) ?? "Người dùng";
+  }
+
+  return resolveDisplayName(
+    nicknameMap,
+    otherMember._id,
+    otherMember.full_name ??
+      resolveConversationTitle(conversation) ??
+      "Người dùng",
+  );
+};
+
 export {
   resolveConversationId,
   resolveMessageId,
@@ -175,4 +204,5 @@ export {
   resolveDayLabel,
   resolveMessageDayKey,
   resolveGroupAvatars,
+  resolveConversationDisplayName,
 };

@@ -1,12 +1,22 @@
 // src/components/CustomAlertProvider.js
 import React, { createContext, useContext, useState } from "react";
-import { Modal, View, Text, TouchableOpacity, TouchableWithoutFeedback, StyleSheet } from "react-native";
+import {
+  Modal,
+  View,
+  Text,
+  TouchableOpacity,
+  TouchableWithoutFeedback,
+  StyleSheet,
+} from "react-native";
+import useTheme from "../assets/theme/useTheme";
+import { COLORS } from "../assets/theme/colors";
 
 const AlertContext = createContext();
 
 export const useCustomAlert = () => useContext(AlertContext);
 
 export const CustomAlertProvider = ({ children }) => {
+  const theme = useTheme();
   const [alertData, setAlertData] = useState({
     visible: false,
     title: "",
@@ -48,14 +58,21 @@ export const CustomAlertProvider = ({ children }) => {
         <TouchableWithoutFeedback onPress={handleOverlayPress}>
           <View style={styles.overlay}>
             <TouchableWithoutFeedback>
-              <View style={styles.container}>
-                {alertData.title ? (
-                  <Text style={styles.title}>{alertData.title}</Text>
-                ) : null}
+              <View
+                style={[
+                  styles.container,
+                  { backgroundColor: theme.colors.alert },
+                ]}
+              >
+                <View style={{ padding: 8 }}>
+                  {alertData.title ? (
+                    <Text style={styles.title}>{alertData.title}</Text>
+                  ) : null}
 
-                {alertData.message ? (
-                  <Text style={styles.message}>{alertData.message}</Text>
-                ) : null}
+                  {alertData.message ? (
+                    <Text style={styles.message}>{alertData.message}</Text>
+                  ) : null}
+                </View>
 
                 {/* Nút confirm + cancel */}
                 {alertData.type === "confirmCancel" && (
@@ -71,7 +88,10 @@ export const CustomAlertProvider = ({ children }) => {
                     </TouchableOpacity>
 
                     <TouchableOpacity
-                      style={[styles.btn, styles.ok]}
+                      style={[
+                        styles.btn,
+                        { backgroundColor: COLORS.Primary },
+                      ]}
                       onPress={() => {
                         hideAlert();
                         alertData.onConfirm && alertData.onConfirm();
@@ -86,7 +106,11 @@ export const CustomAlertProvider = ({ children }) => {
                 {alertData.type === "confirm" && (
                   <View style={styles.buttons}>
                     <TouchableOpacity
-                      style={[styles.btn, styles.ok, { alignSelf: "flex-end" }]}
+                      style={[
+                        styles.btn,
+                        { backgroundColor: COLORS.Primary },
+                        { alignSelf: "flex-end" },
+                      ]}
                       onPress={() => {
                         hideAlert();
                         alertData.onConfirm && alertData.onConfirm();
@@ -115,20 +139,20 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   container: {
-    width: "80%",
-    backgroundColor: "white",
-    padding: 20,
-    borderRadius: 16,
+    width: "85%",
+    padding: 14,
+    borderRadius: 40,
   },
   title: { fontSize: 18, fontWeight: "bold", marginBottom: 10 },
   message: { fontSize: 15, marginBottom: 20 },
-  buttons: { flexDirection: "row", justifyContent: "flex-end" },
+  buttons: { flexDirection: "row", justifyContent: "center" },
   btn: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 8,
+    flex: 1,
+    borderRadius: 26,
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 13,
   },
   cancel: { backgroundColor: "#ccc", marginRight: 8 },
-  ok: { backgroundColor: "#007bff" },
   btnText: { color: "#fff", fontWeight: "600" },
 });

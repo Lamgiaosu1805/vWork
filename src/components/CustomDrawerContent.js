@@ -8,6 +8,7 @@ import {
   StyleSheet,
   ActivityIndicator,
   Alert,
+  Linking,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -18,6 +19,8 @@ import api from "../api/axiosInstance";
 import { unregisterFcmTokenFromServer } from "../utils/notifications/fcmConfig";
 import { getPermissions } from "../helpers/permissions";
 import { disconnectChatSocket } from "../libs/chatSocket";
+import utils from "../helpers/utils";
+import { COLORS } from "../assets/theme/colors";
 
 export default function CustomDrawerContent(props) {
   const { navigation, state } = props;
@@ -33,21 +36,8 @@ export default function CustomDrawerContent(props) {
   useEffect(() => {
     const fetchAvatar = async () => {
       if (!user?.avatar) return;
-      try {
-        const res = await api.get(`/document/getFile?filename=${user.avatar}`, {
-          requiresAuth: true,
-          responseType: "blob",
-        });
 
-        // Convert blob → base64
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          setAvatarBase64(reader.result);
-        };
-        reader.readAsDataURL(res.data);
-      } catch (error) {
-        console.log("fetchAvatar error:", error.message);
-      }
+      setAvatarBase64(user?.avatar);
     };
 
     fetchAvatar();
@@ -57,7 +47,20 @@ export default function CustomDrawerContent(props) {
     // Xin quyền truy cập thư viện ảnh
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== "granted") {
-      alert("Cần cấp quyền truy cập thư viện ảnh để thay avatar");
+      Alert.alert(
+        "Cần cấp quyền truy cập ảnh",
+        "Vui lòng cấp quyền truy cập thư viện ảnh trong phần Cài đặt để thay đổi avatar.",
+        [
+          {
+            text: "Hủy",
+            style: "cancel",
+          },
+          {
+            text: "Mở Cài đặt",
+            onPress: () => Linking.openSettings(),
+          },
+        ],
+      );
       return;
     }
 
@@ -137,7 +140,7 @@ export default function CustomDrawerContent(props) {
         <Ionicons
           name={icon}
           size={22}
-          color={isActive ? "#004643" : "#555"}
+          color={isActive ? COLORS.Primary : "#555"}
           style={{ marginRight: 10 }}
         />
         <Text style={[styles.menuLabel, isActive && styles.menuLabelActive]}>
@@ -164,7 +167,12 @@ export default function CustomDrawerContent(props) {
             return;
           }
           // navigation.navigate(routeName);
-          Alert.alert(label, "Tính năng đang được phát triển", [{ text: "OK" }], { cancelable: true });
+          Alert.alert(
+            label,
+            "Tính năng đang được phát triển",
+            [{ text: "OK" }],
+            { cancelable: true },
+          );
         }}
       >
         <Ionicons
@@ -189,7 +197,7 @@ export default function CustomDrawerContent(props) {
           style={styles.avatarWrapper}
           activeOpacity={0.8}
         >
-          {avatarBase64 ? (
+          {user?.avatar ? (
             <Image source={{ uri: avatarBase64 }} style={styles.avatar} />
           ) : (
             <View style={[styles.avatar, styles.avatarPlaceholder]}>
@@ -272,7 +280,7 @@ export default function CustomDrawerContent(props) {
           style={styles.changePassBtn}
           onPress={handleChangePassword}
         >
-          <Ionicons name="lock-closed-outline" size={20} color="#E63946" />
+          <Ionicons name="lock-closed-outline" size={20} color={COLORS.Primary} />
           <Text style={styles.changePassText}>Đổi mật khẩu</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
@@ -316,7 +324,7 @@ const styles = StyleSheet.create({
     position: "absolute",
     bottom: 0,
     right: 0,
-    backgroundColor: "#004643",
+    backgroundColor: COLORS.Primary,
     width: 22,
     height: 22,
     borderRadius: 11,
@@ -347,7 +355,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
   },
   menuItemActive: {
-    backgroundColor: "#E8F5F2",
+    backgroundColor: COLORS.Tertiary,
   },
   menuLabel: {
     fontSize: 15,
@@ -355,7 +363,7 @@ const styles = StyleSheet.create({
   },
   menuLabelActive: {
     fontWeight: "600",
-    color: "#004643",
+    color: COLORS.Primary,
   },
   footer: {
     marginTop: "auto",
@@ -364,7 +372,7 @@ const styles = StyleSheet.create({
   },
   logoutBtn: {
     flexDirection: "row",
-    backgroundColor: "#E63946",
+    backgroundColor: COLORS.Primary,
     padding: 10,
     borderRadius: 8,
     alignItems: "center",
@@ -383,10 +391,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 1,
-    borderColor: "#E63946",
+    borderColor: COLORS.Primary,
   },
   changePassText: {
-    color: "#E63946",
+    color: COLORS.Primary,
     fontSize: 15,
     marginLeft: 6,
   },

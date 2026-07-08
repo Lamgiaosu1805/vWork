@@ -5,6 +5,7 @@ import utils from '../../helpers/utils'
 import FileViewer from '../../components/FileViewer'
 import { store } from '../../redux/store'
 import { Ionicons } from '@expo/vector-icons';
+import { ChevronLeft } from 'lucide-react-native'
 
 export default function DocumentUserDetail({ route, navigation }) {
     const [currentAttachment, setCurrentAttachment] = useState(null)
@@ -44,7 +45,7 @@ export default function DocumentUserDetail({ route, navigation }) {
         <View style={styles.container}>
             <Header
                 title={params.title}
-                leftIconName="chevron-back-outline"
+                LeftIcon={ChevronLeft}
                 onLeftPress={() => {
                     navigation.goBack()
                 }}
