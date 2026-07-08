@@ -19,6 +19,8 @@ import PostCard, { AuthAvatar, BRAND } from "../../components/PostCard";
 import feedApi from "../../api/feedApi";
 import socket from "../../libs/socket";
 import { CircleUserRound, Menu } from "lucide-react-native";
+import useSocketStatus from "../../hooks/workplace/useSocketStatus";
+import ConnectionStatusBar from "../../components/workplace/chat/ConnectionStatusBar";
 
 const PAGE_SIZE = 10;
 
@@ -27,6 +29,7 @@ export default function FeedScreen({ navigation }) {
   const user = useSelector((state) => state.auth.user);
   const canManage = canMgr(user, "workplace");
   const listRef = useRef(null);
+  const socketStatus = useSocketStatus();
 
   const [posts, setPosts] = useState([]);
   const [pendingPosts, setPendingPosts] = useState([]);
@@ -182,6 +185,7 @@ export default function FeedScreen({ navigation }) {
         RightIcon={CircleUserRound}
         onRightPress={() => navigation.navigate("WorkplaceProfileScreen")}
       />
+      <ConnectionStatusBar status={socketStatus} />
 
       {/* Banner bài mới */}
       {pendingPosts.length > 0 && (

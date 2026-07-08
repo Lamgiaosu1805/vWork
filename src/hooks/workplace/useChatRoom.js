@@ -21,7 +21,6 @@ export default function useChatRoom({
 
     try {
       const res = await chatApi.getConversation(conversationId);
-
       const item = res?.data?.data ?? res?.data ?? res;
 
       if (item) {
@@ -43,13 +42,8 @@ export default function useChatRoom({
         const instance = getChatSocket();
 
         if (instance?.connected) {
-          instance.emit("chat:join", {
-            conversationId,
-          });
-
-          instance.emit("chat:seen", {
-            conversationId,
-          });
+          instance.emit("chat:join", { conversationId });
+          instance.emit("chat:seen", { conversationId });
         }
       };
 
@@ -60,7 +54,6 @@ export default function useChatRoom({
 
         if (socket) {
           socket.on("connect", joinRoom);
-          socket.on("reconnect", joinRoom);
         }
 
         await Promise.all([loadConversationMeta(), loadMessages()]);
@@ -75,12 +68,8 @@ export default function useChatRoom({
 
       return () => {
         if (socket) {
-          socket.emit("chat:leave", {
-            conversationId,
-          });
-
+          socket.emit("chat:leave", { conversationId });
           socket.off("connect", joinRoom);
-          socket.off("reconnect", joinRoom);
         }
 
         dispatch(clearActiveConversationId());

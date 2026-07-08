@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   appendMessage,
   upsertConversation,
@@ -15,6 +15,7 @@ export default function useChatActions({
   scrollToBottom,
 }) {
   const [sending, setSending] = useState(false);
+  const retryQueueRef = useRef([]);
 
   const buildSenderId = () => {
     const senderId = user?.userInfo?._id ?? user?._id;
@@ -28,6 +29,26 @@ export default function useChatActions({
       ma_nv: user?.userInfo?.ma_nv ?? user?.ma_nv,
     };
   };
+
+  const emitTextMessage = (content, clientMessageId) =>
+    new Promise((resolve, reject) => {
+      const socket = getChatSocket();
+      if (!socket?.connected) {
+        reject(new Error("Mất kết nối, vui lòng thử lại"));
+        return;
+      }
+      socket.emit(
+        "chat:send",
+        { conversationId, content, type: "text", clientMessageId },
+        (response) => {
+          if (response?.ok) {
+            resolve(response.data);
+          } else {
+            reject(new Error(response?.message || "Gửi tin nhắn thất bại"));
+          }
+        },
+      );
+    });
 
   const sendMessage = async (content) => {
     if (!content || !conversationId || sending) return;
@@ -63,26 +84,12 @@ export default function useChatActions({
     setSending(true);
 
     try {
-      const socket = getChatSocket();
-
-      if (!socket?.connected) {
-        throw new Error("Mất kết nối, vui lòng thử lại");
-      }
-
-      await new Promise((resolve, reject) => {
-        socket.emit(
-          "chat:send",
-          { conversationId, content, type: "text", clientMessageId },
-          (response) => {
-            if (response?.ok) {
-              resolve(response.data);
-            } else {
-              reject(new Error(response?.message || "Gửi tin nhắn thất bại"));
-            }
-          },
-        );
-      });
+      await emitTextMessage(content, clientMessageId);
     } catch (error) {
+      const socket = getChatSocket();
+      if (!socket?.connected) {
+        retryQueueRef.current.push({ clientMessageId, content });
+      }
       dispatch(
         updateMessageStatus({
           conversationId,
@@ -95,6 +102,46 @@ export default function useChatActions({
       scrollToBottom();
     }
   };
+
+  useEffect(() => {
+    const socket = getChatSocket();
+    if (!socket) return;
+
+    const flushRetryQueue = async () => {
+      const queue = retryQueueRef.current;
+      if (queue.length === 0) return;
+      retryQueueRef.current = [];
+
+      for (const item of queue) {
+        dispatch(
+          updateMessageStatus({
+            conversationId,
+            clientMessageId: item.clientMessageId,
+            status: "sending",
+          }),
+        );
+        try {
+          await emitTextMessage(item.content, item.clientMessageId);
+        } catch {
+          dispatch(
+            updateMessageStatus({
+              conversationId,
+              clientMessageId: item.clientMessageId,
+              status: "failed",
+            }),
+          );
+        }
+      }
+      scrollToBottom();
+    };
+
+    socket.on("connect", flushRetryQueue);
+    return () => socket.off("connect", flushRetryQueue);
+  }, [conversationId]);
+
+  useEffect(() => {
+    retryQueueRef.current = [];
+  }, [conversationId]);
 
   const sendImageMessage = async (file) => {
     if (!file || !conversationId || sending) return;
@@ -118,7 +165,7 @@ export default function useChatActions({
       status: "sending",
       createdAt: new Date().toISOString(),
       attachment: {
-        url: file.uri, // preview local trước khi server trả url thật
+        url: file.uri,
         mimeType: file.type ?? file.mimeType,
         width: file.width ?? null,
         height: file.height ?? null,

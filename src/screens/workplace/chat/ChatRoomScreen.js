@@ -44,6 +44,8 @@ import {
   resolveDisplayName,
   useNicknameMap,
 } from "../../../hooks/workplace/useNicknameMap";
+import useSocketStatus from "../../../hooks/workplace/useSocketStatus";
+import ConnectionStatusBar from "../../../components/workplace/chat/ConnectionStatusBar";
 
 export default function ChatRoomScreen({ route, navigation }) {
   const {
@@ -67,6 +69,7 @@ export default function ChatRoomScreen({ route, navigation }) {
   const endReachedDuringMomentumRef = useRef(false);
 
   const nicknameMap = useNicknameMap(conversation);
+  const socketStatus = useSocketStatus();
 
   const currentUserKeys = useMemo(() => getCurrentUserKeys(user), [user]);
 
@@ -434,6 +437,8 @@ export default function ChatRoomScreen({ route, navigation }) {
             });
           }}
         />
+
+        <ConnectionStatusBar status={socketStatus} />
 
         {loadingMessages && messages.length === 0 ? (
           <View style={styles.loadingWrap}>

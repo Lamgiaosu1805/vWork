@@ -36,6 +36,8 @@ import { HEIGHT_SHEET } from "../../crm/CustomerScreen";
 import { useSharedValue, withTiming } from "react-native-reanimated";
 import NewConversationBottomSheet from "../../../components/workplace/chat/NewConversationBottomSheet";
 import { Menu, Send } from "lucide-react-native";
+import ConnectionStatusBar from "../../../components/workplace/chat/ConnectionStatusBar";
+import useSocketStatus from "../../../hooks/workplace/useSocketStatus";
 
 dayjs.extend(relativeTime);
 dayjs.locale("vi");
@@ -54,6 +56,8 @@ export default function ChatListScreen({ navigation }) {
   const translateNewConversation = useSharedValue(HEIGHT_SHEET);
 
   const [tabSelected, setTabSelected] = useState("all");
+
+  const socketStatus = useSocketStatus();
 
   const flatListRef = useRef(null);
 
@@ -289,6 +293,8 @@ export default function ChatListScreen({ navigation }) {
         RightIcon={Send}
         onRightPress={openNewConversattion}
       />
+
+      <ConnectionStatusBar status={socketStatus} />
 
       <View
         style={{
