@@ -1,3 +1,4 @@
+import utils from "../helpers/utils";
 import api from "./axiosInstance";
 
 // ─── Payload / Query types (JSDoc)
@@ -144,12 +145,7 @@ const chatApi = {
     }),
 
   getImageUrl: (conversationId, messageId) =>
-    api.get(
-      `/chat/conversations/${conversationId}/messages/${messageId}/image`,
-      {
-        requiresAuth: true,
-      },
-    ),
+    `${utils.BASE_URL}/chat/conversations/${conversationId}/messages/${messageId}/image`,
 
   /**
    * @param {string} conversationId
@@ -160,6 +156,40 @@ const chatApi = {
     api.patch(
       `/chat/conversations/${conversationId}/members/${memberId}/nickname`,
       { nickname },
+      { requiresAuth: true },
+    ),
+  /**
+   * @param {string} conversationId
+   * @param {string} messageId
+   */
+  getMessageById: (conversationId, messageId) =>
+    api.get(`/chat/conversations/${conversationId}/messages/${messageId}`, {
+      requiresAuth: true,
+    }),
+
+  /**
+   * @param {string} conversationId
+   * @param {number} [page=1]
+   * @param {number} [limit=50]
+   */
+  getConversationImages: (conversationId, page = 1, limit = 50) =>
+    api.get(`/chat/conversations/${conversationId}/images`, {
+      requiresAuth: true,
+      params: {
+        page,
+        limit,
+      },
+    }),
+
+  /**
+   * @param {string} conversationId
+   * @param {string} messageId
+   * @param {"like"|"love"|"haha"|"wow"|"sad"|"angry"} type
+   */
+  reactMessage: (conversationId, messageId, type) =>
+    api.post(
+      `/chat/conversations/${conversationId}/messages/${messageId}/react`,
+      { type },
       { requiresAuth: true },
     ),
 };

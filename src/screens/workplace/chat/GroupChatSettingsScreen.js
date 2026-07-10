@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useCallback } from "react";
+import React, { useMemo, useState, useCallback, useEffect } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -49,6 +49,9 @@ import {
 } from "../../../hooks/workplace/useNicknameMap";
 import { HEIGHT_SHEET } from "../../crm/CustomerScreen";
 import { runOnJS, useSharedValue, withTiming } from "react-native-reanimated";
+import MediaSection from "../../../components/workplace/chat/setting/MediaSection";
+
+const PAGE_SIZE = 12;
 
 export default function GroupChatSettingsScreen({ route, navigation }) {
   const dispatch = useDispatch();
@@ -82,6 +85,13 @@ export default function GroupChatSettingsScreen({ route, navigation }) {
   const [nicknameModalVisible, setNicknameModalVisible] = useState(false);
   const [nicknameMember, setNicknameMember] = useState(null);
   const [nicknameSaving, setNicknameSaving] = useState(false);
+  const [mediaState, setMediaState] = useState({
+    loading: true,
+    loadingMore: false,
+    images: [],
+    page: 1,
+    hasNext: true,
+  });
 
   const translateNicknamePickerY = useSharedValue(HEIGHT_SHEET);
 
@@ -481,6 +491,74 @@ export default function GroupChatSettingsScreen({ route, navigation }) {
     }
   }, [conversationId, dispatch]);
 
+  const loadMoreConversationImages = useCallback(() => {
+    if (mediaState.loading) return;
+    if (mediaState.loadingMore) return;
+    if (!mediaState.hasNext) return;
+
+    loadConversationImages(mediaState.page + 1);
+  }, [mediaState, loadConversationImages]);
+
+  const handleScroll = useCallback(
+    ({ nativeEvent }) => {
+      if (mediaState.loading || mediaState.loadingMore || !mediaState.hasNext) {
+        return;
+      }
+
+      const { layoutMeasurement, contentOffset, contentSize } = nativeEvent;
+
+      const isCloseToBottom =
+        layoutMeasurement.height + contentOffset.y >= contentSize.height - 200;
+
+      if (isCloseToBottom) {
+        loadMoreConversationImages();
+      }
+    },
+    [mediaState, loadConversationImages],
+  );
+
+  const loadConversationImages = useCallback(
+    async (pageNumber = 1) => {
+      try {
+        setMediaState((prev) => ({
+          ...prev,
+          loading: pageNumber === 1,
+          loadingMore: pageNumber > 1,
+        }));
+
+        const res = await chatApi.getConversationImages(
+          conversationId,
+          pageNumber,
+          PAGE_SIZE,
+        );
+
+        const data = res?.data?.data ?? [];
+        const pagination = res?.data?.pagination ?? {};
+        const hasNext = pagination.page < pagination.total_pages;
+
+        setMediaState((prev) => ({
+          ...prev,
+          loading: false,
+          loadingMore: false,
+          page: pageNumber,
+          hasNext: hasNext,
+          images: pageNumber === 1 ? data : [...prev.images, ...data],
+        }));
+      } catch (e) {
+        setMediaState((prev) => ({
+          ...prev,
+          loading: false,
+          loadingMore: false,
+        }));
+      }
+    },
+    [conversationId],
+  );
+
+  useEffect(() => {
+    loadConversationImages(1);
+  }, []);
+
   const heroAvatar = conversation?.avatar ? (
     <AuthAvatar
       filename={conversation.avatar}
@@ -518,6 +596,8 @@ export default function GroupChatSettingsScreen({ route, navigation }) {
       <ScrollView
         contentContainerStyle={styles.scroll}
         showsVerticalScrollIndicator={false}
+        onScroll={handleScroll}
+        scrollEventThrottle={16}
       >
         <View style={styles.hero}>
           <View style={styles.heroAvatarWrap}>
@@ -684,7 +764,15 @@ export default function GroupChatSettingsScreen({ route, navigation }) {
         </AccordionSection>
 
         <AccordionSection title="File phương tiện và file">
-          <Text style={styles.emptyText}>Chưa có file nào được chia sẻ</Text>
+          <MediaSection
+            conversationId={conversationId}
+            navigation={navigation}
+            images={mediaState.images}
+            loading={mediaState.loading}
+            loadingMore={mediaState.loadingMore}
+            hasNext={mediaState.hasNext}
+            onLoadMore={loadMoreConversationImages}
+          />
         </AccordionSection>
 
         <View style={{ height: insets.bottom + 24 }} />
