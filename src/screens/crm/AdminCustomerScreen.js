@@ -14,7 +14,9 @@ import {
 import React, { useEffect, useState, useCallback, useRef } from "react";
 import { Feather, Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
-import { Dropdown } from "react-native-element-dropdown";
+import { Dropdown, MultiSelect } from "react-native-element-dropdown";
+import DateTimePicker from "@react-native-community/datetimepicker";
+import dayjs from "dayjs";
 import Header from "../../components/Header";
 import { getAllCustomers } from "../../api/crm/customer";
 import { useSelector } from "react-redux";
@@ -29,7 +31,7 @@ const PRIMARY = "#ED2E30";
 
 // ── Modal gán / chuyển sale ────────────────────────────────────────────────
 
-function AssignModal({ customer, isAdmin, onClose, onSuccess }) {
+function AssignModal({ customer, onClose, onSuccess }) {
   const [userSearch, setUserSearch] = useState("");
   const [users, setUsers] = useState([]);
   const [loadingUsers, setLoadingUsers] = useState(false);
@@ -43,7 +45,7 @@ function AssignModal({ customer, isAdmin, onClose, onSuccess }) {
   const fetchUsers = useCallback(async (q = "") => {
     setLoadingUsers(true);
     try {
-      const res = await api.get("/user", {
+      const res = await api.get("/user/getUsers", {
         params: { search: q, limit: 30, page: 1, module: "crm" },
         requiresAuth: true,
       });
@@ -149,8 +151,8 @@ function AssignModal({ customer, isAdmin, onClose, onSuccess }) {
             {isReassign && (
               <View style={styles.warnBox}>
                 <Text style={styles.warnText}>
-                  ⚠️ Thao tác này sẽ ghi đè sale hiện tại và xoá hoa hồng cũ.
-                  Mọi thay đổi đều có audit log.
+                  ⚠️ Thao tác này sẽ đổi sale phụ trách. Hoa hồng đã ghi nhận
+                  trước đó vẫn được giữ nguyên và mọi thay đổi đều có audit log.
                 </Text>
               </View>
             )}
@@ -300,11 +302,19 @@ export default function AdminCustomerScreen() {
   const navigation = useNavigation();
   const user = useSelector((state) => state.auth.user);
   const perms = getPermissions(user);
-  const isAdmin = perms.isAdminRole;
+  const canManageCustomers = perms.showCustomerAll;
 
   const [search, setSearch] = useState("");
-  const [filterType, setFilterType] = useState("all");
-  const [filterSource, setFilterSource] = useState("all");
+  const [filterFunnel, setFilterFunnel] = useState([]);
+  const [filterBehavior, setFilterBehavior] = useState([]);
+  const [filterRole, setFilterRole] = useState([]);
+  const [filterBranch, setFilterBranch] = useState("");
+  const [filterSales, setFilterSales] = useState([]);
+  const [fromDate, setFromDate] = useState(null);
+  const [toDate, setToDate] = useState(null);
+  const [showDateFilter, setShowDateFilter] = useState(false);
+  const [branches, setBranches] = useState([]);
+  const [sales, setSales] = useState([]);
   const [data, setData] = useState([]);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -320,9 +330,13 @@ export default function AdminCustomerScreen() {
   const buildParams = (pg, searchVal) => {
     const params = { page: pg, limit: LIMIT };
     if (searchVal) params.search = searchVal;
-    if (filterSource !== "all") params.source_type = filterSource;
-    if (filterType === "potential") params.status = "registered";
-    else if (filterType === "normal") params.status = "kyc_verified";
+    if (filterFunnel.length) params.funnel_status = filterFunnel.join(",");
+    if (filterBehavior.length) params.behavior = filterBehavior.join(",");
+    if (filterRole.length) params.role_type = filterRole.join(",");
+    if (filterBranch) params.branch_id = filterBranch;
+    if (filterSales.length) params.sale_ids = filterSales.join(",");
+    if (fromDate) params.from_date = dayjs(fromDate).startOf("day").toISOString();
+    if (toDate) params.to_date = dayjs(toDate).endOf("day").toISOString();
     return params;
   };
 
@@ -351,7 +365,23 @@ export default function AdminCustomerScreen() {
 
   useEffect(() => {
     fetchPage(1, activeSearch.current);
-  }, [filterType, filterSource]);
+  }, [filterFunnel, filterBehavior, filterRole, filterBranch, filterSales, fromDate, toDate]);
+
+  useEffect(() => {
+    const loadFilterOptions = async () => {
+      try {
+        const [branchResponse, saleResponse] = await Promise.all([
+          api.get("/branch/getAll", { requiresAuth: true }),
+          api.get("/user/getUsers", { requiresAuth: true, params: { page: 1, limit: 200, module: "crm" } }),
+        ]);
+        setBranches(branchResponse.data?.data || []);
+        setSales(saleResponse.data?.data || []);
+      } catch (error) {
+        console.log("Không thể tải tùy chọn lọc khách hàng:", error.message);
+      }
+    };
+    loadFilterOptions();
+  }, []);
 
   const handleSearchChange = (text) => {
     setSearch(text);
@@ -365,8 +395,29 @@ export default function AdminCustomerScreen() {
   const renderItem = useCallback(
     ({ item }) => {
       const hasSale = !!item.referred_by;
-      const canReassign = isAdmin && hasSale;
+      const canReassign = canManageCustomers && hasSale;
       const canAssign = !hasSale;
+
+      const handleUnassign = () => Alert.alert(
+        "Xóa phân công sale",
+        `Gỡ ${item.referred_by?.full_name || "sale hiện tại"} khỏi khách hàng này?`,
+        [
+          { text: "Hủy", style: "cancel" },
+          {
+            text: "Xóa phân công",
+            style: "destructive",
+            onPress: async () => {
+              try {
+                await api.patch(`/customer/${item._id}/unassign-sale`, {}, { requiresAuth: true });
+                Toast.show({ type: "success", text1: "Đã xóa phân công sale" });
+                fetchPage(1, activeSearch.current, true);
+              } catch (error) {
+                Toast.show({ type: "error", text1: error?.response?.data?.message || "Có lỗi xảy ra" });
+              }
+            },
+          },
+        ],
+      );
 
       return (
         <View>
@@ -379,31 +430,17 @@ export default function AdminCustomerScreen() {
               })
             }
           />
-          {(canAssign || canReassign) && (
-            <TouchableOpacity
-              style={[styles.assignBtn, canReassign && styles.reassignBtn]}
-              onPress={() => setAssignTarget(item)}
-              activeOpacity={0.8}
-            >
-              <Ionicons
-                name={canReassign ? "swap-horizontal" : "person-add"}
-                size={14}
-                color={canReassign ? "#D97706" : "#fff"}
-              />
-              <Text
-                style={[
-                  styles.assignBtnText,
-                  canReassign && styles.reassignBtnText,
-                ]}
-              >
-                {canReassign ? "Chuyển sale" : "Phân khách"}
-              </Text>
+          {(canAssign || canReassign) && <View style={styles.customerActions}>
+            <TouchableOpacity style={[styles.assignBtn, canReassign && styles.reassignBtn]} onPress={() => setAssignTarget(item)} activeOpacity={0.8}>
+              <Ionicons name={canReassign ? "swap-horizontal" : "person-add"} size={14} color={canReassign ? "#D97706" : "#fff"} />
+              <Text style={[styles.assignBtnText, canReassign && styles.reassignBtnText]}>{canReassign ? "Chuyển sale" : "Phân khách"}</Text>
             </TouchableOpacity>
-          )}
+            {canReassign && <TouchableOpacity style={[styles.assignBtn, styles.unassignBtn]} onPress={handleUnassign}><Ionicons name="person-remove" size={14} color="#DC2626" /><Text style={styles.unassignBtnText}>Xóa phân công</Text></TouchableOpacity>}
+          </View>}
         </View>
       );
     },
-    [isAdmin],
+    [canManageCustomers],
   );
 
   return (
@@ -445,42 +482,16 @@ export default function AdminCustomerScreen() {
               />
             </View>
 
+            <MultiSelect style={styles.dropdown} containerStyle={styles.dropdownContainer} selectedTextStyle={styles.selectedText} placeholderStyle={styles.selectedText} data={[{ value: "not_kyc", label: "Chưa eKYC" }, { value: "kyc_verified_no_investment", label: "Đã eKYC, chưa đầu tư" }, { value: "active_investor", label: "Đang đầu tư" }, { value: "settled", label: "Đã tất toán" }]} labelField="label" valueField="value" placeholder="Tất cả phễu trạng thái" value={filterFunnel} onChange={setFilterFunnel} selectedStyle={styles.selectedStyle} />
             <View style={styles.filtersRow}>
-              <Dropdown
-                style={styles.dropdown}
-                containerStyle={styles.dropdownContainer}
-                selectedTextStyle={{ fontSize: 12, color: "#374151" }}
-                iconStyle={{ width: 14, height: 14 }}
-                itemTextStyle={{ fontSize: 12, color: "#374151" }}
-                data={[
-                  { value: "all", label: "Tất cả loại KH" },
-                  { value: "potential", label: "KH Tiềm năng" },
-                  { value: "normal", label: "KH Thường" },
-                ]}
-                labelField="label"
-                valueField="value"
-                value={filterType}
-                onChange={(item) => setFilterType(item.value)}
-              />
-
-              <Dropdown
-                style={styles.dropdown}
-                containerStyle={styles.dropdownContainer}
-                selectedTextStyle={{ fontSize: 12, color: "#374151" }}
-                iconStyle={{ width: 14, height: 14 }}
-                itemTextStyle={{ fontSize: 12, color: "#374151" }}
-                data={[
-                  { value: "all", label: "Tất cả nguồn" },
-                  { value: "sale", label: "Qua Sale" },
-                  { value: "agent", label: "Qua Đại lý" },
-                  { value: "marketing", label: "Marketing" },
-                ]}
-                labelField="label"
-                valueField="value"
-                value={filterSource}
-                onChange={(item) => setFilterSource(item.value)}
-              />
+              <MultiSelect style={styles.dropdown} containerStyle={styles.dropdownContainer} selectedTextStyle={styles.selectedText} placeholderStyle={styles.selectedText} data={[{ value: "upsale", label: "Up-sale" }, { value: "cross_sale", label: "Cross-sale" }]} labelField="label" valueField="value" placeholder="Tất cả hành vi" value={filterBehavior} onChange={setFilterBehavior} selectedStyle={styles.selectedStyle} />
+              <MultiSelect style={styles.dropdown} containerStyle={styles.dropdownContainer} selectedTextStyle={styles.selectedText} placeholderStyle={styles.selectedText} data={[{ value: "collaborator", label: "CTV" }, { value: "agent", label: "Đại lý" }]} labelField="label" valueField="value" placeholder="Tất cả vai trò" value={filterRole} onChange={setFilterRole} selectedStyle={styles.selectedStyle} />
             </View>
+            <View style={styles.filtersRow}>
+              <Dropdown style={styles.dropdown} containerStyle={styles.dropdownContainer} selectedTextStyle={styles.selectedText} placeholderStyle={styles.selectedText} data={[{ _id: "", branch_name: "Tất cả chi nhánh" }, ...branches]} labelField="branch_name" valueField="_id" value={filterBranch} placeholder="Tất cả chi nhánh" onChange={(item) => setFilterBranch(item._id)} />
+              <MultiSelect style={styles.dropdown} containerStyle={styles.dropdownContainer} selectedTextStyle={styles.selectedText} placeholderStyle={styles.selectedText} data={sales} labelField="full_name" valueField="_id" placeholder="Tất cả sale" value={filterSales} onChange={setFilterSales} selectedStyle={styles.selectedStyle} />
+            </View>
+            <TouchableOpacity style={styles.dateFilterButton} onPress={() => setShowDateFilter(true)}><Ionicons name="calendar-outline" size={16} color="#4B5563" /><Text style={styles.dateFilterText}>{fromDate && toDate ? `${dayjs(fromDate).format("DD/MM/YYYY")} - ${dayjs(toDate).format("DD/MM/YYYY")}` : "Tất cả ngày"}</Text>{fromDate && <TouchableOpacity onPress={() => { setFromDate(null); setToDate(null); }}><Ionicons name="close-circle" size={18} color="#9CA3AF" /></TouchableOpacity>}</TouchableOpacity>
           </View>
         </View>
 
@@ -524,11 +535,13 @@ export default function AdminCustomerScreen() {
       {assignTarget && (
         <AssignModal
           customer={assignTarget}
-          isAdmin={isAdmin}
           onClose={() => setAssignTarget(null)}
           onSuccess={() => fetchPage(1, activeSearch.current, true)}
         />
       )}
+      <Modal visible={showDateFilter} transparent animationType="fade" onRequestClose={() => setShowDateFilter(false)}>
+        <View style={styles.dateOverlay}><View style={styles.dateBox}><Text style={styles.modalTitle}>Lọc theo ngày</Text><Text style={styles.fieldLabel}>Từ ngày</Text><DateTimePicker value={fromDate || dayjs().startOf("month").toDate()} mode="date" onChange={(_, date) => date && setFromDate(date)} /><Text style={styles.fieldLabel}>Đến ngày</Text><DateTimePicker value={toDate || new Date()} mode="date" maximumDate={new Date()} onChange={(_, date) => date && setToDate(date)} />{fromDate && toDate && fromDate > toDate && <Text style={styles.errorDate}>Ngày bắt đầu không được lớn hơn ngày kết thúc</Text>}<TouchableOpacity disabled={fromDate && toDate && fromDate > toDate} style={styles.confirmDate} onPress={() => setShowDateFilter(false)}><Text style={styles.confirmBtnText}>Áp dụng</Text></TouchableOpacity></View></View>
+      </Modal>
     </View>
   );
 }
@@ -557,6 +570,10 @@ const styles = StyleSheet.create({
   searchIcon: { marginRight: 8 },
   searchInput: { flex: 1, fontSize: 14, color: "#111827", height: 40 },
   filtersRow: { flexDirection: "row", gap: 8 },
+  selectedText: { fontSize: 12, color: "#374151" },
+  selectedStyle: { borderRadius: 12 },
+  dateFilterButton: { flexDirection: "row", alignItems: "center", gap: 8, minHeight: 40, borderWidth: 1, borderColor: "#E5E7EB", borderRadius: 8, paddingHorizontal: 10 },
+  dateFilterText: { flex: 1, fontSize: 12, color: "#4B5563" },
   listHeaderText: {
     fontSize: 15,
     fontWeight: "700",
@@ -582,6 +599,7 @@ const styles = StyleSheet.create({
 
   // Assign buttons
   assignBtn: {
+    flex: 1,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
@@ -600,6 +618,13 @@ const styles = StyleSheet.create({
     borderColor: "#FDE68A",
   },
   reassignBtnText: { color: "#D97706" },
+  customerActions: { flexDirection: "row", gap: 8 },
+  unassignBtn: { backgroundColor: "#FEF2F2", borderWidth: 1, borderColor: "#FECACA" },
+  unassignBtnText: { color: "#DC2626", fontSize: 12, fontWeight: "700" },
+  dateOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,.45)", justifyContent: "center", padding: 20 },
+  dateBox: { backgroundColor: "#fff", borderRadius: 18, padding: 18 },
+  errorDate: { color: "#DC2626", fontSize: 12, marginTop: 8 },
+  confirmDate: { backgroundColor: PRIMARY, paddingVertical: 12, alignItems: "center", borderRadius: 10, marginTop: 16 },
 
   // Modal
   modalOverlay: {

@@ -7,6 +7,7 @@ const TABS = [
   { key: "info", label: "Thông tin" },
   { key: "transaction", label: "Biến động" },
   { key: "investment", label: "Đầu tư" },
+  { key: "care", label: "Chăm sóc" },
 ];
 
 export default function CustomerTabs({ activeTab, onTabChange }) {

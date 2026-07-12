@@ -49,6 +49,19 @@ const getStaffInfoApi = async (params = {}) => {
   });
 };
 
+const getCustomerInteractions = async (externalId, params = {}) => {
+  return api.get(`/customer/interactions/${externalId}`, {
+    requiresAuth: true,
+    params,
+  });
+};
+
+const createCustomerInteraction = async (externalId, data) => {
+  return api.post(`/customer/interactions/${externalId}`, data, {
+    requiresAuth: true,
+  });
+};
+
 export {
   getListCustomers,
   getAllCustomers,
@@ -56,5 +69,7 @@ export {
   getCustomerFluctuationApi,
   viewImageApi,
   getInvestmentHoldingApi,
-  getStaffInfoApi
+  getStaffInfoApi,
+  getCustomerInteractions,
+  createCustomerInteraction,
 };

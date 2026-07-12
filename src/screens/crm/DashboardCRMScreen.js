@@ -23,6 +23,7 @@ import Header from "../../components/Header";
 import { getPermissions } from "../../helpers/permissions";
 import SalesSummaryChart from "../../components/crm/dashboard/SalesSummaryChart";
 import { Menu } from "lucide-react-native";
+import CrmExecutiveDashboard from "../../components/crm/dashboard/CrmExecutiveDashboard";
 
 dayjs.locale("vi");
 
@@ -48,7 +49,7 @@ const RANK_COLORS = ["#F59E0B", "#94A3B8", "#B45309"];
 export default function DashboardCRMScreen() {
   const user = useSelector((s) => s.auth.user);
   const perms = getPermissions(user);
-  const isManager = perms.showCustomerAll;
+  const isManager = perms.showCrmDashboardManagement;
 
   const now = new Date();
   const month = now.getMonth() + 1;
@@ -223,6 +224,8 @@ export default function DashboardCRMScreen() {
             {dayjs().format("dddd, DD/MM/YYYY").replace(/^\w/, (c) => c.toUpperCase())} · {isManager ? "Quản lý CRM" : "Nhân viên CRM"}
           </Text>
         </View>
+
+        {perms.showCrmDashboardManagement && <CrmExecutiveDashboard />}
 
         {/* Stat cards */}
         <View style={styles.statsRow}>

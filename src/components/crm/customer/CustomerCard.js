@@ -5,18 +5,17 @@ import { Feather } from "@expo/vector-icons";
 const getEkycColor = (ekyc) =>
   ekyc === "Chưa xác thực" ? "#F59E0B" : "#10B981";
 
-const getTypeColor = (type) => {
-  if (type === "VIP") return "#EF4444";
-  if (type === "Thường") return "#3B82F6";
-  return "#10B981";
-};
-
 const getDisplayName = (row) =>
   row.identity?.full_name || row.phone_number || "N/A";
-const getDisplayType = (row) => {
-  if (row.status === "registered") return "Tiềm năng";
-  if (row.status === "kyc_verified") return "Thường";
-  return "VIP";
+const TAG_LABELS = {
+  not_kyc: "Chưa eKYC",
+  kyc_verified_no_investment: "Đã eKYC, chưa đầu tư",
+  active_investor: "Đang đầu tư",
+  settled: "Đã tất toán",
+  upsale: "Up-sale",
+  cross_sale: "Cross-sale",
+  collaborator: "CTV",
+  agent: "Đại lý",
 };
 const getDisplayEkyc = (row) =>
   row.identity?.verified_at ? "Đã xác thực" : "Chưa xác thực";
@@ -36,7 +35,6 @@ const MetaItem = ({ icon, label }) => (
 
 const CustomerCard = ({ row, onPress }) => {
   const name = getDisplayName(row);
-  const type = getDisplayType(row);
   const ekyc = getDisplayEkyc(row);
   const gender = getDisplayGender(row);
   const date = row.createdAt
@@ -52,18 +50,22 @@ const CustomerCard = ({ row, onPress }) => {
       {/* Header row */}
       <View style={styles.cardHeader}>
         <View style={styles.avatar}>
-          <Text style={styles.avatarText}>N/A</Text>
+          <Text style={styles.avatarText}>{row.identity?.full_name ? row.identity.full_name.split(" ").filter(Boolean).slice(0, 2).map((part) => part[0]).join("").toUpperCase() : "NA"}</Text>
         </View>
         <View style={{ flex: 1, marginLeft: 10 }}>
           <Text style={styles.cardName}>{name}</Text>
           <Text style={styles.cardPhone}>{row.phone_number}</Text>
         </View>
-        <View style={styles.badgeWrap}>
-          <Text style={[styles.typeBadge, { color: getTypeColor(type) }]}>
-            {type}
-          </Text>
-        </View>
+        <View style={styles.badgeWrap}><Text style={styles.sourceText}>{row.source_type === "sale" ? "Sale" : row.source_type === "agent" ? "Đại lý" : "Marketing"}</Text></View>
       </View>
+
+      <View style={styles.tagsWrap}>
+        {[...(row.status_tags || []), ...(row.behavior_tags || []), ...(row.role_tags || [])].map((tag) => (
+          <View key={tag} style={styles.tag}><Text style={styles.tagText}>{TAG_LABELS[tag] || tag}</Text></View>
+        ))}
+      </View>
+
+      <Text style={styles.saleText}>Người giới thiệu: {row.referred_by?.full_name || "Chưa có"}</Text>
 
       {/* Divider */}
       <View style={styles.divider} />
@@ -141,10 +143,11 @@ const styles = StyleSheet.create({
   badgeWrap: {
     marginLeft: "auto",
   },
-  typeBadge: {
-    fontSize: 13,
-    fontWeight: "700",
-  },
+  sourceText: { fontSize: 11, fontWeight: "700", color: "#5B5BD6", backgroundColor: "#F1EFFE", paddingHorizontal: 8, paddingVertical: 4, borderRadius: 10 },
+  tagsWrap: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: 10 },
+  tag: { borderWidth: 1, borderColor: "#D1D5DB", borderRadius: 10, paddingHorizontal: 8, paddingVertical: 3 },
+  tagText: { fontSize: 10, fontWeight: "700", color: "#4B5563" },
+  saleText: { fontSize: 11, color: "#6B7280", marginTop: 8 },
   divider: {
     height: 1,
     backgroundColor: "#E5E7EB",

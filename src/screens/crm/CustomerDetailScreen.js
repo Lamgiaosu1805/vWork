@@ -19,6 +19,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { Feather, Ionicons } from "@expo/vector-icons";
 import Toast from "react-native-toast-message";
 import InvestmentTabs from "../../components/crm/customerDetail/InvestmentTabs";
+import CustomerInteractionTab from "../../components/crm/customerDetail/CustomerInteractionTab";
 
 const PRIMARY = "#ED2E30";
 
@@ -333,6 +334,9 @@ export default function CustomerDetailScreen() {
           isLoading={loading}
           loadingMore={loadingMore}
         />
+      )}
+      {activeTab === "care" && (
+        <CustomerInteractionTab externalId={externalId} />
       )}
     </ScrollView>
   );

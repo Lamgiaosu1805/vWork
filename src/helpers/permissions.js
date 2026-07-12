@@ -46,5 +46,6 @@ export const getPermissions = (user) => {
     // CRM
     showMyCustomers: has(user, "crm"),
     showCustomerAll: canMgr(user, "crm"),
+    showCrmDashboardManagement: canMgr(user, "crm"),
   };
 };
