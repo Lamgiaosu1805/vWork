@@ -15,6 +15,7 @@ import dayjs from "dayjs";
 import { BarChart, PieChart } from "react-native-gifted-charts";
 import { Ionicons } from "@expo/vector-icons";
 import { getCrmExecutiveDashboard, getCrmFunnelCustomers } from "../../../api/crm/dashboard";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 const { width } = Dimensions.get("window");
 const PRIMARY = "#5B5BD6";
@@ -97,7 +98,7 @@ const FunnelModal = ({ stage, range, onClose }) => {
   useEffect(() => { load(1); }, [load]);
   return (
     <Modal visible={Boolean(stage)} animationType="slide" onRequestClose={onClose}>
-      <View style={styles.fullModal}>
+      <SafeAreaView style={styles.fullModal}>
         <View style={styles.fullModalHeader}>
           <View><Text style={styles.modalTitle}>{stage?.code} · {stage?.label}</Text><Text style={styles.modalSubtitle}>{pagination.total} khách hàng</Text></View>
           <TouchableOpacity onPress={onClose}><Ionicons name="close" size={26} color="#111827" /></TouchableOpacity>
@@ -107,7 +108,7 @@ const FunnelModal = ({ stage, range, onClose }) => {
           {!customers.length && <Text style={styles.emptyText}>Không có dữ liệu</Text>}
         </ScrollView>}
         {pagination.total_pages > 1 && <View style={styles.pagination}><TouchableOpacity disabled={pagination.page <= 1} onPress={() => load(pagination.page - 1)}><Text style={styles.pageButton}>‹ Trước</Text></TouchableOpacity><Text style={styles.pageText}>{pagination.page}/{pagination.total_pages}</Text><TouchableOpacity disabled={pagination.page >= pagination.total_pages} onPress={() => load(pagination.page + 1)}><Text style={styles.pageButton}>Sau ›</Text></TouchableOpacity></View>}
-      </View>
+      </SafeAreaView>
     </Modal>
   );
 };
@@ -211,7 +212,7 @@ const styles = StyleSheet.create({
   secondaryButtonText: { fontWeight: "700", color: "#374151" },
   primaryButton: { flex: 1, paddingVertical: 12, alignItems: "center", backgroundColor: PRIMARY, borderRadius: 10 },
   primaryButtonText: { fontWeight: "700", color: "#fff" },
-  fullModal: { flex: 1, backgroundColor: "#F9FAFB", paddingTop: 50 },
+  fullModal: { flex: 1, backgroundColor: "#F9FAFB" },
   fullModalHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", backgroundColor: "#fff", padding: 16, borderBottomWidth: 1, borderBottomColor: "#E5E7EB" },
   customerRow: { flexDirection: "row", gap: 12, alignItems: "center", backgroundColor: "#fff", padding: 14, borderRadius: 12, marginBottom: 9 },
   avatar: { width: 38, height: 38, borderRadius: 19, backgroundColor: "#EDE9FE", alignItems: "center", justifyContent: "center" },
