@@ -30,7 +30,44 @@ export default function useChatActions({
     };
   };
 
-  const emitTextMessage = (content, clientMessageId) =>
+  const buildMentionsSnapshot = (mentions) => {
+    if (!Array.isArray(mentions) || mentions.length === 0) return [];
+    return mentions.map((m) =>
+      m.type === "all"
+        ? { type: "all", userId: null }
+        : {
+            type: "user",
+            userId: { _id: m.userId, full_name: m.full_name },
+          },
+    );
+  };
+
+  const buildMentionsPayload = (mentions) => {
+    if (!Array.isArray(mentions) || mentions.length === 0) return [];
+    return mentions.map((m) =>
+      m.type === "all"
+        ? { type: "all", full_name: m.full_name ?? "Mọi người" }
+        : { type: "user", userId: m.userId, full_name: m.full_name },
+    );
+  };
+
+  const buildReplySnapshot = (replyToMessage) => {
+    if (!replyToMessage?._id) return null;
+    return {
+      _id: replyToMessage._id,
+      content: replyToMessage.content ?? "",
+      type: replyToMessage.type ?? "text",
+      recalled: replyToMessage.recalled ?? null,
+      senderId: replyToMessage.senderId ?? null,
+    };
+  };
+
+  const emitTextMessage = (
+    content,
+    clientMessageId,
+    replyToMessageId,
+    mentionsPayload,
+  ) =>
     new Promise((resolve, reject) => {
       const socket = getChatSocket();
       if (!socket?.connected) {
@@ -39,7 +76,14 @@ export default function useChatActions({
       }
       socket.emit(
         "chat:send",
-        { conversationId, content, type: "text", clientMessageId },
+        {
+          conversationId,
+          content,
+          type: "text",
+          clientMessageId,
+          replyToMessageId: replyToMessageId ?? null,
+          mentions: mentionsPayload ?? [],
+        },
         (response) => {
           if (response?.ok) {
             resolve(response.data);
@@ -50,8 +94,12 @@ export default function useChatActions({
       );
     });
 
-  const sendMessage = async (content) => {
+  const sendMessage = async (content, options = {}) => {
     if (!content || !conversationId || sending) return;
+
+    const { replyToMessage = null, mentions = [] } = options;
+    const replyToMessageId = replyToMessage?._id ?? null;
+    const mentionsPayload = buildMentionsPayload(mentions);
 
     const senderId = buildSenderId();
     if (!senderId) {
@@ -71,6 +119,8 @@ export default function useChatActions({
       seenBy: [],
       status: "sending",
       createdAt: new Date().toISOString(),
+      replyTo: buildReplySnapshot(replyToMessage),
+      mentions: buildMentionsSnapshot(mentions),
     };
 
     dispatch(appendMessage({ conversationId, message: optimisticMessage }));
@@ -84,11 +134,21 @@ export default function useChatActions({
     setSending(true);
 
     try {
-      await emitTextMessage(content, clientMessageId);
+      await emitTextMessage(
+        content,
+        clientMessageId,
+        replyToMessageId,
+        mentionsPayload,
+      );
     } catch (error) {
       const socket = getChatSocket();
       if (!socket?.connected) {
-        retryQueueRef.current.push({ clientMessageId, content });
+        retryQueueRef.current.push({
+          clientMessageId,
+          content,
+          replyToMessageId,
+          mentionsPayload,
+        });
       }
       dispatch(
         updateMessageStatus({
@@ -121,7 +181,12 @@ export default function useChatActions({
           }),
         );
         try {
-          await emitTextMessage(item.content, item.clientMessageId);
+          await emitTextMessage(
+            item.content,
+            item.clientMessageId,
+            item.replyToMessageId,
+            item.mentionsPayload,
+          );
         } catch {
           dispatch(
             updateMessageStatus({

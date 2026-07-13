@@ -4,10 +4,12 @@ import {
   ActivityIndicator,
   Alert,
   Clipboard,
+  FlatList,
   KeyboardAvoidingView,
   Linking,
   Platform,
   StyleSheet,
+  Text,
   TextInput,
   TouchableOpacity,
   View,
@@ -46,6 +48,9 @@ import {
 } from "../../../hooks/workplace/useNicknameMap";
 import useSocketStatus from "../../../hooks/workplace/useSocketStatus";
 import ConnectionStatusBar from "../../../components/workplace/chat/ConnectionStatusBar";
+import { store } from "../../../redux/store";
+import { appendMessage } from "../../../redux/slice/chatSlice";
+import MessageContextMenu from "../../../components/workplace/chat/MessageContextMenu";
 
 export default function ChatRoomScreen({ route, navigation }) {
   const {
@@ -65,6 +70,13 @@ export default function ChatRoomScreen({ route, navigation }) {
   const [viewerImages, setViewerImages] = useState([]);
   const [viewerIndex, setViewerIndex] = useState(0);
   const [viewerVisible, setViewerVisible] = useState(false);
+  const [replyingTo, setReplyingTo] = useState(null);
+  const [selection, setSelection] = useState({ start: 0, end: 0 });
+  const [mentionQuery, setMentionQuery] = useState(null);
+  const [mentionAnchor, setMentionAnchor] = useState(null);
+  const [mentionEntities, setMentionEntities] = useState([]);
+  const [contextMenu, setContextMenu] = useState(null);
+
   const flatListRef = useRef(null);
   const endReachedDuringMomentumRef = useRef(false);
 
@@ -72,6 +84,36 @@ export default function ChatRoomScreen({ route, navigation }) {
   const socketStatus = useSocketStatus();
 
   const currentUserKeys = useMemo(() => getCurrentUserKeys(user), [user]);
+
+  const mentionCandidates = useMemo(() => {
+    if (mentionQuery === null) return [];
+
+    const keyword = mentionQuery.trim().toLowerCase();
+    const isGroup = conversation?.type === "group";
+
+    const baseMembers = (conversation?.members ?? [])
+      .filter((m) => !isCurrentUser(currentUserKeys, m))
+      .map((m) => ({
+        _id: m._id,
+        full_name: resolveDisplayName(
+          nicknameMap,
+          m._id,
+          m.full_name ?? "Thành viên",
+        ),
+        avatar: m.avatar,
+        isAll: false,
+      }));
+
+    const allOption = isGroup
+      ? [{ _id: "all", full_name: "Mọi người", isAll: true }]
+      : [];
+
+    const combined = [...allOption, ...baseMembers];
+
+    if (!keyword) return combined;
+
+    return combined.filter((m) => m.full_name.toLowerCase().includes(keyword));
+  }, [mentionQuery, conversation, currentUserKeys, nicknameMap]);
 
   const otherMember = useMemo(() => {
     if (conversation?.type === "group") return null;
@@ -119,6 +161,70 @@ export default function ChatRoomScreen({ route, navigation }) {
         msg?.conversationId,
     );
   }, [messages]);
+
+  const handleChangeText = (newText) => {
+    setText(newText);
+
+    setMentionEntities((prev) =>
+      prev.filter((e) => newText.slice(e.start, e.end) === `@${e.full_name}`),
+    );
+
+    const cursorPos = selection.start ?? newText.length;
+    const uptoCursor = newText.slice(0, cursorPos);
+    const atIndex = uptoCursor.lastIndexOf("@");
+
+    if (atIndex === -1) {
+      setMentionQuery(null);
+      setMentionAnchor(null);
+      return;
+    }
+
+    const textAfterAt = uptoCursor.slice(atIndex + 1);
+
+    if (/\s/.test(textAfterAt)) {
+      setMentionQuery(null);
+      setMentionAnchor(null);
+      return;
+    }
+
+    setMentionAnchor(atIndex);
+    setMentionQuery(textAfterAt);
+  };
+
+  const handleSelectMention = (candidate) => {
+    if (mentionAnchor === null) return;
+
+    const queryLength = mentionQuery?.length ?? 0;
+    const before = text.slice(0, mentionAnchor);
+    const after = text.slice(mentionAnchor + 1 + queryLength);
+    const insertedText = `@${candidate.full_name} `;
+    const newText = `${before}${insertedText}${after}`;
+
+    const delta = insertedText.length - (1 + queryLength);
+
+    setMentionEntities((prev) => {
+      const shifted = prev.map((e) =>
+        e.start >= mentionAnchor
+          ? { ...e, start: e.start + delta, end: e.end + delta }
+          : e,
+      );
+
+      return [
+        ...shifted,
+        {
+          id: candidate._id,
+          full_name: candidate.full_name,
+          start: mentionAnchor,
+          end: mentionAnchor + insertedText.length - 1,
+          isAll: !!candidate.isAll,
+        },
+      ];
+    });
+
+    setText(newText);
+    setMentionQuery(null);
+    setMentionAnchor(null);
+  };
 
   const openImageViewer = useCallback(
     (messageId) => {
@@ -188,11 +294,34 @@ export default function ChatRoomScreen({ route, navigation }) {
     scrollToBottom,
   });
 
+  const startReply = useCallback((message) => {
+    if (!message || message.type === "system") return;
+
+    setReplyingTo(message);
+  }, []);
+
+  const cancelReply = useCallback(() => {
+    setReplyingTo(null);
+  }, []);
+
   const handleSend = () => {
     const content = text.trim();
     if (!content) return;
+
+    const replyToMessage = replyingTo;
+    const mentionsPayload = mentionEntities.map((e) =>
+      e.isAll
+        ? { type: "all", userId: null, full_name: "Mọi người" }
+        : { type: "user", userId: e.id, full_name: e.full_name },
+    );
+
     setText("");
-    sendMessage(content);
+    setReplyingTo(null);
+    setMentionEntities([]);
+    setMentionQuery(null);
+    setMentionAnchor(null);
+
+    sendMessage(content, { replyToMessage, mentions: mentionsPayload });
   };
 
   const pickImage = async () => {
@@ -316,88 +445,174 @@ export default function ChatRoomScreen({ route, navigation }) {
     }
   };
 
+  const closeContextMenu = useCallback(() => setContextMenu(null), []);
+
+  const handleReactMessage = useCallback(
+    async (type, message) => {
+      const messageId = message?._id;
+      if (!conversationId || !messageId) return;
+      try {
+        const res = await chatApi.reactMessage(conversationId, messageId, type);
+        const updatedMessage = res?.data?.data?.message;
+        if (updatedMessage) {
+          dispatch(appendMessage({ conversationId, message: updatedMessage }));
+        }
+      } catch (error) {
+        Toast.show({
+          type: "error",
+          text1:
+            error?.response?.data?.message ??
+            error?.message ??
+            "Không thể thả cảm xúc",
+        });
+      }
+    },
+    [conversationId, dispatch],
+  );
+
   const handleMessageLongPress = useCallback(
-    (message) => {
-      if (!message) return;
+    (snapshot) => {
+      if (!snapshot?.message) return;
+      const message = snapshot.message;
       const msgId =
         message?._id ?? message?.id ?? message?.clientMessageId ?? null;
+
       if (!msgId) {
         Toast.show({ type: "error", text1: "Không thể thao tác tin nhắn này" });
         return;
       }
+
       const sender = resolveMessageSender(message);
       const isMine = isCurrentUser(currentUserKeys, sender);
       const sentAt = message?.createdAt ? dayjs(message.createdAt) : null;
       const canRecall =
         isMine && sentAt ? dayjs().diff(sentAt, "minute") <= 60 : false;
       const isImage = message.type === "image";
+      const isRecalled = !!message?.recalled?.at;
 
-      if (Platform.OS === "ios" && ActionSheetIOS) {
-        const actions = [];
+      const actions = [];
+
+      if (!isRecalled) {
+        actions.push({
+          key: "reply",
+          label: "Trả lời",
+          onPress: () => startReply(message),
+        });
 
         if (!isImage) {
           actions.push({
+            key: "copy",
             label: "Sao chép",
-            destructive: false,
             onPress: () => handleCopy(message.content),
           });
         }
+
         if (canRecall) {
           actions.push({
+            key: "recall",
             label: "Thu hồi",
             destructive: true,
             onPress: () => showRecalledConfirm(msgId, message._id),
           });
         }
-        actions.push({
-          label: "Xóa với tôi",
-          destructive: true,
-          onPress: () => showDeleteWithMeConfirm(msgId, message._id),
-        });
-        actions.push({ label: "Huỷ", destructive: false, onPress: null });
+      }
 
-        const options = actions.map((a) => a.label);
-        const cancelIndex = options.length - 1;
-        const destructiveIndex = actions
-          .map((a, i) => (a.destructive ? i : null))
-          .filter((i) => i !== null);
+      actions.push({
+        key: "delete",
+        label: "Xoá với tôi",
+        destructive: true,
+        onPress: () => showDeleteWithMeConfirm(msgId, message._id),
+      });
 
-        ActionSheetIOS.showActionSheetWithOptions(
-          {
-            options,
-            destructiveButtonIndex: destructiveIndex,
-            cancelButtonIndex: cancelIndex,
-          },
-          (buttonIndex) => {
-            actions[buttonIndex]?.onPress?.();
-          },
-        );
-      } else {
-        const alertButtons = [];
-        if (!isImage) {
-          alertButtons.push({
-            text: "Sao chép",
-            onPress: () => handleCopy(message.content),
-          });
-        }
-        if (canRecall) {
-          alertButtons.push({
-            text: "Thu hồi",
-            style: "destructive",
-            onPress: () => showRecalledConfirm(msgId, message._id),
-          });
-        }
-        alertButtons.push({
-          text: "Xóa với tôi",
-          style: "destructive",
-          onPress: () => showDeleteWithMeConfirm(msgId, message._id),
+      setContextMenu({
+        message,
+        isMine,
+        layout: snapshot.layout,
+        preview: snapshot.preview,
+        actions,
+      });
+    },
+    [currentUserKeys, startReply],
+  );
+
+  const handlePressReplyPreview = useCallback(
+    async (replyToId) => {
+      if (!replyToId || !conversationId) return;
+
+      let targetIndex = timelineItems.findIndex(
+        (item) => item?.message?._id === replyToId,
+      );
+
+      if (targetIndex !== -1) {
+        flatListRef.current?.scrollToIndex({
+          index: targetIndex,
+          viewPosition: 0.5,
+          animated: true,
         });
-        alertButtons.push({ text: "Huỷ", style: "cancel" });
-        Alert.alert("Tuỳ chọn", null, alertButtons, { cancelable: true });
+        return;
+      }
+
+      try {
+        const res = await chatApi.getMessageById(conversationId, replyToId);
+
+        if (!res.data.data) {
+          Toast.show({
+            type: "info",
+            text1: "Không tìm thấy tin nhắn",
+          });
+          return;
+        }
+
+        while (hasMore) {
+          await loadMore();
+
+          await new Promise((resolve) => setTimeout(resolve, 100));
+
+          const latestItems = buildTimelineItems(
+            [
+              ...(store.getState().chat.messagesByConversationId?.[
+                conversationId
+              ] ?? []),
+            ].reverse(),
+          );
+
+          targetIndex = latestItems.findIndex(
+            (item) => item?.message?._id === replyToId,
+          );
+
+          if (targetIndex !== -1) {
+            requestAnimationFrame(() => {
+              flatListRef.current?.scrollToIndex({
+                index: targetIndex,
+                viewPosition: 0.5,
+                animated: true,
+              });
+            });
+            return;
+          }
+        }
+
+        Toast.show({
+          type: "info",
+          text1: "Không tìm thấy trong lịch sử đã tải",
+        });
+      } catch (e) {
+        Toast.show({
+          type: "error",
+          text1: "Tin nhắn không tồn tại.",
+        });
       }
     },
-    [conversationId, currentUserKeys, dispatch],
+    [conversationId, timelineItems, hasMore, loadMore],
   );
+
+  const handlePressTagName = (user) => {
+    if (!user?.userId) return;
+
+    navigation.navigate("WorkplaceProfileScreen", {
+      accountId: user?.userId?.id_account,
+    });
+  };
 
   const groupAvatars =
     conversation?.type === "group" && !conversation?.avatar
@@ -456,7 +671,72 @@ export default function ChatRoomScreen({ route, navigation }) {
             endReachedDuringMomentumRef={endReachedDuringMomentumRef}
             messages={messages}
             onPressImage={openImageViewer}
+            nicknameMap={nicknameMap}
+            conversation={conversation}
+            onPressReplyPreview={handlePressReplyPreview}
+            onReply={startReply}
+            user={user}
+            onPressTagName={handlePressTagName}
           />
+        )}
+
+        {mentionQuery !== null && mentionCandidates.length > 0 && (
+          <View style={styles.mentionDropdown}>
+            <FlatList
+              data={mentionCandidates}
+              keyExtractor={(item) => String(item._id)}
+              keyboardShouldPersistTaps="handled"
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  style={styles.mentionItem}
+                  onPress={() => handleSelectMention(item)}
+                >
+                  {item.isAll ? (
+                    <View style={styles.mentionAllIcon}>
+                      <Ionicons name="people" size={18} color="#FFF" />
+                    </View>
+                  ) : (
+                    <AuthAvatar
+                      filename={item.avatar}
+                      name={item.full_name}
+                      size={30}
+                    />
+                  )}
+                  <Text style={styles.mentionItemText} numberOfLines={1}>
+                    {item.full_name}
+                  </Text>
+                </TouchableOpacity>
+              )}
+            />
+          </View>
+        )}
+
+        {replyingTo && (
+          <View style={styles.replyBar}>
+            <View style={styles.replyBarAccent} />
+            <View style={styles.replyBarContent}>
+              <Text style={styles.replyBarLabel} numberOfLines={1}>
+                Trả lời{" "}
+                {isCurrentUser(
+                  currentUserKeys,
+                  resolveMessageSender(replyingTo),
+                )
+                  ? "chính bạn"
+                  : (resolveMessageSender(replyingTo)?.full_name ?? "")}
+              </Text>
+              <Text style={styles.replyBarText} numberOfLines={1}>
+                {replyingTo.type === "image"
+                  ? "[Hình ảnh]"
+                  : replyingTo.content || ""}
+              </Text>
+            </View>
+            <TouchableOpacity
+              onPress={cancelReply}
+              style={styles.replyBarClose}
+            >
+              <Ionicons name="close" size={18} color="#6B7280" />
+            </TouchableOpacity>
+          </View>
         )}
 
         <View
@@ -478,7 +758,8 @@ export default function ChatRoomScreen({ route, navigation }) {
           <View style={styles.inputWrap}>
             <TextInput
               value={text}
-              onChangeText={setText}
+              onChangeText={handleChangeText}
+              onSelectionChange={(e) => setSelection(e.nativeEvent.selection)}
               placeholder="Nhập tin nhắn..."
               style={styles.input}
               multiline
@@ -510,6 +791,20 @@ export default function ChatRoomScreen({ route, navigation }) {
         swipeToCloseEnabled
         doubleTapToZoomEnabled
       />
+
+      <MessageContextMenu
+        userInfo={user}
+        visible={!!contextMenu}
+        onClose={closeContextMenu}
+        layout={contextMenu?.layout}
+        preview={contextMenu?.preview}
+        menuActions={contextMenu?.actions ?? []}
+        nicknameMap={nicknameMap}
+        onSelectReaction={(type) => {
+          handleReactMessage(type, contextMenu?.message);
+          closeContextMenu();
+        }}
+      />
     </View>
   );
 }
@@ -528,6 +823,40 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
+  },
+
+  replyBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    backgroundColor: "#F3F4F6",
+    borderTopWidth: 1,
+    borderTopColor: "#E5E7EB",
+  },
+  replyBarAccent: {
+    width: 3,
+    alignSelf: "stretch",
+    borderRadius: 2,
+    backgroundColor: "#0F766E",
+    marginRight: 8,
+  },
+  replyBarContent: {
+    flex: 1,
+  },
+  replyBarLabel: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#0F766E",
+  },
+  replyBarText: {
+    fontSize: 12,
+    color: "#6B7280",
+    marginTop: 1,
+  },
+  replyBarClose: {
+    padding: 6,
+    marginLeft: 8,
   },
 
   composer: {
@@ -584,5 +913,31 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     marginRight: 6,
+  },
+  mentionDropdown: {
+    maxHeight: 220,
+    backgroundColor: "#FFF",
+    borderTopWidth: 1,
+    borderTopColor: "#E5E7EB",
+  },
+  mentionItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    gap: 10,
+  },
+  mentionAllIcon: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: "#0F766E",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  mentionItemText: {
+    fontSize: 14,
+    color: "#111827",
+    flex: 1,
   },
 });
