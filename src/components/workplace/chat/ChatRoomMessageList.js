@@ -32,12 +32,15 @@ const ChatRoomMessageList = ({
   endReachedDuringMomentumRef,
   messages,
   onPressImage,
+  onPressFile,
+  downloadingFileId,
   nicknameMap,
   conversation,
   user,
   onPressReplyPreview,
   onReply,
   onPressTagName,
+  highlightMessageId,
 }) => {
   const [modalReact, setModalReact] = useState({
     visiable: false,
@@ -103,6 +106,8 @@ const ChatRoomMessageList = ({
               isMine={isMine}
               onLongPress={(snapshot) => handleMessageLongPress(snapshot)}
               onPressImage={onPressImage}
+              onPressFile={onPressFile}
+              isDownloadingFile={downloadingFileId === item.message?._id}
               showAvatar={isLastInGroup}
               isLastInGroup={isLastInGroup}
               showSenderName={showSenderName}
@@ -115,6 +120,7 @@ const ChatRoomMessageList = ({
               onPressReactionSummary={(reactions) =>
                 handleReactionSummary(reactions)
               }
+              highlight={highlightMessageId === item.message._id}
             />
           );
         }}

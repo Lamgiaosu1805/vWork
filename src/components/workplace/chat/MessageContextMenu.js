@@ -9,10 +9,11 @@ import {
   Dimensions,
   Image,
 } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import Animated, { FadeIn, ZoomIn } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { resolveDisplayName } from "../../../hooks/workplace/useNicknameMap";
-import { ReplyPreview } from "./MessageBubble";
+import ReplyPreview from "./ReplyPreview";
 
 const SCREEN_WIDTH = Dimensions.get("window").width;
 const SCREEN_HEIGHT = Dimensions.get("window").height;
@@ -32,6 +33,13 @@ const MENU_WIDTH = 230;
 const GAP = 10;
 
 const clamp = (val, min, max) => Math.min(Math.max(val, min), max);
+
+const formatFileSize = (bytes) => {
+  if (!bytes && bytes !== 0) return "";
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+};
 
 const buildMentionSegments = (content, mentions, nicknameMap) => {
   if (!content || !Array.isArray(mentions) || mentions.length === 0) {
@@ -117,6 +125,7 @@ const MessageContextMenu = ({
   const {
     isMine,
     isImage,
+    isFile,
     imageUri,
     imageHeaders,
     text,
@@ -124,6 +133,10 @@ const MessageContextMenu = ({
     mentions,
     replyTo,
     reactions = [],
+    fileName,
+    fileSize,
+    fileIcon,
+    fileColor,
   } = preview;
 
   const menuHeight = menuActions.length * 48 + 8;
@@ -263,6 +276,62 @@ const MessageContextMenu = ({
               borderRadius: 14,
             }}
           />
+        ) : isFile ? (
+          <View
+            style={[
+              styles.fileBubble,
+              { width: bubbleWidth, minHeight: bubbleHeight },
+              isMine ? styles.bubbleMine : styles.bubbleOther,
+            ]}
+          >
+            <ReplyPreview
+              replyTo={replyTo}
+              isMine={isMine}
+              userInfo={userInfo}
+            />
+
+            <View style={styles.fileRow}>
+              <View
+                style={[
+                  styles.fileIconBox,
+                  {
+                    backgroundColor: isMine
+                      ? "rgba(255,255,255,0.18)"
+                      : `${fileColor ?? "#6B7280"}18`,
+                  },
+                ]}
+              >
+                <Ionicons
+                  name={fileIcon ?? "document"}
+                  size={22}
+                  color={isMine ? "#FFF" : (fileColor ?? "#6B7280")}
+                />
+              </View>
+
+              <View style={styles.fileInfo}>
+                <Text
+                  style={[
+                    styles.fileName,
+                    isMine ? styles.textMine : styles.textOther,
+                  ]}
+                  numberOfLines={2}
+                >
+                  {fileName ?? "Tệp đính kèm"}
+                </Text>
+                {!!fileSize && (
+                  <Text
+                    style={[
+                      styles.fileMeta,
+                      isMine ? styles.textMine : styles.textOther,
+                    ]}
+                    numberOfLines={1}
+                  >
+                    {formatFileSize(fileSize)}
+                  </Text>
+                )}
+              </View>
+            </View>
+          </View>
         ) : (
           <View
             style={[
@@ -371,6 +440,40 @@ const styles = StyleSheet.create({
   mentionText: {
     fontWeight: "700",
     textDecorationLine: "underline",
+  },
+
+  // ---- File preview ----
+  fileBubble: {
+    borderRadius: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    justifyContent: "center",
+  },
+  fileRow: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  fileIconBox: {
+    width: 42,
+    height: 42,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 10,
+  },
+  fileInfo: {
+    flex: 1,
+    minWidth: 0,
+  },
+  fileName: {
+    fontSize: 14,
+    fontWeight: "600",
+    lineHeight: 18,
+  },
+  fileMeta: {
+    fontSize: 11,
+    marginTop: 2,
+    opacity: 0.8,
   },
 
   menuCard: {

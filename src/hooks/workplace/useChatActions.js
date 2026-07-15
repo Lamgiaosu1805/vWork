@@ -276,9 +276,83 @@ export default function useChatActions({
     }
   };
 
+  const sendFileMessage = async (file) => {
+    if (!file || !conversationId || sending) return;
+
+    const senderId = buildSenderId();
+    if (!senderId) {
+      console.warn("sendFileMessage: missing user info", user);
+      return;
+    }
+
+    if (file.size && file.size > 5 * 1024 * 1024) {
+      console.warn("sendFileMessage: file exceeds 5MB", file);
+      return;
+    }
+
+    const clientMessageId = makeClientMessageId();
+
+    const optimisticMessage = {
+      _id: clientMessageId,
+      clientMessageId,
+      conversationId,
+      senderId,
+      content: "",
+      type: "file",
+      seenBy: [],
+      status: "sending",
+      createdAt: new Date().toISOString(),
+      attachment: {
+        url: file.uri,
+        mimeType: file.mimeType ?? file.type,
+        size: file.size ?? null,
+        originalName: file.name ?? "file",
+      },
+    };
+
+    dispatch(appendMessage({ conversationId, message: optimisticMessage }));
+    dispatch(
+      upsertConversation({
+        _id: conversationId,
+        lastMessage: optimisticMessage,
+      }),
+    );
+
+    setSending(true);
+
+    try {
+      const formData = new FormData();
+      formData.append("file", {
+        uri: file.uri,
+        name: file.name ?? "file",
+        type: file.mimeType ?? file.type ?? "application/octet-stream",
+      });
+      formData.append("clientMessageId", clientMessageId);
+
+      const res = await chatApi.sendFile(conversationId, formData);
+      const message = res?.data?.data;
+
+      if (message) {
+        dispatch(appendMessage({ conversationId, message }));
+      }
+    } catch (error) {
+      dispatch(
+        updateMessageStatus({
+          conversationId,
+          clientMessageId,
+          status: "failed",
+        }),
+      );
+    } finally {
+      setSending(false);
+      scrollToBottom();
+    }
+  };
+
   return {
     sendMessage,
     sendImageMessage,
+    sendFileMessage,
     sending,
   };
 }

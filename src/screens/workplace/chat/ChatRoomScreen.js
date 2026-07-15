@@ -40,6 +40,9 @@ import dayjs from "dayjs";
 import Toast from "react-native-toast-message";
 import AvatarGroup from "../../../components/workplace/chat/AvatarGroup";
 import * as ImagePicker from "expo-image-picker";
+import * as DocumentPicker from "expo-document-picker";
+import ReactNativeBlobUtil from "react-native-blob-util";
+import Share from "react-native-share";
 import ImageViewing from "react-native-image-viewing";
 import utils from "../../../helpers/utils";
 import {
@@ -51,6 +54,8 @@ import ConnectionStatusBar from "../../../components/workplace/chat/ConnectionSt
 import { store } from "../../../redux/store";
 import { appendMessage } from "../../../redux/slice/chatSlice";
 import MessageContextMenu from "../../../components/workplace/chat/MessageContextMenu";
+
+const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB — khớp giới hạn backend
 
 export default function ChatRoomScreen({ route, navigation }) {
   const {
@@ -76,6 +81,8 @@ export default function ChatRoomScreen({ route, navigation }) {
   const [mentionAnchor, setMentionAnchor] = useState(null);
   const [mentionEntities, setMentionEntities] = useState([]);
   const [contextMenu, setContextMenu] = useState(null);
+  const [downloadingFileId, setDownloadingFileId] = useState(null);
+  const [highlightMessageId, setHighlightMessageId] = useState(null);
 
   const flatListRef = useRef(null);
   const endReachedDuringMomentumRef = useRef(false);
@@ -287,12 +294,13 @@ export default function ChatRoomScreen({ route, navigation }) {
     markSeen,
   });
 
-  const { sendMessage, sendImageMessage, sending } = useChatActions({
-    conversationId,
-    dispatch,
-    user,
-    scrollToBottom,
-  });
+  const { sendMessage, sendImageMessage, sendFileMessage, sending } =
+    useChatActions({
+      conversationId,
+      dispatch,
+      user,
+      scrollToBottom,
+    });
 
   const startReply = useCallback((message) => {
     if (!message || message.type === "system") return;
@@ -361,6 +369,104 @@ export default function ChatRoomScreen({ route, navigation }) {
       height: asset.height,
     });
   };
+
+  const pickFile = async () => {
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: "*/*",
+        copyToCacheDirectory: true,
+      });
+
+      if (result.canceled) return;
+
+      const asset = result.assets?.[0];
+      if (!asset) return;
+
+      if (asset.size && asset.size > MAX_FILE_SIZE) {
+        Toast.show({
+          type: "error",
+          text1: "File vượt quá 5MB",
+          text2: "Vui lòng chọn file nhỏ hơn",
+        });
+        return;
+      }
+
+      sendFileMessage({
+        uri: asset.uri,
+        name: asset.name ?? "file",
+        mimeType: asset.mimeType,
+        size: asset.size,
+      });
+    } catch (error) {
+      Toast.show({ type: "error", text1: "Không thể chọn file" });
+    }
+  };
+
+  const handleAttachPress = () => {
+    const options = ["Ảnh", "Tệp đính kèm", "Huỷ"];
+    const cancelButtonIndex = 2;
+
+    if (Platform.OS === "ios") {
+      ActionSheetIOS.showActionSheetWithOptions(
+        { options, cancelButtonIndex },
+        (buttonIndex) => {
+          if (buttonIndex === 0) pickImage();
+          if (buttonIndex === 1) pickFile();
+        },
+      );
+    } else {
+      Alert.alert("Đính kèm", undefined, [
+        { text: "Ảnh", onPress: pickImage },
+        { text: "Tệp đính kèm", onPress: pickFile },
+        { text: "Huỷ", style: "cancel" },
+      ]);
+    }
+  };
+
+  const openFileAttachment = useCallback(
+    async (message) => {
+      const attachment = message?.attachment;
+      if (!attachment?.url && message?.status === "sending") {
+        Toast.show({ type: "info", text1: "File đang được gửi..." });
+        return;
+      }
+      if (!message?._id || !conversationId) return;
+      if (downloadingFileId) return; // tránh bấm dồn dập
+
+      const originalName = attachment?.originalName ?? "file";
+
+      try {
+        setDownloadingFileId(message._id);
+        Toast.show({ type: "info", text1: "Đang tải file..." });
+
+        const url = chatApi.getFileUrl(conversationId, message._id);
+        const { dirs } = ReactNativeBlobUtil.fs;
+        const localPath = `${dirs.CacheDir}/${Date.now()}_${originalName}`;
+
+        const res = await ReactNativeBlobUtil.config({
+          fileCache: true,
+          path: localPath,
+        }).fetch("GET", url, {
+          Authorization: `Bearer ${accessToken}`,
+        });
+
+        const filePath =
+          Platform.OS === "android" ? `file://${res.path()}` : res.path();
+
+        await Share.open({
+          url: filePath,
+          type: attachment?.mimeType || "application/octet-stream",
+          filename: originalName,
+          failOnCancel: false,
+        });
+      } catch (error) {
+        Toast.show({ type: "error", text1: "Không thể mở file" });
+      } finally {
+        setDownloadingFileId(null);
+      }
+    },
+    [conversationId, accessToken, downloadingFileId],
+  );
 
   const showRecalledConfirm = (msgId, _id) =>
     Alert.alert(
@@ -488,6 +594,7 @@ export default function ChatRoomScreen({ route, navigation }) {
       const canRecall =
         isMine && sentAt ? dayjs().diff(sentAt, "minute") <= 60 : false;
       const isImage = message.type === "image";
+      const isFile = message.type === "file";
       const isRecalled = !!message?.recalled?.at;
 
       const actions = [];
@@ -499,11 +606,19 @@ export default function ChatRoomScreen({ route, navigation }) {
           onPress: () => startReply(message),
         });
 
-        if (!isImage) {
+        if (!isImage && !isFile) {
           actions.push({
             key: "copy",
             label: "Sao chép",
             onPress: () => handleCopy(message.content),
+          });
+        }
+
+        if (isFile) {
+          actions.push({
+            key: "download",
+            label: "Tải xuống",
+            onPress: () => openFileAttachment(message),
           });
         }
 
@@ -532,7 +647,7 @@ export default function ChatRoomScreen({ route, navigation }) {
         actions,
       });
     },
-    [currentUserKeys, startReply],
+    [currentUserKeys, startReply, openFileAttachment],
   );
 
   const handlePressReplyPreview = useCallback(
@@ -549,6 +664,15 @@ export default function ChatRoomScreen({ route, navigation }) {
           viewPosition: 0.5,
           animated: true,
         });
+
+        setTimeout(() => {
+          setHighlightMessageId(replyToId);
+
+          setTimeout(() => {
+            setHighlightMessageId(null);
+          }, 1000);
+        }, 350);
+
         return;
       }
 
@@ -587,6 +711,14 @@ export default function ChatRoomScreen({ route, navigation }) {
                 viewPosition: 0.5,
                 animated: true,
               });
+
+              setTimeout(() => {
+                setHighlightMessageId(replyToId);
+
+                setTimeout(() => {
+                  setHighlightMessageId(null);
+                }, 1000);
+              }, 350);
             });
             return;
           }
@@ -671,12 +803,15 @@ export default function ChatRoomScreen({ route, navigation }) {
             endReachedDuringMomentumRef={endReachedDuringMomentumRef}
             messages={messages}
             onPressImage={openImageViewer}
+            onPressFile={openFileAttachment}
+            downloadingFileId={downloadingFileId}
             nicknameMap={nicknameMap}
             conversation={conversation}
             onPressReplyPreview={handlePressReplyPreview}
             onReply={startReply}
             user={user}
             onPressTagName={handlePressTagName}
+            highlightMessageId={highlightMessageId}
           />
         )}
 
@@ -727,7 +862,9 @@ export default function ChatRoomScreen({ route, navigation }) {
               <Text style={styles.replyBarText} numberOfLines={1}>
                 {replyingTo.type === "image"
                   ? "[Hình ảnh]"
-                  : replyingTo.content || ""}
+                  : replyingTo.type === "file"
+                    ? `📎 ${replyingTo.attachment?.originalName ?? "Tệp đính kèm"}`
+                    : replyingTo.content || ""}
               </Text>
             </View>
             <TouchableOpacity
@@ -749,10 +886,10 @@ export default function ChatRoomScreen({ route, navigation }) {
         >
           <TouchableOpacity
             style={styles.attachButton}
-            onPress={pickImage}
+            onPress={handleAttachPress}
             disabled={sending}
           >
-            <Ionicons name="image-outline" size={24} color="#0F766E" />
+            <Ionicons name="add-circle-outline" size={26} color="#0F766E" />
           </TouchableOpacity>
 
           <View style={styles.inputWrap}>
