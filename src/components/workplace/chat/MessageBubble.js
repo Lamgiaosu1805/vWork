@@ -5,22 +5,34 @@ import {
   View,
   Dimensions,
   Image,
+  ActivityIndicator,
 } from "react-native";
-import React, { useMemo, useRef } from "react";
+import React, { useEffect, useMemo, useRef } from "react";
 import { resolveMessageText } from "../../../utils/chatUtils";
 import dayjs from "dayjs";
 import { AuthAvatar } from "../../PostCard";
 import { useSelector } from "react-redux";
 import utils from "../../../helpers/utils";
 import useGetImageMessage from "../../../hooks/useGetImageMessage";
+import { Ionicons } from "@expo/vector-icons";
 import Animated, {
   Extrapolation,
   interpolate,
+  interpolateColor,
   useAnimatedStyle,
   useSharedValue,
+  withSequence,
+  withTiming,
 } from "react-native-reanimated";
 import { resolveDisplayName } from "../../../hooks/workplace/useNicknameMap";
 import SwipeToReplyMessage from "./SwipeToReplyMessage";
+import {
+  formatFileSize,
+  getFileExt,
+  getFileTypeConfig,
+} from "../../../helpers/fileHelper";
+import ReactionSummaryBadge from "./ReactionSummaryBadge";
+import ReplyPreview from "./ReplyPreview";
 
 const resolveMessageTime = (message) => {
   const value = message?.createdAt;
@@ -31,107 +43,14 @@ const SCREEN_WIDTH = Dimensions.get("window").width;
 const MAX_IMAGE_WIDTH = SCREEN_WIDTH * 0.6;
 const AVATAR_SIZE = 40;
 
-export const REACTIONS = [
-  { type: "like", emoji: "👍", label: "Thích", color: "#1877F2" },
-  { type: "love", emoji: "❤️", label: "Yêu thích", color: "#ED2E30" },
-  { type: "haha", emoji: "😆", label: "Haha", color: "#F7B928" },
-  { type: "wow", emoji: "😮", label: "Wow", color: "#F7B928" },
-  { type: "sad", emoji: "😢", label: "Buồn", color: "#F7B928" },
-  { type: "angry", emoji: "😡", label: "Phẫn nộ", color: "#E9710F" },
-];
-
-const REACTION_MAP = REACTIONS.reduce((acc, r) => {
-  acc[r.type] = r;
-  return acc;
-}, {});
-
-const ReactionSummaryBadge = ({ reactions, isMine, onPress, isImage }) => {
-  if (!reactions?.length) return null;
-
-  const counts = reactions.reduce((acc, r) => {
-    acc[r.type] = (acc[r.type] || 0) + 1;
-    return acc;
-  }, {});
-
-  const topTypes = Object.entries(counts)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 3)
-    .map(([type]) => type);
-
-  return (
-    <TouchableOpacity
-      activeOpacity={0.7}
-      onPress={onPress}
-      style={[
-        styles.reactionBadge,
-        isMine ? styles.reactionBadgeMine : styles.reactionBadgeOther,
-        isImage && { bottom: 12 },
-      ]}
-    >
-      {topTypes.map((t) => (
-        <Text key={t} style={styles.reactionBadgeEmoji}>
-          {REACTION_MAP[t]?.emoji}
-        </Text>
-      ))}
-      {reactions.length > 1 && (
-        <Text style={styles.reactionBadgeCount}>{reactions.length}</Text>
-      )}
-    </TouchableOpacity>
-  );
-};
-
-export const ReplyPreview = ({ replyTo, isMine, onPress, userInfo }) => {
-  if (!replyTo) return null;
-
-  const isRecalledOriginal = !!replyTo?.recalled?.at;
-  const senderName = replyTo?.senderId?.full_name ?? "Người dùng";
-  const previewText = isRecalledOriginal
-    ? "Tin nhắn đã được thu hồi"
-    : replyTo?.type === "image"
-      ? "[Hình ảnh]"
-      : replyTo?.content || "";
-
-  const checkDeleted = replyTo?.deletedFor?.some((id) =>
-    id.includes(userInfo?._id),
-  );
-
-  return (
-    <TouchableOpacity
-      activeOpacity={0.7}
-      onPress={() => onPress?.(replyTo?._id)}
-      style={[
-        styles.replyPreview,
-        isMine ? styles.replyPreviewMine : styles.replyPreviewOther,
-      ]}
-    >
-      <Text
-        style={[
-          styles.replySenderText,
-          isMine ? styles.replyTextMine : styles.replyTextOther,
-        ]}
-        numberOfLines={1}
-      >
-        {senderName}
-      </Text>
-      <Text
-        style={[
-          styles.replyContentText,
-          isMine ? styles.replyTextMine : styles.replyTextOther,
-        ]}
-        numberOfLines={1}
-      >
-        {checkDeleted ? "Tin nhắn đã bị xoá" : previewText}
-      </Text>
-    </TouchableOpacity>
-  );
-};
-
 const MessageBubble = ({
   item,
   isMine,
   onLongPress,
   sender,
   onPressImage,
+  onPressFile,
+  isDownloadingFile = false,
   showAvatar = true,
   showSenderName = false,
   displayName,
@@ -142,8 +61,11 @@ const MessageBubble = ({
   onPressTagName,
   onReply,
   onPressReactionSummary,
+  highlight,
 }) => {
   const translateX = useSharedValue(0);
+  const progressHightlighMess = useSharedValue(0);
+
   const accessToken = useSelector((state) => state.auth.accessToken);
   const bubbleRef = useRef(null);
 
@@ -157,8 +79,20 @@ const MessageBubble = ({
 
   const isRecalled = !!item?.recalled?.at;
   const isImage = item?.type === "image" && !isRecalled;
+  const isFile = item?.type === "file" && !isRecalled;
 
   const { uri: imageUri, headers: imageHeaders } = useGetImageMessage(item);
+
+  const fileConfig = useMemo(
+    () =>
+      isFile
+        ? getFileTypeConfig(
+            item?.attachment?.originalName,
+            item?.attachment?.mimeType,
+          )
+        : null,
+    [isFile, item?.attachment?.originalName, item?.attachment?.mimeType],
+  );
 
   const avatarAnimatedStyle = useAnimatedStyle(() => ({
     opacity: interpolate(
@@ -170,8 +104,7 @@ const MessageBubble = ({
   }));
 
   const handleLongPress = () => {
-    if (isRecalled && item?.type !== "text") {
-    }
+    if (isRecalled) return;
 
     bubbleRef.current?.measureInWindow((x, y, width, height) => {
       onLongPress?.({
@@ -181,6 +114,7 @@ const MessageBubble = ({
         preview: {
           isMine,
           isImage,
+          isFile,
           imageUri,
           imageHeaders,
           text: resolveMessageText(item),
@@ -188,6 +122,10 @@ const MessageBubble = ({
           mentions: item?.mentions,
           replyTo: item?.replyTo,
           reactions: item?.reactions,
+          fileName: item?.attachment?.originalName ?? "Tệp đính kèm",
+          fileSize: item?.attachment?.size,
+          fileIcon: fileConfig?.icon,
+          fileColor: fileConfig?.color,
         },
       });
     });
@@ -254,6 +192,27 @@ const MessageBubble = ({
     return segments;
   };
 
+  const highlightStyle = useAnimatedStyle(() => ({
+    transform: [
+      {
+        scale: 1 + progressHightlighMess.value * 0.15,
+      },
+    ],
+
+    borderRadius: 18,
+  }));
+
+  useEffect(() => {
+    if (highlight) {
+      progressHightlighMess.value = 0;
+
+      progressHightlighMess.value = withSequence(
+        withTiming(1, { duration: 250 }),
+        withTiming(0, { duration: 1200 }),
+      );
+    }
+  }, [highlight]);
+
   return (
     <View
       style={[
@@ -281,6 +240,7 @@ const MessageBubble = ({
         isMine={isMine}
         translateX={translateX}
         style={[styles.column, isMine ? styles.columnMine : styles.columnOther]}
+        isRecalled={isRecalled}
       >
         {!isMine && showSenderName && !!displayName && (
           <Text style={styles.senderNameText} numberOfLines={1}>
@@ -312,12 +272,15 @@ const MessageBubble = ({
                 transition={150}
               />
             </TouchableOpacity>
-            <ReactionSummaryBadge
-              reactions={item?.reactions}
-              isMine={isMine}
-              onPress={() => onPressReactionSummary(item?.reactions)}
-              isImage={isImage}
-            />
+            {!isRecalled && (
+              <ReactionSummaryBadge
+                reactions={item?.reactions}
+                isMine={isMine}
+                onPress={() => onPressReactionSummary(item?.reactions)}
+                isImage={isImage}
+              />
+            )}
+
             {item?.status === "sending" && (
               <View style={styles.imageOverlay}>
                 <Text style={styles.imageOverlayText}>Đang gửi...</Text>
@@ -332,14 +295,16 @@ const MessageBubble = ({
               )}
             </View>
           </View>
-        ) : (
+        ) : isFile ? (
           <TouchableOpacity
             ref={bubbleRef}
-            activeOpacity={isRecalled ? 1 : 0.85}
+            activeOpacity={0.85}
+            onPress={() => onPressFile?.(item)}
             onLongPress={handleLongPress}
             delayLongPress={250}
+            disabled={item?.status === "sending"}
             style={[
-              styles.bubble,
+              styles.fileBubble,
               isMine ? styles.bubbleMine : styles.bubbleOther,
             ]}
           >
@@ -350,32 +315,70 @@ const MessageBubble = ({
               userInfo={userInfo}
             />
 
-            <Text
-              style={[
-                styles.messageText,
-                isMine ? styles.messageTextMine : styles.messageTextOther,
-              ]}
-            >
-              {isRecalled
-                ? "Tin nhắn đã được thu hồi"
-                : buildMentionSegments(
-                    resolveMessageText(item),
-                    item?.mentions,
-                  ).map((seg, idx) => (
-                    <Text
-                      onPress={
-                        seg.isMention
-                          ? () => onPressTagName(seg.mention)
-                          : undefined
-                      }
-                      key={idx}
-                      style={seg.isMention && styles.mentionText}
-                      suppressHighlighting={seg.isMention}
-                    >
-                      {seg.text}
-                    </Text>
-                  ))}
-            </Text>
+            <View style={styles.fileRow}>
+              <View
+                style={[
+                  styles.fileIconBox,
+                  {
+                    backgroundColor: isMine
+                      ? "rgba(255,255,255,0.18)"
+                      : `${fileConfig.color}18`,
+                  },
+                ]}
+              >
+                {item?.status === "sending" || isDownloadingFile ? (
+                  <ActivityIndicator
+                    size="small"
+                    color={isMine ? "#FFF" : fileConfig.color}
+                  />
+                ) : (
+                  <Ionicons
+                    name={fileConfig.icon}
+                    size={22}
+                    color={isMine ? "#FFF" : fileConfig.color}
+                  />
+                )}
+              </View>
+
+              <View style={styles.fileInfo}>
+                <Text
+                  style={[
+                    styles.fileName,
+                    isMine ? styles.messageTextMine : styles.messageTextOther,
+                  ]}
+                  numberOfLines={2}
+                >
+                  {item?.attachment?.originalName ?? "Tệp đính kèm"}
+                </Text>
+                <Text
+                  style={[
+                    styles.fileMeta,
+                    isMine ? styles.timeTextMine : styles.timeTextOther,
+                  ]}
+                  numberOfLines={1}
+                >
+                  {[
+                    getFileExt(item?.attachment?.originalName),
+                    formatFileSize(item?.attachment?.size),
+                  ]
+                    .filter(Boolean)
+                    .join(" · ")}
+                  {item?.status === "sending"
+                    ? " · Đang gửi..."
+                    : isDownloadingFile
+                      ? " · Đang tải..."
+                      : ""}
+                </Text>
+              </View>
+
+              {item?.status !== "sending" && !isDownloadingFile && (
+                <Ionicons
+                  name="download-outline"
+                  size={18}
+                  color={isMine ? "rgba(255,255,255,0.85)" : "#6B7280"}
+                />
+              )}
+            </View>
 
             <View style={styles.metaRow}>
               <Text
@@ -386,20 +389,93 @@ const MessageBubble = ({
               >
                 {resolveMessageTime(item)}
               </Text>
-              {isMine && !!statusText && (
+              {isMine && !!statusText && item?.status !== "sending" && (
                 <Text style={[styles.statusText, styles.timeTextMine]}>
                   {statusText}
                 </Text>
               )}
             </View>
 
-            <ReactionSummaryBadge
-              reactions={item?.reactions}
-              isMine={isMine}
-              onPress={() => onPressReactionSummary?.(item?.reactions)}
-              isImage={isImage}
-            />
+            {!isRecalled && (
+              <ReactionSummaryBadge
+                reactions={item?.reactions}
+                isMine={isMine}
+                onPress={() => onPressReactionSummary?.(item?.reactions)}
+              />
+            )}
           </TouchableOpacity>
+        ) : (
+          <Animated.View style={highlightStyle}>
+            <TouchableOpacity
+              ref={bubbleRef}
+              activeOpacity={isRecalled ? 1 : 0.85}
+              onLongPress={handleLongPress}
+              delayLongPress={250}
+              style={[
+                styles.bubble,
+                isMine ? styles.bubbleMine : styles.bubbleOther,
+              ]}
+            >
+              <ReplyPreview
+                replyTo={item.replyTo}
+                isMine={isMine}
+                onPress={onPressReplyPreview}
+                userInfo={userInfo}
+              />
+
+              <Text
+                style={[
+                  styles.messageText,
+                  isMine ? styles.messageTextMine : styles.messageTextOther,
+                ]}
+              >
+                {isRecalled
+                  ? "Tin nhắn đã được thu hồi"
+                  : buildMentionSegments(
+                      resolveMessageText(item),
+                      item?.mentions,
+                    ).map((seg, idx) => (
+                      <Text
+                        onPress={
+                          seg.isMention
+                            ? () => onPressTagName(seg.mention)
+                            : undefined
+                        }
+                        key={idx}
+                        style={seg.isMention && styles.mentionText}
+                        suppressHighlighting={seg.isMention}
+                      >
+                        {seg.text}
+                      </Text>
+                    ))}
+              </Text>
+
+              <View style={styles.metaRow}>
+                <Text
+                  style={[
+                    styles.timeText,
+                    isMine ? styles.timeTextMine : styles.timeTextOther,
+                  ]}
+                >
+                  {resolveMessageTime(item)}
+                </Text>
+                {isMine && !!statusText && (
+                  <Text style={[styles.statusText, styles.timeTextMine]}>
+                    {statusText}
+                  </Text>
+                )}
+              </View>
+
+              {!isRecalled && (
+                <ReactionSummaryBadge
+                  reactions={item?.reactions}
+                  isMine={isMine}
+                  onPress={() => onPressReactionSummary?.(item?.reactions)}
+                  isImage={isImage}
+                />
+              )}
+            </TouchableOpacity>
+          </Animated.View>
         )}
       </SwipeToReplyMessage>
     </View>
@@ -454,26 +530,6 @@ const styles = StyleSheet.create({
   timeTextOther: { color: "#6B7280" },
   statusText: { marginLeft: 8, fontSize: 11 },
 
-  replyPreview: {
-    borderLeftWidth: 3,
-    borderRadius: 6,
-    paddingHorizontal: 8,
-    paddingVertical: 6,
-    marginBottom: 6,
-  },
-  replyPreviewMine: {
-    borderLeftColor: "rgba(255,255,255,0.7)",
-    backgroundColor: "rgba(255,255,255,0.12)",
-  },
-  replyPreviewOther: {
-    borderLeftColor: "#0F766E",
-    backgroundColor: "#F3F4F6",
-  },
-  replySenderText: { fontSize: 12, fontWeight: "600", marginBottom: 2 },
-  replyContentText: { fontSize: 12 },
-  replyTextMine: { color: "rgba(255,255,255,0.85)" },
-  replyTextOther: { color: "#374151" },
-
   imageWrap: { borderRadius: 14, overflow: "hidden", position: "relative" },
   image: { borderRadius: 14, backgroundColor: "#E5E7EB" },
   imageOverlay: {
@@ -500,22 +556,38 @@ const styles = StyleSheet.create({
     textDecorationLine: "underline",
   },
 
-  reactionBadge: {
-    position: "absolute",
-    bottom: -6,
+  fileBubble: {
+    borderRadius: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    position: "relative",
+    minWidth: 220,
+    maxWidth: 260,
+  },
+  fileRow: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#FFF",
-    borderRadius: 20,
-    padding: 5,
-    shadowColor: "#000",
-    shadowOpacity: 0.12,
-    shadowRadius: 3,
-    shadowOffset: { width: 0, height: 1 },
-    elevation: 2,
   },
-  reactionBadgeMine: { left: 6 },
-  reactionBadgeOther: { right: 6 },
-  reactionBadgeEmoji: { fontSize: 12, marginHorizontal: -1 },
-  reactionBadgeCount: { fontSize: 12, color: "#6B7280", marginLeft: 3 },
+  fileIconBox: {
+    width: 42,
+    height: 42,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 10,
+  },
+  fileInfo: {
+    flex: 1,
+    minWidth: 0,
+    marginRight: 6,
+  },
+  fileName: {
+    fontSize: 14,
+    fontWeight: "600",
+    lineHeight: 18,
+  },
+  fileMeta: {
+    fontSize: 11,
+    marginTop: 2,
+  },
 });

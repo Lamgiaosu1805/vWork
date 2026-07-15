@@ -192,6 +192,23 @@ const chatApi = {
       { type },
       { requiresAuth: true },
     ),
+
+  /**
+   * @param {string} conversationId
+   * @param {FormData} payload
+   */
+  sendFile: (conversationId, payload) =>
+    api.post(`/chat/conversations/${conversationId}/files`, payload, {
+      requiresAuth: true,
+      headers: { "Content-Type": "multipart/form-data" },
+    }),
+
+  /**
+   * @param {string} conversationId
+   * @param {string} messageId
+   */
+  getFileUrl: (conversationId, messageId) =>
+    `${utils.BASE_URL}/chat/conversations/${conversationId}/messages/${messageId}/file`,
 };
 
 export default chatApi;

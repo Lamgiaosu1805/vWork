@@ -23,8 +23,10 @@ export default function SwipeToReplyMessage({
   isMine = false,
   translateX,
   style,
+  isRecalled = false,
 }) {
   const pan = Gesture.Pan()
+    .enabled(!isRecalled)
     .minDistance(5)
     .activeOffsetX(isMine ? [-15, 0] : [0, 15])
     .failOffsetY([-12, 12])
