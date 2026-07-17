@@ -24,6 +24,7 @@ import { AuthAvatar } from "../../PostCard";
 import OptionRow from "./OptionRow";
 import ContactRow from "./ContactRow";
 import { ScrollView } from "react-native";
+import chatApi from "../../../api/chat";
 
 const NewConversationBottomSheet = ({ translateNewConversation, onSelect }) => {
   const insets = useSafeAreaInsets();
@@ -32,6 +33,7 @@ const NewConversationBottomSheet = ({ translateNewConversation, onSelect }) => {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [searchLoading, setSearchLoading] = useState(false);
   const debounceRef = useRef(null);
   const { getUsers, loading } = useUser();
   const scrollY = useSharedValue(0);
@@ -40,6 +42,9 @@ const NewConversationBottomSheet = ({ translateNewConversation, onSelect }) => {
 
   const [showGroupName, setShowGroupName] = useState(false);
   const [groupName, setGroupName] = useState("");
+
+  const isSearching = !!query;
+  const isListLoading = isSearching ? searchLoading : loading;
 
   const handleClose = useCallback(
     (isGesture, shouldClose) => {
@@ -112,26 +117,38 @@ const NewConversationBottomSheet = ({ translateNewConversation, onSelect }) => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(async () => {
       try {
-        if (page > 1) setLoadingMore(true);
-        const params = { page, limit: 30, isFull: "true" };
-        if (query) params.search = query;
-        const res = await getUsers(params);
+        if (query) {
+          if (page === 1) setSearchLoading(true);
 
-        if (page === 1) {
-          setUsers(res?.data?.data);
+          const res = await chatApi.searchUsersForChatApi(query, 30);
+          const data = res?.data?.data ?? res?.data ?? [];
+
+          if (page === 1) {
+            setUsers(data);
+          } else {
+            setUsers((prev) => [...prev, ...data]);
+          }
+
+          setTotalPages(1);
         } else {
-          setUsers((prev) => [...prev, ...res?.data?.data]);
-        }
+          if (page > 1) setLoadingMore(true);
+          const params = { page, limit: 30 };
+          const res = await getUsers(params);
 
-        const total =
-          res?.data?.pagination?.total_pages ??
-          res?.data?.pagination?.total_pages ??
-          1;
-        setTotalPages(total);
+          if (page === 1) {
+            setUsers(res?.data?.data);
+          } else {
+            setUsers((prev) => [...prev, ...res?.data?.data]);
+          }
+
+          const total = res?.data?.pagination?.total_pages ?? 1;
+          setTotalPages(total);
+        }
       } catch (e) {
         if (page === 1) setUsers([]);
       } finally {
         setLoadingMore(false);
+        setSearchLoading(false);
       }
     }, 300);
 
@@ -144,7 +161,7 @@ const NewConversationBottomSheet = ({ translateNewConversation, onSelect }) => {
   }, [query]);
 
   const handleLoadMore = () => {
-    if (loadingMore || loading) return;
+    if (loadingMore || loading || isSearching) return;
     if (page < totalPages) setPage((p) => p + 1);
   };
 
@@ -301,11 +318,13 @@ const NewConversationBottomSheet = ({ translateNewConversation, onSelect }) => {
           )}
           {!showGroupName && (
             <>
-              <Text style={styles.suggestTitle}>Gợi ý</Text>
+              <Text style={styles.suggestTitle}>
+                {isSearching ? "Kết quả tìm kiếm" : "Gợi ý"}
+              </Text>
 
               {users?.length === 0 ? (
                 <View style={styles.emptyWrap}>
-                  {loading ? (
+                  {isListLoading ? (
                     <ActivityIndicator />
                   ) : (
                     <Text style={styles.emptyText}>Không có liên hệ</Text>
@@ -406,7 +425,7 @@ const styles = StyleSheet.create({
   },
 
   suggestTitle: {
-    fontSize: 13,
+    fontSize: 14,
     color: "#6B7280",
     marginTop: 8,
     marginBottom: 8,

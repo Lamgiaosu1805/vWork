@@ -209,6 +209,12 @@ const chatApi = {
    */
   getFileUrl: (conversationId, messageId) =>
     `${utils.BASE_URL}/chat/conversations/${conversationId}/messages/${messageId}/file`,
+
+  searchUsersForChatApi: (search, limit = 10) =>
+    api.get("/chat/users/search", {
+      requiresAuth: true,
+      params: { search, limit },
+    }),
 };
 
 export default chatApi;
