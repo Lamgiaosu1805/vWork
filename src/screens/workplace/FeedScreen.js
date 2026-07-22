@@ -62,7 +62,11 @@ export default function FeedScreen({ navigation }) {
   }, [fetchPosts]);
 
   useEffect(() => {
-    socket.emit("join_feed");
+    const joinFeed = () => socket.emit("join_feed");
+
+    joinFeed();
+
+    socket.on("connect", joinFeed);
 
     const handleNewPost = ({ post }) => {
       setPendingPosts((prev) => {
@@ -87,22 +91,32 @@ export default function FeedScreen({ navigation }) {
     const handlePostPinned = () => {
       fetchPosts(1, true);
     };
+    const handlePostUpdated = ({ post }) => {
+      setPosts((prev) => prev.map((p) => (p._id === post._id ? post : p)));
+    };
 
     socket.on("new_post", handleNewPost);
     socket.on("reaction_updated", handleReactionUpdated);
     socket.on("comment_count_updated", handleCommentCountUpdated);
     socket.on("post_deleted", handlePostDeleted);
     socket.on("post_pinned", handlePostPinned);
+    socket.on("post_updated", handlePostUpdated);
 
     return () => {
       socket.emit("leave_feed");
+      socket.off("connect", joinFeed);
       socket.off("new_post", handleNewPost);
       socket.off("reaction_updated", handleReactionUpdated);
       socket.off("comment_count_updated", handleCommentCountUpdated);
       socket.off("post_deleted", handlePostDeleted);
       socket.off("post_pinned", handlePostPinned);
+      socket.off("post_updated", handlePostUpdated);
     };
   }, [fetchPosts]);
+
+  const handleEdit = (post) => {
+    navigation.navigate("ComposePostScreen", { editPost: post });
+  };
 
   const flushPending = () => {
     setPosts((prev) => {
@@ -218,6 +232,7 @@ export default function FeedScreen({ navigation }) {
               onReact={handleReact}
               onDelete={handleDelete}
               onPin={handlePin}
+              onEdit={handleEdit}
               onCommentPress={(p) =>
                 navigation.navigate("FeedCommentScreen", { post: p })
               }

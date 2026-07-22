@@ -3,8 +3,11 @@ import {
   ActivityIndicator,
   Alert,
   FlatList,
+  Image,
   KeyboardAvoidingView,
+  Modal,
   Platform,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -13,6 +16,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
+import * as ImagePicker from "expo-image-picker";
 import { useSelector } from "react-redux";
 import Toast from "react-native-toast-message";
 import dayjs from "dayjs";
@@ -31,8 +35,44 @@ import useSocketStatus from "../../hooks/workplace/useSocketStatus";
 dayjs.extend(relativeTime);
 dayjs.locale("vi");
 
+const ImageViewerModal = ({ visible, uri, onClose }) => (
+  <Modal
+    visible={visible}
+    transparent
+    animationType="fade"
+    onRequestClose={onClose}
+  >
+    <View style={styles.viewerBackdrop}>
+      <TouchableOpacity
+        style={styles.viewerCloseBtn}
+        onPress={onClose}
+        hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+      >
+        <Ionicons name="close" size={28} color="#fff" />
+      </TouchableOpacity>
+      <ScrollView
+        style={styles.viewerScroll}
+        contentContainerStyle={styles.viewerScrollContent}
+        minimumZoomScale={1}
+        maximumZoomScale={4}
+        centerContent
+        showsHorizontalScrollIndicator={false}
+        showsVerticalScrollIndicator={false}
+      >
+        {!!uri && (
+          <Image
+            source={{ uri }}
+            style={styles.viewerImage}
+            resizeMode="contain"
+          />
+        )}
+      </ScrollView>
+    </View>
+  </Modal>
+);
+
 // ── CommentItem — Facebook style ──────────────────────────────────────────────
-const CommentItem = ({ comment, canDelete, onDelete }) => {
+const CommentItem = ({ comment, canDelete, onDelete, onImagePress }) => {
   const [timeVisible, setTimeVisible] = useState(false);
 
   return (
@@ -43,26 +83,43 @@ const CommentItem = ({ comment, canDelete, onDelete }) => {
         size={32}
       />
       <View style={styles.commentBody}>
-        <TouchableOpacity
-          activeOpacity={0.85}
-          onPress={() => setTimeVisible((v) => !v)}
-          onLongPress={() => {
-            if (!canDelete) return;
-            Alert.alert("Xóa bình luận?", "", [
-              { text: "Hủy", style: "cancel" },
-              {
-                text: "Xóa",
-                style: "destructive",
-                onPress: () => onDelete(comment._id),
-              },
-            ]);
-          }}
-        >
-          <View style={styles.commentBubble}>
-            <Text style={styles.commentAuthor}>{comment.author_name}</Text>
-            <Text style={styles.commentContent}>{comment.content}</Text>
-          </View>
-        </TouchableOpacity>
+        <View style={styles.commentBubble}>
+          <TouchableOpacity
+            activeOpacity={0.85}
+            onPress={() => setTimeVisible((v) => !v)}
+            onLongPress={() => {
+              if (!canDelete) return;
+              Alert.alert("Xóa bình luận?", "", [
+                { text: "Hủy", style: "cancel" },
+                {
+                  text: "Xóa",
+                  style: "destructive",
+                  onPress: () => onDelete(comment._id),
+                },
+              ]);
+            }}
+          >
+            {!!comment.author_name && (
+              <Text style={styles.commentAuthor}>{comment.author_name}</Text>
+            )}
+            {!!comment.content && (
+              <Text style={styles.commentContent}>{comment.content}</Text>
+            )}
+          </TouchableOpacity>
+
+          {!!comment.image && (
+            <TouchableOpacity
+              activeOpacity={0.9}
+              onPress={() => onImagePress(comment.image)}
+            >
+              <Image
+                source={{ uri: comment.image }}
+                style={styles.commentImage}
+                resizeMode="cover"
+              />
+            </TouchableOpacity>
+          )}
+        </View>
         {timeVisible && (
           <Text style={styles.commentTime}>
             {dayjs(comment.createdAt).fromNow()}
@@ -86,6 +143,8 @@ export default function CommentScreen({ route, navigation }) {
   const [comments, setComments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [text, setText] = useState("");
+  const [imageUri, setImageUri] = useState(null);
+  const [viewerImage, setViewerImage] = useState(null);
   const [sending, setSending] = useState(false);
   const listRef = useRef(null);
   const inputRef = useRef(null);
@@ -160,14 +219,41 @@ export default function CommentScreen({ route, navigation }) {
     }
   };
 
+  const handlePickImage = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== "granted") {
+      Toast.show({ type: "error", text1: "Cần quyền truy cập thư viện ảnh" });
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      quality: 0.7,
+      allowsEditing: false,
+    });
+    if (!result.canceled && result.assets?.[0]?.uri) {
+      setImageUri(result.assets[0].uri);
+    }
+  };
+
   const handleSend = async () => {
     const value = text.trim();
-    if (!value || sending) return;
+    if ((!value && !imageUri) || sending) return;
+
     setSending(true);
+    const pendingText = value;
+    const pendingImage = imageUri;
     setText("");
+    setImageUri(null);
+
     try {
-      const res = await feedApi.createComment(initialPost._id, value);
-      const newComment = res?.data ?? res;
+      const res = imageUri
+        ? await feedApi.createCommentWithImage(initialPost._id, {
+            content: pendingText,
+            imageUri,
+          })
+        : await feedApi.createComment(initialPost._id, pendingText);
+
+      const newComment = res?.data?.data ?? res?.data ?? res;
       if (newComment?._id) {
         setComments((prev) => {
           const exists = prev.some((c) => c._id === newComment._id);
@@ -175,7 +261,8 @@ export default function CommentScreen({ route, navigation }) {
         });
       }
     } catch (err) {
-      setText(value);
+      setText(pendingText);
+      setImageUri(pendingImage);
       Toast.show({ type: "error", text1: err?.message ?? "Gửi thất bại" });
     } finally {
       setSending(false);
@@ -222,9 +309,12 @@ export default function CommentScreen({ route, navigation }) {
         comment={item}
         canDelete={canDelete}
         onDelete={handleDeleteComment}
+        onImagePress={setViewerImage}
       />
     );
   };
+
+  const canSend = (!!text.trim() || !!imageUri) && !sending;
 
   return (
     <SafeAreaView style={styles.safe} edges={["bottom"]}>
@@ -263,6 +353,19 @@ export default function CommentScreen({ route, navigation }) {
           />
         )}
 
+        {!!imageUri && (
+          <View style={styles.previewBar}>
+            <Image source={{ uri: imageUri }} style={styles.previewThumb} />
+            <TouchableOpacity
+              style={styles.previewRemove}
+              onPress={() => setImageUri(null)}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <Ionicons name="close-circle" size={20} color="#65676B" />
+            </TouchableOpacity>
+          </View>
+        )}
+
         {/* Input bar */}
         <View style={styles.inputBar}>
           <AuthAvatar
@@ -272,6 +375,12 @@ export default function CommentScreen({ route, navigation }) {
             cacheKey={user?.updatedAt}
           />
           <View style={styles.inputWrap}>
+            <TouchableOpacity
+              onPress={handlePickImage}
+              style={styles.imagePickIcon}
+            >
+              <Ionicons name="image-outline" size={22} color={BRAND} />
+            </TouchableOpacity>
             <TextInput
               ref={inputRef}
               style={styles.input}
@@ -284,7 +393,7 @@ export default function CommentScreen({ route, navigation }) {
             />
             <TouchableOpacity
               onPress={handleSend}
-              disabled={!text.trim() || sending}
+              disabled={!canSend}
               style={styles.sendIcon}
             >
               {sending ? (
@@ -293,13 +402,18 @@ export default function CommentScreen({ route, navigation }) {
                 <Ionicons
                   name="send"
                   size={20}
-                  color={text.trim() ? BRAND : "#BCC0C4"}
+                  color={canSend ? BRAND : "#BCC0C4"}
                 />
               )}
             </TouchableOpacity>
           </View>
         </View>
       </KeyboardAvoidingView>
+      <ImageViewerModal
+        visible={!!viewerImage}
+        uri={viewerImage}
+        onClose={() => setViewerImage(null)}
+      />
     </SafeAreaView>
   );
 }
@@ -345,6 +459,13 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   commentContent: { fontSize: 14, color: "#050505", lineHeight: 20 },
+  commentImage: {
+    width: 180,
+    height: 180,
+    borderRadius: 12,
+    marginTop: 6,
+    backgroundColor: "#E4E6EB",
+  },
   commentTime: { fontSize: 11, color: "#65676B", marginTop: 4, marginLeft: 12 },
 
   empty: {
@@ -354,6 +475,26 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   emptyText: { color: "#9CA3AF", fontSize: 14 },
+
+  previewBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 12,
+    paddingTop: 8,
+    backgroundColor: "#fff",
+  },
+  previewThumb: {
+    width: 56,
+    height: 56,
+    borderRadius: 8,
+    backgroundColor: "#E4E6EB",
+  },
+  previewRemove: {
+    marginLeft: -12,
+    marginTop: -40,
+    backgroundColor: "#fff",
+    borderRadius: 10,
+  },
 
   // Input bar
   inputBar: {
@@ -376,6 +517,7 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     gap: 8,
   },
+  imagePickIcon: { paddingBottom: 4 },
   input: {
     flex: 1,
     minHeight: 28,
@@ -386,4 +528,30 @@ const styles = StyleSheet.create({
     paddingBottom: 0,
   },
   sendIcon: { paddingBottom: 2 },
+  viewerBackdrop: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.95)",
+    justifyContent: "center",
+  },
+  viewerScroll: {
+    flex: 1,
+  },
+  viewerScrollContent: {
+    flexGrow: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  viewerImage: {
+    width: "100%",
+    height: "100%",
+  },
+  viewerCloseBtn: {
+    position: "absolute",
+    top: 50,
+    right: 20,
+    zIndex: 10,
+    backgroundColor: "rgba(0,0,0,0.4)",
+    borderRadius: 20,
+    padding: 6,
+  },
 });

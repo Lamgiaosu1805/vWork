@@ -382,6 +382,7 @@ const PostCard = ({
   onReact,
   onDelete,
   onPin,
+  onEdit,
   onCommentPress,
   canManage,
   onAuthorPress,
@@ -426,6 +427,7 @@ const PostCard = ({
 
   const showMenu = () => {
     const options = [];
+    if (isAuthor && onEdit) options.push("Chỉnh sửa bài viết");
     if (canManage && onPin) options.push(post.pinned ? "Bỏ ghim" : "Ghim bài");
     if (isAuthor || canManage) options.push("Xóa bài viết");
     if (!options.length) return;
@@ -434,8 +436,11 @@ const PostCard = ({
         text: opt,
         style: opt.includes("Xóa") ? "destructive" : "default",
         onPress: () => {
-          if (opt.includes("ghim") || opt.includes("Ghim")) onPin?.(post._id);
-          else {
+          if (opt === "Chỉnh sửa bài viết") {
+            onEdit(post);
+          } else if (opt.includes("ghim") || opt.includes("Ghim")) {
+            onPin?.(post._id);
+          } else {
             Alert.alert("Xóa bài viết?", "Bài viết sẽ bị xóa vĩnh viễn.", [
               { text: "Hủy", style: "cancel" },
               {
