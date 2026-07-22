@@ -1,7 +1,8 @@
-use_modular_headers! 
-
 require File.join(File.dirname(`node --print "require.resolve('expo/package.json')"`), "scripts/autolinking")
 require File.join(File.dirname(`node --print "require.resolve('react-native/package.json')"`), "scripts/react_native_pods")
+# @generated begin require - expo prebuild (DO NOT MODIFY) sync-0b3d11245f758d271ec25750612913aa85ad0f45
+require File.join(File.dirname(`node --print "require.resolve('react-native-permissions/package.json')"`), "scripts/setup")
+# @generated end require
 
 require 'json'
 podfile_properties = JSON.parse(File.read(File.join(__dir__, 'Podfile.properties.json'))) rescue {}
@@ -21,15 +22,23 @@ ENV['RCT_USE_PREBUILT_RNCORE'] ||= '1' if podfile_properties['ios.buildReactNati
 platform :ios, podfile_properties['ios.deploymentTarget'] || '15.1'
 
 prepare_react_native_project!
+# @generated begin setup - expo prebuild (DO NOT MODIFY) sync-603ea363b9c310b33967349144fa0e0c3f8db813
+setup_permissions([
+  'Microphone',
+])
+# @generated end setup
 
-target 'vnfitevwork' do
+target 'VNFITEWORK' do
   use_expo_modules!
 
   if ENV['EXPO_USE_COMMUNITY_AUTOLINKING'] == '1'
     config_command = ['node', '-e', "process.argv=['', '', 'config'];require('@react-native-community/cli').run()"];
   else
     config_command = [
-      'npx',
+      'node',
+      '--no-warnings',
+      '--eval',
+      'require(\'expo/bin/autolinking\')',
       'expo-modules-autolinking',
       'react-native-config',
       '--json',
@@ -41,6 +50,8 @@ target 'vnfitevwork' do
   config = use_native_modules!(config_command)
 
   use_frameworks! :linkage => podfile_properties['ios.useFrameworks'].to_sym if podfile_properties['ios.useFrameworks']
+  # @withModularHeadersFix:use_modular_headers
+  use_modular_headers!
   use_frameworks! :linkage => ENV['USE_FRAMEWORKS'].to_sym if ENV['USE_FRAMEWORKS']
 
   use_react_native!(
@@ -52,6 +63,40 @@ target 'vnfitevwork' do
   )
 
   post_install do |installer|
+
+    # @withModularHeadersFix:global_non_modular
+    installer.pods_project.targets.each do |target|
+      target.build_configurations.each do |build_config|
+        build_config.build_settings["CLANG_ALLOW_NON_MODULAR_INCLUDES_IN_FRAMEWORK_MODULES"] = "YES"
+      end
+    end
+    installer.pods_project.build_configurations.each do |build_config|
+      build_config.build_settings["CLANG_ALLOW_NON_MODULAR_INCLUDES_IN_FRAMEWORK_MODULES"] = "YES"
+    end
+
+    # @withModularHeadersFix:rnfb_non_modular
+    installer.pods_project.targets.each do |target|
+      if ["RNFBApp","RNFBMessaging"].include?(target.name)
+        target.build_configurations.each do |build_config|
+          build_config.build_settings["CLANG_ALLOW_NON_MODULAR_INCLUDES_IN_FRAMEWORK_MODULES"] = "YES"
+          other_cflags = build_config.build_settings["OTHER_CFLAGS"] ||= ["$(inherited)"]
+          build_config.build_settings["OTHER_CFLAGS"] = (other_cflags + ["-Wno-non-modular-include-in-framework-module"]).uniq
+        end
+      end
+    end
+
+    # @withModularHeadersFix:fmt_consteval
+    begin
+      fmt_base_header = File.join(installer.sandbox.pod_dir("fmt").to_s, "include", "fmt", "base.h")
+      if File.exist?(fmt_base_header)
+        fmt_contents = File.read(fmt_base_header)
+        patched = fmt_contents.gsub(/#\s*define FMT_USE_CONSTEVAL 1/, "# define FMT_USE_CONSTEVAL 0")
+        File.write(fmt_base_header, patched) if patched != fmt_contents
+      end
+    rescue => e
+      Pod::UI.puts "withModularHeadersFix: skipped fmt consteval patch (#{e.message})"
+    end
+
     react_native_post_install(
       installer,
       config[:reactNativePath],

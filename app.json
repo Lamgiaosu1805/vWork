@@ -49,8 +49,35 @@
       "expo-asset",
       "expo-font",
       "@react-native-firebase/app",
+      "./plugins/withReactNonModularFix",
+      [
+        "expo-build-properties",
+        {
+          "ios": {
+            "useFrameworks": "static",
+            "buildReactNativeFromSource": true
+          }
+        }
+      ],
       "@react-native-firebase/messaging",
-      "@react-native-community/datetimepicker"
+      "@react-native-community/datetimepicker",
+      [
+        "omikit-plugin",
+        {
+          "environment": "production",
+          "enableVideo": false,
+          "callKitImage": "call_image",
+          "maxCall": 1,
+          "microphonePermission": "This app needs microphone access for voice calls.",
+          "cameraPermission": "This app needs camera access for video calls."
+        }
+      ],
+      [
+        "react-native-permissions",
+        {
+          "iosPermissions": ["Microphone"]
+        }
+      ]
     ],
     "extra": {
       "eas": {
