@@ -106,10 +106,10 @@ const ApprovalRequestScreen = ({ navigation }) => {
   const closeConfirm = () =>
     setConfirmModal({ visible: false, id: null, action: null });
 
-  const onConfirm = () => {
+  const onConfirm = (reviewerNote = "") => {
     handleRequest(
       confirmModal.id,
-      { action: confirmModal.action, reviewer_note: "" },
+      { action: confirmModal.action, reviewer_note: reviewerNote },
       {
         onSuccess: () => {
           refetch();

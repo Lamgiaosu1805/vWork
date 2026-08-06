@@ -36,7 +36,6 @@ const AddRequestScreen = ({ navigation }) => {
   const [endDate, setEndDate] = useState(null);
   const [reason, setReason] = useState("");
   const [minutes, setMinutes] = useState("");
-  const [reviewerId, setReviewerId] = useState("");
   const [expectedTime, setExpectedTime] = useState(null);
   const [showTimePicker, setShowTimePicker] = useState(false);
   const [shiftId, setShiftId] = useState("");
@@ -47,11 +46,20 @@ const AddRequestScreen = ({ navigation }) => {
   const [toPeriod, setToPeriod] = useState("afternoon");
   const [hoverDate, setHoverDate] = useState(null);
   const [usePaidLeave, setUsePaidLeave] = useState(true);
+  const [destinationLocation, setDestinationLocation] = useState("");
+  const [startTime, setStartTime] = useState(null);
+  const [endTime, setEndTime] = useState(null);
+  const [showStartTimePicker, setShowStartTimePicker] = useState(false);
+  const [showEndTimePicker, setShowEndTimePicker] = useState(false);
 
   const isLongLeave = requestType?.is_long_leave;
   const isLateOrEarly = requestType?.request_type === "late_early";
   const isLeaveRequest = requestType?.request_type === "leave" || isLongLeave;
   const isForgot = requestType?.request_type === "forgot_checkin";
+  const isBusinessTrip = requestType?.request_type === "business_trip";
+  const isClientVisit = requestType?.request_type === "client_visit";
+  const isRemote = requestType?.request_type === "remote";
+  const isRangeMode = isLongLeave || isBusinessTrip;
 
   const { data: shifts = [] } = useGetAllShift();
   const { data: reviewers = [], isLoading: isReviewerLoading } =
@@ -67,20 +75,17 @@ const AddRequestScreen = ({ navigation }) => {
     })),
   ];
 
-  const reviewerItems = [
-    { label: "-- Chọn người duyệt --", value: "" },
-    ...reviewers.map((r) => ({ label: r.full_name, value: r.userInfoId })),
-  ];
-
   const resetForm = () => {
     setSelectedDate(null);
     setStartDate(null);
     setEndDate(null);
     setReason("");
     setMinutes("");
-    setReviewerId("");
     setExpectedTime("");
     setShiftId("");
+    setDestinationLocation("");
+    setStartTime(null);
+    setEndTime(null);
   };
 
   const handleChangeType = (v) => {
@@ -93,6 +98,9 @@ const AddRequestScreen = ({ navigation }) => {
     setFromPeriod("morning");
     setToPeriod("afternoon");
     setMinutes("");
+    setDestinationLocation("");
+    setStartTime(null);
+    setEndTime(null);
   };
 
   const handleDayPress = (date) => {
@@ -102,7 +110,7 @@ const AddRequestScreen = ({ navigation }) => {
         text1: "Không thể thay đổi ngày cho loại đơn này",
       });
 
-    if (isLongLeave) {
+    if (isRangeMode) {
       if (!startDate || (startDate && endDate)) {
         setStartDate(date);
         setEndDate(null);
@@ -121,19 +129,17 @@ const AddRequestScreen = ({ navigation }) => {
   };
 
   const handleSubmit = () => {
-    if (isLongLeave && (!startDate || !endDate)) {
+    if (isRangeMode && (!startDate || !endDate)) {
       Toast.show({
         type: "info",
-        text1: "Vui lòng chọn khoảng thời gian nghỉ",
+        text1: isBusinessTrip
+          ? "Vui lòng chọn khoảng thời gian công tác"
+          : "Vui lòng chọn khoảng thời gian nghỉ",
       });
       return;
     }
-    if (!isLongLeave && !selectedDate) {
+    if (!isRangeMode && !selectedDate) {
       Toast.show({ type: "info", text1: "Vui lòng chọn ngày" });
-      return;
-    }
-    if (!reviewerId) {
-      Toast.show({ type: "info", text1: "Vui lòng chọn người duyệt" });
       return;
     }
     if (isLateOrEarly && (!minutes || Number(minutes) <= 0)) {
@@ -151,8 +157,26 @@ const AddRequestScreen = ({ navigation }) => {
       });
       return;
     }
+    if (isBusinessTrip && !destinationLocation.trim()) {
+      Toast.show({ type: "info", text1: "Vui lòng nhập địa điểm công tác" });
+      return;
+    }
+    if (isClientVisit && (!startTime || !endTime)) {
+      Toast.show({
+        type: "info",
+        text1: "Vui lòng nhập giờ bắt đầu và kết thúc",
+      });
+      return;
+    }
+    if (isClientVisit && startTime && endTime && !dayjs(endTime).isAfter(startTime)) {
+      Toast.show({
+        type: "info",
+        text1: "Giờ kết thúc phải sau giờ bắt đầu",
+      });
+      return;
+    }
 
-    const payload = { assigned_reviewer: reviewerId, reason: reason.trim() };
+    const payload = { reason: reason.trim() };
 
     if (isForgot) {
       payload.request_type = "forgot_checkin";
@@ -200,6 +224,27 @@ const AddRequestScreen = ({ navigation }) => {
       }
     }
 
+    if (isBusinessTrip) {
+      payload.request_type = "business_trip";
+      payload.from_date = dayjs(startDate).format("YYYY-MM-DD");
+      payload.to_date = dayjs(endDate).format("YYYY-MM-DD");
+      payload.destination_location = destinationLocation.trim();
+    }
+
+    if (isClientVisit) {
+      payload.request_type = "client_visit";
+      payload.visit_date = dayjs(selectedDate).format("YYYY-MM-DD");
+      payload.start_time = dayjs(startTime).format("HH:mm");
+      payload.end_time = dayjs(endTime).format("HH:mm");
+    }
+
+    if (isRemote) {
+      payload.request_type = "remote";
+      const day = dayjs(selectedDate).format("YYYY-MM-DD");
+      payload.from_date = day;
+      payload.to_date = day;
+    }
+
     createRequest(payload, {
       onSuccess: () => {
         resetForm();
@@ -241,10 +286,10 @@ const AddRequestScreen = ({ navigation }) => {
             <Text style={styles.cardTitle}>Chọn ngày trên lịch</Text>
             <MiniCalendar
               selectedDate={selectedDate}
-              startDate={isLongLeave ? startDate : selectedDate}
-              endDate={isLongLeave ? endDate : selectedDate}
+              startDate={isRangeMode ? startDate : selectedDate}
+              endDate={isRangeMode ? endDate : selectedDate}
               hoverDate={hoverDate}
-              isRange={isLongLeave}
+              isRange={isRangeMode}
               onDayPress={handleDayPress}
               onDayHover={setHoverDate}
             />
@@ -271,18 +316,8 @@ const AddRequestScreen = ({ navigation }) => {
               items={REQUEST_TYPE_ITEMS}
               placeholder="Chọn loại đơn"
             />
-            {/* Người duyệt */}
-            <DropdownField
-              label="Chọn người duyệt đơn"
-              required
-              value={reviewerId}
-              onChange={setReviewerId}
-              items={reviewerItems}
-              placeholder="-- Chọn người duyệt --"
-            />
-
             {/* ── Date fields ── */}
-            {isLongLeave ? (
+            {isRangeMode ? (
               <>
                 <View style={styles.row}>
                   <DisplayBox
@@ -292,14 +327,18 @@ const AddRequestScreen = ({ navigation }) => {
                     }
                     placeholder="Chọn ngày bắt đầu"
                   />
-                  <View style={{ width: 10 }} />
-                  <DropdownField
-                    label="Ca bắt đầu"
-                    required
-                    value={fromPeriod}
-                    onChange={setFromPeriod}
-                    items={PERIOD_ITEMS}
-                  />
+                  {isLongLeave && (
+                    <>
+                      <View style={{ width: 10 }} />
+                      <DropdownField
+                        label="Ca bắt đầu"
+                        required
+                        value={fromPeriod}
+                        onChange={setFromPeriod}
+                        items={PERIOD_ITEMS}
+                      />
+                    </>
+                  )}
                 </View>
                 <View style={styles.row}>
                   <DisplayBox
@@ -307,15 +346,32 @@ const AddRequestScreen = ({ navigation }) => {
                     value={endDate ? dayjs(endDate).format("DD/MM/YYYY") : ""}
                     placeholder="Chọn ngày kết thúc"
                   />
-                  <View style={{ width: 10 }} />
-                  <DropdownField
-                    label="Ca kết thúc"
-                    required
-                    value={toPeriod}
-                    onChange={setToPeriod}
-                    items={PERIOD_ITEMS}
-                  />
+                  {isLongLeave && (
+                    <>
+                      <View style={{ width: 10 }} />
+                      <DropdownField
+                        label="Ca kết thúc"
+                        required
+                        value={toPeriod}
+                        onChange={setToPeriod}
+                        items={PERIOD_ITEMS}
+                      />
+                    </>
+                  )}
                 </View>
+
+                {isBusinessTrip && (
+                  <View style={styles.fieldGroup}>
+                    <Text style={styles.fieldLabel}>Địa điểm*</Text>
+                    <TextInput
+                      style={styles.input}
+                      value={destinationLocation}
+                      onChangeText={setDestinationLocation}
+                      placeholder="Nhập địa điểm công tác"
+                      placeholderTextColor={"#9CA3AF"}
+                    />
+                  </View>
+                )}
               </>
             ) : (
               <>
@@ -363,6 +419,58 @@ const AddRequestScreen = ({ navigation }) => {
                         keyboardType="numeric"
                         placeholder="Nhập số phút"
                         placeholderTextColor={"#9CA3AF"}
+                      />
+                    </View>
+                  </View>
+                )}
+
+                {isClientVisit && (
+                  <View style={styles.row}>
+                    <View style={[styles.fieldGroup, { flex: 1 }]}>
+                      <Text style={styles.fieldLabel}>Giờ bắt đầu*</Text>
+                      <TouchableOpacity
+                        style={styles.input}
+                        onPress={() => setShowStartTimePicker(true)}
+                      >
+                        <Text
+                          style={{
+                            color: startTime ? "#2A2A2A" : "#9CA3AF",
+                            fontSize: 14,
+                            marginTop: 14,
+                          }}
+                        >
+                          {startTime ? dayjs(startTime).format("HH:mm") : "--:--"}
+                        </Text>
+                      </TouchableOpacity>
+                      <PickerTimeModal
+                        visible={showStartTimePicker}
+                        value={startTime || new Date()}
+                        onClose={() => setShowStartTimePicker(false)}
+                        onConfirm={setStartTime}
+                      />
+                    </View>
+                    <View style={{ width: 10 }} />
+                    <View style={[styles.fieldGroup, { flex: 1 }]}>
+                      <Text style={styles.fieldLabel}>Giờ kết thúc*</Text>
+                      <TouchableOpacity
+                        style={styles.input}
+                        onPress={() => setShowEndTimePicker(true)}
+                      >
+                        <Text
+                          style={{
+                            color: endTime ? "#2A2A2A" : "#9CA3AF",
+                            fontSize: 14,
+                            marginTop: 14,
+                          }}
+                        >
+                          {endTime ? dayjs(endTime).format("HH:mm") : "--:--"}
+                        </Text>
+                      </TouchableOpacity>
+                      <PickerTimeModal
+                        visible={showEndTimePicker}
+                        value={endTime || new Date()}
+                        onClose={() => setShowEndTimePicker(false)}
+                        onConfirm={setEndTime}
                       />
                     </View>
                   </View>
@@ -436,6 +544,31 @@ const AddRequestScreen = ({ navigation }) => {
                     <Text style={styles.radioLabel}>Nghỉ không phép</Text>
                   </TouchableOpacity>
                 </View>
+              </View>
+            )}
+
+            {/* Luồng duyệt dự kiến */}
+            {reviewers.length > 0 && (
+              <View style={styles.reviewerBox}>
+                <Text style={styles.reviewerBoxTitle}>
+                  Luồng duyệt áp dụng
+                </Text>
+                {reviewers.map((r, index) => (
+                  <View key={r.userInfoId || r.accountId || index} style={styles.reviewerRow}>
+                    <Ionicons
+                      name="person-circle-outline"
+                      size={16}
+                      color={"#6B7280"}
+                    />
+                    <Text style={styles.reviewerRowText}>
+                      <Text style={{ fontWeight: "700" }}>
+                        Cấp {index + 1}:{" "}
+                      </Text>
+                      {r.full_name}
+                      {r.position_name ? ` - ${r.position_name}` : ""}
+                    </Text>
+                  </View>
+                ))}
               </View>
             )}
 
@@ -547,4 +680,20 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   submitBtnText: { color: "#FFFFFF", fontSize: 15, fontWeight: "700" },
+  reviewerBox: {
+    backgroundColor: "#F3F4F6",
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    marginBottom: 14,
+    gap: 6,
+  },
+  reviewerBoxTitle: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#6B7280",
+    marginBottom: 2,
+  },
+  reviewerRow: { flexDirection: "row", alignItems: "center", gap: 6 },
+  reviewerRowText: { fontSize: 12, color: "#6B7280", flex: 1, flexWrap: "wrap" },
 });

@@ -8,11 +8,16 @@ export const getRequestTypeLabel = (item) => {
       : "Nghỉ phép không lương";
   }
   if (item.request_type === "forgot_checkin") {
-    return item.type === "check_in" ? "Quên check-in" : "Quên check-out";
+    if (item.type === "check_in") return "Quên check-in";
+    if (item.type === "check_out") return "Quên check-out";
+    return "Quên check-in & check-out";
   }
   if (item.request_type === "late_early") {
-    return item.late_early_type === "late" ? "Đi muộn" : "Về sớm";
+    return item.type === "late" ? "Đi muộn" : "Về sớm";
   }
+  if (item.request_type === "remote") return "Làm việc từ xa";
+  if (item.request_type === "business_trip") return "Đi công tác";
+  if (item.request_type === "client_visit") return "Đi gặp gỡ khách hàng";
   return "--";
 };
 
@@ -29,6 +34,38 @@ export const getTimeLabel = (item) => {
     }
     return `${fromPeriod} ${fromDate} → ${toPeriod} ${toDate}`;
   }
+
+  if (item.request_type === "business_trip") {
+    const fromDate = dayjs(item.from_date).format("DD/MM/YYYY");
+    const toDate = dayjs(item.to_date).format("DD/MM/YYYY");
+    return fromDate === toDate ? fromDate : `${fromDate} → ${toDate}`;
+  }
+
+  if (item.request_type === "client_visit") {
+    const date = dayjs(item.from_date).format("DD/MM/YYYY");
+    return `${date} • ${item.start_time ?? "--"} - ${item.end_time ?? "--"}`;
+  }
+
+  if (item.request_type === "remote") {
+    return dayjs(item.from_date).format("DD/MM/YYYY");
+  }
+
   if (item.date) return dayjs(item.date).format("DD/MM/YYYY");
+  return "--";
+};
+
+export const getAmountLabel = (item) => {
+  if (["leave", "remote"].includes(item.request_type)) {
+    return `${item.total_days ?? 0} ngày`;
+  }
+  if (item.request_type === "business_trip") {
+    return item.destination_location || "--";
+  }
+  if (item.request_type === "client_visit") {
+    return `${item.start_time ?? "--"} - ${item.end_time ?? "--"}`;
+  }
+  if (item.request_type === "late_early") {
+    return `${item.minutes ?? 0} phút`;
+  }
   return "--";
 };

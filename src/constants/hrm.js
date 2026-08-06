@@ -51,6 +51,21 @@ export const REQUEST_TYPE_ITEMS = [
     type: "early_out",
     shift: "full",
   },
+  {
+    label: "Đi công tác",
+    value: "business_trip",
+    request_type: "business_trip",
+  },
+  {
+    label: "Đi gặp gỡ khách hàng",
+    value: "client_visit",
+    request_type: "client_visit",
+  },
+  {
+    label: "Làm việc từ xa",
+    value: "remote",
+    request_type: "remote",
+  },
 ];
 
 export const PERIOD_ITEMS = [
@@ -81,6 +96,9 @@ export const FILTER_ITEMS = [
   { label: "Nghỉ phép", value: "leave" },
   { label: "Quên chấm công", value: "forgot_checkin" },
   { label: "Đi muộn / Về sớm", value: "late_early" },
+  { label: "Đi công tác", value: "business_trip" },
+  { label: "Đi gặp gỡ khách hàng", value: "client_visit" },
+  { label: "Làm việc từ xa", value: "remote" },
 ];
 
 export const PERIOD_LABEL = { morning: "Buổi sáng", afternoon: "Buổi chiều" };

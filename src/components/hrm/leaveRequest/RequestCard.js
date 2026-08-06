@@ -1,27 +1,18 @@
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import React from "react";
-import { SHIFT_LABEL, STATUS_MAP } from "../../../constants/hrm";
 import dayjs from "dayjs";
+import { STATUS_MAP } from "../../../constants/hrm";
+import { getRequestTypeLabel, getTimeLabel } from "../../../helpers/request";
 
 const RequestCard = ({ item, expanded, onToggle, onCancel, isCancelling }) => {
   const isLeave = item.request_type === "leave";
-  const fromDate = item.from_date
-    ? dayjs(item.from_date).format("DD/MM/YYYY")
-    : null;
-  const toDate = item.to_date ? dayjs(item.to_date).format("DD/MM/YYYY") : null;
-  const fromSession =
-    item.from_period === "morning" ? "Buổi sáng" : "Buổi chiều";
-  const toSession = item.to_period === "morning" ? "Buổi sáng" : "Buổi chiều";
+  const isBusinessTrip = item.request_type === "business_trip";
+  const isClientVisit = item.request_type === "client_visit";
   const leaveType =
     item.leave_type === "paid" ? "Nghỉ có phép" : "Nghỉ không phép";
   const st = STATUS_MAP[item.status] || STATUS_MAP.pending;
-  
-  const typeLabel =
-    item.request_type === "leave"
-      ? "Đơn nghỉ phép"
-      : item.request_type === "forgot_checkin"
-        ? "Quên chấm công"
-        : "Đi muộn / Về sớm";
+
+  const typeLabel = getRequestTypeLabel(item);
 
   return (
     <TouchableOpacity
@@ -43,13 +34,7 @@ const RequestCard = ({ item, expanded, onToggle, onCancel, isCancelling }) => {
 
           <Text style={styles.reqMeta}>Lý do: {item.reason || "--"}</Text>
 
-          <Text style={styles.reqMeta}>
-            {isLeave
-              ? fromDate === toDate
-                ? `${fromSession} ngày ${fromDate}`
-                : `Từ ${fromSession} ${fromDate} → ${toSession} ${toDate}`
-              : `${dayjs(item.date).format("DD/MM/YYYY")} • ${SHIFT_LABEL[item.shift] || "Cả ngày"}`}
-          </Text>
+          <Text style={styles.reqMeta}>{getTimeLabel(item)}</Text>
 
           <Text style={styles.reqSmall}>
             Tạo lúc {dayjs(item.createdAt).format("HH:mm • DD/MM/YYYY")} | ID:{" "}
@@ -76,10 +61,24 @@ const RequestCard = ({ item, expanded, onToggle, onCancel, isCancelling }) => {
                   </Text>
                 </>
               )}
-              <Text style={styles.reqDetailText}>
-                <Text style={{ fontWeight: "700" }}>Người duyệt: </Text>
-                {item.assigned_reviewer?.full_name || "--"}
-              </Text>
+              {isBusinessTrip && (
+                <Text style={styles.reqDetailText}>
+                  <Text style={{ fontWeight: "700" }}>Địa điểm: </Text>
+                  {item.destination_location || "--"}
+                </Text>
+              )}
+              {isClientVisit && (
+                <Text style={styles.reqDetailText}>
+                  <Text style={{ fontWeight: "700" }}>Thời gian: </Text>
+                  {item.start_time ?? "--"} - {item.end_time ?? "--"}
+                </Text>
+              )}
+              {item.status === "rejected" && item.reviewer_note && (
+                <Text style={[styles.reqDetailText, { color: "#DC2626" }]}>
+                  <Text style={{ fontWeight: "700" }}>Lí do từ chối: </Text>
+                  {item.reviewer_note}
+                </Text>
+              )}
             </View>
           )}
         </View>
