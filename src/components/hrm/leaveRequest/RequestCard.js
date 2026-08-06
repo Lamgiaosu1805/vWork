@@ -1,8 +1,10 @@
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import React from "react";
 import dayjs from "dayjs";
+import { Ionicons } from "@expo/vector-icons";
 import { STATUS_MAP } from "../../../constants/hrm";
 import { getRequestTypeLabel, getTimeLabel } from "../../../helpers/request";
+import { COLORS } from "../../../assets/theme/colors";
 
 const RequestCard = ({ item, expanded, onToggle, onCancel, isCancelling }) => {
   const isLeave = item.request_type === "leave";
@@ -36,10 +38,17 @@ const RequestCard = ({ item, expanded, onToggle, onCancel, isCancelling }) => {
 
           <Text style={styles.reqMeta}>{getTimeLabel(item)}</Text>
 
-          <Text style={styles.reqSmall}>
-            Tạo lúc {dayjs(item.createdAt).format("HH:mm • DD/MM/YYYY")} | ID:{" "}
-            {item._id.slice(-6)}
-          </Text>
+          <View style={styles.reqFooterRow}>
+            <Text style={styles.reqSmall}>
+              Tạo lúc {dayjs(item.createdAt).format("HH:mm • DD/MM/YYYY")} | ID:{" "}
+              {item._id.slice(-6)}
+            </Text>
+            <Ionicons
+              name={expanded ? "chevron-up" : "chevron-down"}
+              size={16}
+              color={COLORS.neutral.neutral400}
+            />
+          </View>
 
           {/* Chi tiết mở rộng */}
           {expanded && (
@@ -74,7 +83,7 @@ const RequestCard = ({ item, expanded, onToggle, onCancel, isCancelling }) => {
                 </Text>
               )}
               {item.status === "rejected" && item.reviewer_note && (
-                <Text style={[styles.reqDetailText, { color: "#DC2626" }]}>
+                <Text style={[styles.reqDetailText, { color: COLORS.error.error600 }]}>
                   <Text style={{ fontWeight: "700" }}>Lí do từ chối: </Text>
                   {item.reviewer_note}
                 </Text>
@@ -86,10 +95,14 @@ const RequestCard = ({ item, expanded, onToggle, onCancel, isCancelling }) => {
         {/* Thu hồi */}
         {item.status === "pending" && (
           <TouchableOpacity
-            onPress={onCancel}
+            onPress={(e) => {
+              e.stopPropagation?.();
+              onCancel();
+            }}
             disabled={isCancelling}
-            style={styles.cancelBtn}
+            style={[styles.cancelBtn, isCancelling && { opacity: 0.6 }]}
           >
+            <Ionicons name="close-circle-outline" size={14} color={COLORS.error.error600} />
             <Text style={styles.cancelBtnText}>Thu hồi</Text>
           </TouchableOpacity>
         )}
@@ -102,40 +115,54 @@ export default RequestCard;
 
 const styles = StyleSheet.create({
   requestCard: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 14,
+    backgroundColor: COLORS.white,
+    borderRadius: 16,
     padding: 14,
     borderWidth: 1,
-    borderColor: "#E5E7EB",
-    marginBottom: 8,
+    borderColor: COLORS.neutral.neutral200,
+    marginBottom: 10,
+    shadowColor: "#000",
+    shadowOpacity: 0.03,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 1,
   },
   reqTitleRow: {
     flexDirection: "row",
     alignItems: "center",
     flexWrap: "wrap",
     gap: 8,
-    marginBottom: 4,
+    marginBottom: 6,
   },
-  reqTitle: { fontSize: 15, fontWeight: "700", color: "#2A2A2A" },
+  reqTitle: { fontSize: 15, fontWeight: "700", color: COLORS.text.dark },
   statusBadge: { paddingHorizontal: 10, paddingVertical: 3, borderRadius: 999 },
   statusText: { fontSize: 12, fontWeight: "700" },
-  reqMeta: { fontSize: 13, color: "#9CA3AF", marginTop: 3 },
-  reqSmall: { fontSize: 12, color: "#9CA3AF", marginTop: 4 },
+  reqMeta: { fontSize: 13, color: COLORS.text.bland, marginTop: 3 },
+  reqFooterRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginTop: 8,
+  },
+  reqSmall: { fontSize: 12, color: COLORS.neutral.neutral400 },
   reqExpanded: {
     marginTop: 12,
     paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: "#E5E7EB",
+    borderTopColor: COLORS.neutral.neutral200,
     gap: 6,
   },
-  reqDetailText: { fontSize: 13, color: "#2A2A2A" },
+  reqDetailText: { fontSize: 13, color: COLORS.text.dark, lineHeight: 19 },
   cancelBtn: {
-    backgroundColor: "#F3F4F6",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    alignSelf: "flex-start",
+    backgroundColor: COLORS.error.error50,
     borderRadius: 10,
-    paddingHorizontal: 12,
+    paddingHorizontal: 10,
     paddingVertical: 8,
     marginLeft: 8,
-    alignSelf: "flex-start",
   },
-  cancelBtnText: { fontSize: 13, fontWeight: "600", color: "#444" },
+  cancelBtnText: { fontSize: 13, fontWeight: "700", color: COLORS.error.error600 },
 });

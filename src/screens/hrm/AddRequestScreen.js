@@ -281,20 +281,6 @@ const AddRequestScreen = ({ navigation }) => {
             onLeftPress={() => navigation.goBack()}
           />
 
-          {/* ── CALENDAR ── */}
-          <View style={styles.card}>
-            <Text style={styles.cardTitle}>Chọn ngày trên lịch</Text>
-            <MiniCalendar
-              selectedDate={selectedDate}
-              startDate={isRangeMode ? startDate : selectedDate}
-              endDate={isRangeMode ? endDate : selectedDate}
-              hoverDate={hoverDate}
-              isRange={isRangeMode}
-              onDayPress={handleDayPress}
-              onDayHover={setHoverDate}
-            />
-          </View>
-
           {/* ── FORM ── */}
           <View style={styles.card}>
             <Text style={styles.cardTitle}>Tạo Đơn Giải Trình / Nghỉ Phép</Text>
