@@ -24,6 +24,7 @@ dayjs.locale('vi');
 import api from '../../api/axiosInstance';
 import WifiManager from 'react-native-wifi-reborn';
 import * as Location from 'expo-location';
+import { ensureLocationPermission } from '../../helpers/location';
 import Toast from 'react-native-toast-message';
 import utils from '../../helpers/utils';
 import { useDispatch, useSelector } from 'react-redux';
@@ -290,6 +291,8 @@ export default function DashboardHRMScreen() {
 
         setIsLoading(true);
         try {
+            const granted = await ensureLocationPermission();
+            if (!granted) return;
             const ssid = await WifiManager.getCurrentWifiSSID();
             const location = await Location.getCurrentPositionAsync({});
             const { latitude, longitude } = location.coords

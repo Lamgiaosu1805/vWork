@@ -1,4 +1,4 @@
-import { checkOut, pushLichCong } from "../redux/slice/attendanceSlice";
+import { checkOut, pushLichCong, setCurrentWorkSheetAttendance } from "../redux/slice/attendanceSlice";
 import api from "./axiosInstance";
 import dayjs from 'dayjs';
 import 'dayjs/locale/vi';
@@ -6,6 +6,7 @@ import localeData from 'dayjs/plugin/localeData';
 dayjs.extend(localeData);
 import WifiManager from 'react-native-wifi-reborn';
 import * as Location from 'expo-location';
+import { ensureLocationPermission } from '../helpers/location';
 import Toast from "react-native-toast-message";
 import { Alert } from "react-native";
 
@@ -38,26 +39,36 @@ const attendanceApi = {
         const endDateTime = dayjs(`${workDate.format("YYYY-MM-DD")} ${endTime}`);
 
         const now = dayjs();
+        const isEarly = now.isBefore(endDateTime);
 
-        // Nếu checkout sớm → hiển thị cảnh báo
-        if (now.isBefore(endDateTime)) {
-            return Alert.alert(
-                "Bạn đang checkout sớm",
-                `Giờ kết thúc ca: ${endTime}. Bạn có chắc muốn checkout không?`,
-                [
-                    {
-                        text: "Huỷ",
-                        style: "cancel",
-                        onPress: () => { },
-                    },
-                    {
-                        text: "OK",
-                        onPress: () => _doCheckout(dispatch),
-                    }
-                ]
-            );
+        // Luôn xác nhận trước khi checkout — cảnh báo riêng nếu checkout sớm hơn giờ kết thúc ca
+        return Alert.alert(
+            isEarly ? "Bạn đang checkout sớm" : "Xác nhận check out",
+            isEarly
+                ? `Giờ kết thúc ca: ${endTime}. Bạn có chắc muốn checkout không?`
+                : "Bạn có chắc chắn muốn check out không?",
+            [
+                {
+                    text: "Huỷ",
+                    style: "cancel",
+                    onPress: () => { },
+                },
+                {
+                    text: "OK",
+                    onPress: () => _doCheckout(dispatch),
+                }
+            ]
+        );
+    },
+    async getCurrentWorkSheet(dispatch) {
+        try {
+            const res = await api.get('attendance/getWorkSheet', { requiresAuth: true });
+            const todayWorkSheet = res.data?.data?.length > 0 ? res.data.data[0] : null;
+            dispatch(setCurrentWorkSheetAttendance(todayWorkSheet));
+            return todayWorkSheet;
+        } catch (error) {
+            console.log("getCurrentWorkSheet error:", error.response?.data || error.message);
         }
-        return _doCheckout(dispatch);
     },
     async getLichCong(dispatch, period, congThang) {
         try {
@@ -75,13 +86,21 @@ const attendanceApi = {
         } catch (error) {
             console.log("getLichCong error:", error.response?.data || error.message);
         }
-    }
+    },
+    getMyPayrollStats(month, year) {
+        return api.get('attendance/my-payroll-stats', {
+            requiresAuth: true,
+            params: { month, year },
+        });
+    },
 }
 
 export default attendanceApi
 
 const _doCheckout = async (dispatch) => {
     try {
+        const granted = await ensureLocationPermission();
+        if (!granted) return;
         const ssid = await WifiManager.getCurrentWifiSSID();
         const location = await Location.getCurrentPositionAsync({});
         const { latitude, longitude } = location.coords;

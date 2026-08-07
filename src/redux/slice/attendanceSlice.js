@@ -22,9 +22,6 @@ const authSlice = createSlice({
                 state.lichCong.push(newItem);
             }
         },
-        checkIn: (state, action) => {
-            // state.currentWorkSheet  action.payload;
-        },
         checkOut: (state, action) => {
             state.currentWorkSheet.check_out = action.payload.checkOut
             state.currentWorkSheet.minute_early = action.payload.minutesEarly
