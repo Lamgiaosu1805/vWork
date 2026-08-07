@@ -6,19 +6,13 @@ import { STATUS_MAP } from "../../../constants/hrm";
 import { getRequestTypeLabel, getTimeLabel } from "../../../helpers/request";
 import { COLORS } from "../../../assets/theme/colors";
 
-const RequestCard = ({ item, expanded, onToggle, onCancel, isCancelling }) => {
-  const isLeave = item.request_type === "leave";
-  const isBusinessTrip = item.request_type === "business_trip";
-  const isClientVisit = item.request_type === "client_visit";
-  const leaveType =
-    item.leave_type === "paid" ? "Nghỉ có phép" : "Nghỉ không phép";
+const RequestCard = ({ item, onPress, onCancel, isCancelling }) => {
   const st = STATUS_MAP[item.status] || STATUS_MAP.pending;
-
   const typeLabel = getRequestTypeLabel(item);
 
   return (
     <TouchableOpacity
-      onPress={onToggle}
+      onPress={onPress}
       style={styles.requestCard}
       activeOpacity={0.85}
     >
@@ -36,60 +30,9 @@ const RequestCard = ({ item, expanded, onToggle, onCancel, isCancelling }) => {
 
           <Text style={styles.reqMeta}>Lý do: {item.reason || "--"}</Text>
 
-          <Text style={styles.reqMeta}>{getTimeLabel(item)}</Text>
-
-          <View style={styles.reqFooterRow}>
-            <Text style={styles.reqSmall}>
-              Tạo lúc {dayjs(item.createdAt).format("HH:mm • DD/MM/YYYY")} | ID:{" "}
-              {item._id.slice(-6)}
-            </Text>
-            <Ionicons
-              name={expanded ? "chevron-up" : "chevron-down"}
-              size={16}
-              color={COLORS.neutral.neutral400}
-            />
-          </View>
-
-          {/* Chi tiết mở rộng */}
-          {expanded && (
-            <View style={styles.reqExpanded}>
-              {isLeave && (
-                <>
-                  <Text style={styles.reqDetailText}>
-                    <Text style={{ fontWeight: "700" }}>Hình thức: </Text>
-                    {leaveType}
-                  </Text>
-                  <Text style={styles.reqDetailText}>
-                    <Text style={{ fontWeight: "700" }}>Tổng số ngày: </Text>
-                    {item.total_days || 0} ngày
-                  </Text>
-                  <Text style={styles.reqDetailText}>
-                    <Text style={{ fontWeight: "700" }}>Phép sử dụng: </Text>
-                    {item.paid_days || 0} ngày phép • {item.unpaid_days || 0}{" "}
-                    ngày không phép
-                  </Text>
-                </>
-              )}
-              {isBusinessTrip && (
-                <Text style={styles.reqDetailText}>
-                  <Text style={{ fontWeight: "700" }}>Địa điểm: </Text>
-                  {item.destination_location || "--"}
-                </Text>
-              )}
-              {isClientVisit && (
-                <Text style={styles.reqDetailText}>
-                  <Text style={{ fontWeight: "700" }}>Thời gian: </Text>
-                  {item.start_time ?? "--"} - {item.end_time ?? "--"}
-                </Text>
-              )}
-              {item.status === "rejected" && item.reviewer_note && (
-                <Text style={[styles.reqDetailText, { color: COLORS.error.error600 }]}>
-                  <Text style={{ fontWeight: "700" }}>Lí do từ chối: </Text>
-                  {item.reviewer_note}
-                </Text>
-              )}
-            </View>
-          )}
+          <Text style={[styles.reqMeta, styles.reqTime]}>
+            {getTimeLabel(item)}
+          </Text>
         </View>
 
         {/* Thu hồi */}
@@ -138,6 +81,7 @@ const styles = StyleSheet.create({
   statusBadge: { paddingHorizontal: 10, paddingVertical: 3, borderRadius: 999 },
   statusText: { fontSize: 12, fontWeight: "700" },
   reqMeta: { fontSize: 13, color: COLORS.text.bland, marginTop: 3 },
+  reqTime: { textAlign: "center" },
   reqFooterRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -145,14 +89,6 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   reqSmall: { fontSize: 12, color: COLORS.neutral.neutral400 },
-  reqExpanded: {
-    marginTop: 12,
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: COLORS.neutral.neutral200,
-    gap: 6,
-  },
-  reqDetailText: { fontSize: 13, color: COLORS.text.dark, lineHeight: 19 },
   cancelBtn: {
     flexDirection: "row",
     alignItems: "center",

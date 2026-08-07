@@ -26,6 +26,24 @@ const DatePickerApprovalModal = ({
     }
   }, [visible, value]);
 
+  if (Platform.OS === "android") {
+    if (!visible) return null;
+
+    return (
+      <DateTimePicker
+        value={date}
+        mode="date"
+        display="calendar"
+        onChange={(event, selectedDate) => {
+          if (event.type === "set" && selectedDate) {
+            onConfirm(dayjs(selectedDate).format("YYYY-MM-DD"));
+          }
+          onClose();
+        }}
+      />
+    );
+  }
+
   return (
     <Modal
       visible={visible}
@@ -41,7 +59,7 @@ const DatePickerApprovalModal = ({
             style={{ width: "100%", alignSelf: "center" }}
             value={date}
             mode="date"
-            display={Platform.OS === "ios" ? "spinner" : "calendar"}
+            display="spinner"
             onChange={(event, selectedDate) => {
               if (selectedDate) {
                 setDate(selectedDate);

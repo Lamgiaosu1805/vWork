@@ -15,8 +15,9 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { Dropdown } from "react-native-element-dropdown";
 import dayjs from "dayjs";
+import { useSelector } from "react-redux";
 import Header from "../../components/Header";
-import useGetRequests from "../../hooks/requests/useGetRequests";
+import useGetRequestsInfinite from "../../hooks/requests/useGetRequestsInfinite";
 import { FILTER_ITEMS, TABS } from "../../constants/hrm";
 import ConfirmModal from "../../components/hrm/approvalRequest/ConfirmModal";
 import RequestApprovalCard from "../../components/hrm/approvalRequest/RequestApprovalCard";
@@ -24,10 +25,14 @@ import useReviewRequest from "../../hooks/requests/useReviewRequest";
 import Toast from "react-native-toast-message";
 import DatePickerApprovalModal from "../../components/hrm/approvalRequest/DatePickerApprovalModal";
 import { ChevronLeft } from "lucide-react-native";
+import { getPermissions } from "../../helpers/permissions";
 
 const ApprovalRequestScreen = ({ navigation }) => {
+  const user = useSelector((s) => s.auth.user);
+  const { canReviewRequests, canViewAllRequests } = getPermissions(user);
+  const viewOnly = !canReviewRequests && canViewAllRequests;
   const [status, setStatus] = useState("");
-  const [page, setPage] = useState(1);
+  const effectiveStatus = viewOnly ? "approved" : status;
   const [requestType, setRequestType] = useState("");
   const [search, setSearch] = useState("");
   const [searchInput, setSearchInput] = useState("");
@@ -43,10 +48,16 @@ const ApprovalRequestScreen = ({ navigation }) => {
   });
   const [isTyping, setIsTyping] = useState(false);
 
-  const { data, isLoading, refetch } = useGetRequests({
+  const {
+    data: infiniteData,
+    isLoading,
+    isFetchingNextPage,
+    hasNextPage,
+    fetchNextPage,
+    refetch,
+  } = useGetRequestsInfinite({
     request_type: requestType,
-    status,
-    page,
+    status: effectiveStatus,
     limit: 6,
     search,
     from,
@@ -55,12 +66,8 @@ const ApprovalRequestScreen = ({ navigation }) => {
 
   const { mutate: handleRequest, isPending: isReviewing } = useReviewRequest();
 
-  const responseData = Array.isArray(data) ? { data, pagination: {} } : data;
-  const requests = responseData?.data ?? [];
-  const total = responseData?.pagination?.total ?? 0;
-  const totalPages = responseData?.pagination?.total_pages ?? 1;
-
-  const resetPage = () => setPage(1);
+  const requests = infiniteData?.pages.flatMap((p) => p.data ?? []) ?? [];
+  const total = infiniteData?.pages?.[0]?.pagination?.total ?? 0;
 
   const onRefresh = () => {
     setIsRefreshing(true);
@@ -74,7 +81,6 @@ const ApprovalRequestScreen = ({ navigation }) => {
     setTo("");
     setRequestType("");
     setStatus("");
-    setPage(1);
   };
 
   const hasActiveFilter = search || from || to || requestType;
@@ -85,14 +91,7 @@ const ApprovalRequestScreen = ({ navigation }) => {
     const timeout = setTimeout(() => {
       const keyword = searchInput.trim();
 
-      setSearch((prev) => {
-        if (prev !== keyword) {
-          setPage(1);
-        }
-
-        return keyword;
-      });
-
+      setSearch(keyword);
       setIsTyping(false);
     }, 500);
 
@@ -114,7 +113,7 @@ const ApprovalRequestScreen = ({ navigation }) => {
         onSuccess: () => {
           refetch();
           closeConfirm();
-          Toast.show({
+          Toast.show({ 
             type: "success",
             text1:
               confirmModal.action === "approve"
@@ -135,7 +134,7 @@ const ApprovalRequestScreen = ({ navigation }) => {
   return (
     <View style={styles.screen}>
       <Header
-        title="Xử lý yêu cầu"
+        title={viewOnly ? "Xem yêu cầu" : "Xử lý yêu cầu"}
         LeftIcon={ChevronLeft}
         onLeftPress={() => navigation.goBack()}
       />
@@ -159,7 +158,6 @@ const ApprovalRequestScreen = ({ navigation }) => {
               onPress={() => {
                 setSearchInput("");
                 setSearch("");
-                resetPage();
               }}
             >
               <Ionicons name="close-circle" size={16} color="#9CA3AF" />
@@ -180,7 +178,6 @@ const ApprovalRequestScreen = ({ navigation }) => {
           value={requestType}
           onChange={(item) => {
             setRequestType(item.value);
-            resetPage();
           }}
           renderRightIcon={() => (
             <Ionicons name="chevron-down" size={13} color="#9CA3AF" />
@@ -202,7 +199,6 @@ const ApprovalRequestScreen = ({ navigation }) => {
             <TouchableOpacity
               onPress={() => {
                 setFrom("");
-                resetPage();
               }}
             >
               <Ionicons name="close-circle" size={14} color="#9CA3AF" />
@@ -226,7 +222,6 @@ const ApprovalRequestScreen = ({ navigation }) => {
             <TouchableOpacity
               onPress={() => {
                 setTo("");
-                resetPage();
               }}
             >
               <Ionicons name="close-circle" size={14} color="#9CA3AF" />
@@ -241,48 +236,49 @@ const ApprovalRequestScreen = ({ navigation }) => {
         )}
       </View>
 
-      <View style={styles.tabContainer}>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.tabScroll}
-        >
-          {TABS.map((tab) => {
-            const active = status === tab.key;
-            const count = active ? total : null;
-            return (
-              <TouchableOpacity
-                key={tab.key}
-                style={[styles.tab, active && styles.tabActive]}
-                onPress={() => {
-                  setStatus(tab.key);
-                  resetPage();
-                }}
-                activeOpacity={0.7}
-              >
-                <Text style={[styles.tabText, active && styles.tabTextActive]}>
-                  {tab.label}
-                </Text>
-                {count !== null && (
-                  <View
-                    style={[styles.tabCount, active && styles.tabCountActive]}
-                  >
-                    <Text
-                      style={[
-                        styles.tabCountText,
-                        active && styles.tabCountTextActive,
-                      ]}
+      {!viewOnly && (
+        <View style={styles.tabContainer}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.tabScroll}
+          >
+            {TABS.map((tab) => {
+              const active = status === tab.key;
+              const count = active ? total : null;
+              return (
+                <TouchableOpacity
+                  key={tab.key}
+                  style={[styles.tab, active && styles.tabActive]}
+                  onPress={() => {
+                    setStatus(tab.key);
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[styles.tabText, active && styles.tabTextActive]}>
+                    {tab.label}
+                  </Text>
+                  {count !== null && (
+                    <View
+                      style={[styles.tabCount, active && styles.tabCountActive]}
                     >
-                      {count}
-                    </Text>
-                  </View>
-                )}
-                <View style={[styles.tabDot, { backgroundColor: tab.dot }]} />
-              </TouchableOpacity>
-            );
-          })}
-        </ScrollView>
-      </View>
+                      <Text
+                        style={[
+                          styles.tabCountText,
+                          active && styles.tabCountTextActive,
+                        ]}
+                      >
+                        {count}
+                      </Text>
+                    </View>
+                  )}
+                  <View style={[styles.tabDot, { backgroundColor: tab.dot }]} />
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+        </View>
+      )}
 
       {isLoading && !isRefreshing ? (
         <View style={styles.centerBox}>
@@ -301,38 +297,30 @@ const ApprovalRequestScreen = ({ navigation }) => {
           showsVerticalScrollIndicator={false}
           refreshing={isRefreshing}
           onRefresh={onRefresh}
+          onEndReachedThreshold={0.3}
+          onEndReached={() => {
+            if (hasNextPage && !isFetchingNextPage) {
+              fetchNextPage();
+            }
+          }}
           renderItem={({ item }) => (
             <RequestApprovalCard
               item={item}
+              canReview={canReviewRequests}
               onApprove={(id) => openConfirm(id, "approve")}
               onReject={(id) => openConfirm(id, "reject")}
               isReviewing={isReviewing}
             />
           )}
           ListFooterComponent={
-            totalPages > 1 ? (
-              <View style={styles.pagination}>
-                <TouchableOpacity
-                  onPress={() => setPage((p) => Math.max(1, p - 1))}
-                  disabled={page === 1}
-                  style={[styles.pageBtn, page === 1 && { opacity: 0.4 }]}
-                >
-                  <Ionicons name="chevron-back" size={18} color="#111827" />
-                </TouchableOpacity>
-                <Text style={styles.pageInfo}>
-                  {page} / {totalPages} • {total} đơn
-                </Text>
-                <TouchableOpacity
-                  onPress={() => setPage((p) => Math.min(totalPages, p + 1))}
-                  disabled={page === totalPages}
-                  style={[
-                    styles.pageBtn,
-                    page === totalPages && { opacity: 0.4 },
-                  ]}
-                >
-                  <Ionicons name="chevron-forward" size={18} color="#111827" />
-                </TouchableOpacity>
+            isFetchingNextPage ? (
+              <View style={styles.loadMoreRow}>
+                <ActivityIndicator size="small" color="#2563EB" />
               </View>
+            ) : !hasNextPage && requests.length > 0 ? (
+              <Text style={styles.endOfListText}>
+                Đã hiển thị tất cả {total} đơn
+              </Text>
             ) : null
           }
         />
@@ -352,7 +340,6 @@ const ApprovalRequestScreen = ({ navigation }) => {
         title="Chọn ngày bắt đầu"
         onConfirm={(val) => {
           setFrom(val);
-          resetPage();
         }}
         onClose={() => setShowFromPicker(false)}
       />
@@ -363,7 +350,6 @@ const ApprovalRequestScreen = ({ navigation }) => {
         title="Chọn ngày kết thúc"
         onConfirm={(val) => {
           setTo(val);
-          resetPage();
         }}
         onClose={() => setShowToPicker(false)}
       />
@@ -499,22 +485,11 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
 
-  pagination: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 16,
+  loadMoreRow: { paddingVertical: 16, alignItems: "center" },
+  endOfListText: {
+    textAlign: "center",
+    fontSize: 12,
+    color: "#9CA3AF",
     paddingVertical: 16,
   },
-  pageBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: "#FFFFFF",
-    borderWidth: 1,
-    borderColor: "#E5E7EB",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  pageInfo: { fontSize: 13, color: "#9CA3AF" },
 });

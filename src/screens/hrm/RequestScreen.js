@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   View,
   Text,
@@ -10,6 +10,12 @@ import {
   Modal,
   Pressable,
 } from "react-native";
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+  LinearTransition,
+} from "react-native-reanimated";
 import dayjs from "dayjs";
 import isBetween from "dayjs/plugin/isBetween";
 import { Ionicons } from "@expo/vector-icons";
@@ -17,10 +23,11 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import KpiCard from "../../components/hrm/leaveRequest/KpiCard";
 import RequestCard from "../../components/hrm/leaveRequest/RequestCard";
+import RequestDetailBottomSheet from "../../components/hrm/leaveRequest/RequestDetailBottomSheet";
 import utils from "../../helpers/utils";
 import { useSelector } from "react-redux";
 import useGetStatisticsRequests from "../../hooks/requests/useGetStatisticsRequests";
-import useGetMyRequests from "../../hooks/requests/useGetMyRequests";
+import useGetMyRequestsInfinite from "../../hooks/requests/useGetMyRequestsInfinite";
 import { openDrawer } from "../../helpers/navigationRef";
 import useCancelLeaveRequest from "../../hooks/requests/useCancelLeaveRequest";
 import { useFocusEffect } from "@react-navigation/native";
@@ -31,6 +38,14 @@ import { COLORS } from "../../assets/theme/colors";
 
 dayjs.extend(isBetween);
 
+const TABS = [
+  { key: "pending", label: "Chờ Duyệt", dot: "#F59E0B" },
+  { key: "approved", label: "Đã Duyệt", dot: "#22C55E" },
+  { key: "rejected", label: "Từ Chối", dot: "#EF4444" },
+];
+const TAB_PAD = 4;
+const TAB_GAP = 4;
+
 export default function RequestScreen({ navigation }) {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
@@ -38,9 +53,14 @@ export default function RequestScreen({ navigation }) {
   const [filterType] = useState("");
   const [fromFilter] = useState(dayjs().startOf("month").format("YYYY-MM-DD"));
   const [toFilter] = useState(dayjs().format("YYYY-MM-DD"));
-  const [page, setPage] = useState(1);
-  const [expandedRequestId, setExpandedRequestId] = useState(null);
+  const [selectedRequest, setSelectedRequest] = useState(null);
   const [cancelModal, setCancelModal] = useState({ visible: false, id: null });
+  const detailSheetRef = useRef(null);
+
+  const openDetail = (item) => {
+    setSelectedRequest(item);
+    detailSheetRef.current?.present();
+  };
 
   // Hooks
   const { data: stats, isLoading: statsLoading } = useGetStatisticsRequests();
@@ -48,23 +68,60 @@ export default function RequestScreen({ navigation }) {
     useCancelLeaveRequest();
 
   const {
-    data: myRequestsData,
+    data: infiniteData,
     isLoading: isLoadingRequests,
+    isFetchingNextPage,
+    hasNextPage,
+    fetchNextPage,
     refetch,
-  } = useGetMyRequests({
+  } = useGetMyRequestsInfinite({
     request_type: filterType,
     status: requestStatus,
     from: fromFilter,
     to: toFilter,
-    page,
     limit: 5,
   });
 
-  const myRequests = myRequestsData?.data ?? [];
-  const totalPages = myRequestsData?.pagination?.total_pages ?? 1;
-  const totalItems = myRequestsData?.pagination?.total ?? 0;
+  const myRequests = infiniteData?.pages.flatMap((p) => p.data ?? []) ?? [];
+  const totalItems = infiniteData?.pages?.[0]?.pagination?.total ?? 0;
+
+  const handleScroll = ({ nativeEvent }) => {
+    const { contentOffset, contentSize, layoutMeasurement } = nativeEvent;
+    const distanceToBottom =
+      contentSize.height - (contentOffset.y + layoutMeasurement.height);
+
+    if (distanceToBottom < 100 && hasNextPage && !isFetchingNextPage) {
+      fetchNextPage();
+    }
+  };
 
   const auth = useSelector((state) => state.auth);
+
+  // Segmented tab pill
+  const [tabRowWidth, setTabRowWidth] = useState(0);
+  const tabW = tabRowWidth
+    ? (tabRowWidth - TAB_PAD * 2 - TAB_GAP * (TABS.length - 1)) / TABS.length
+    : 0;
+  const pillX = useSharedValue(0);
+  const activeTabIndex = TABS.findIndex((t) => t.key === requestStatus);
+
+  useEffect(() => {
+    if (!tabW) return;
+    pillX.value = withSpring(activeTabIndex * (tabW + TAB_GAP), {
+      damping: 18,
+      stiffness: 170,
+      mass: 0.9,
+    });
+  }, [activeTabIndex, tabW]);
+
+  const pillStyle = useAnimatedStyle(() => ({
+    width: tabW,
+    transform: [{ translateX: pillX.value }],
+  }));
+
+  const changeTab = (key) => {
+    setRequestStatus(key);
+  };
 
   const confirmCancel = () => {
     if (!cancelModal.id) return;
@@ -90,9 +147,12 @@ export default function RequestScreen({ navigation }) {
     });
   };
 
+  const refetchRef = useRef(refetch);
+  refetchRef.current = refetch;
+
   useFocusEffect(
     useCallback(() => {
-      refetch();
+      refetchRef.current();
     }, []),
   );
 
@@ -127,10 +187,12 @@ export default function RequestScreen({ navigation }) {
         style={{ marginTop: -26 }}
         contentContainerStyle={{ paddingBottom: 24 }}
         showsVerticalScrollIndicator={false}
+        onScroll={handleScroll}
+        scrollEventThrottle={100}
       >
         <TouchableOpacity
           onPress={() => navigation.navigate("AddRequestScreen")}
-          activeOpacity={0.85}
+          // activeOpacity={0.85}
           style={styles.ctaPill}
         >
           <View style={styles.ctaIconWrap}>
@@ -164,22 +226,33 @@ export default function RequestScreen({ navigation }) {
         </View>
 
         <View style={[styles.card, { padding: 0, overflow: "hidden" }]}>
-          <View style={styles.tabRow}>
-            {[
-              { key: "pending", label: "Chờ Duyệt", dot: "#F59E0B" },
-              { key: "approved", label: "Đã Duyệt", dot: "#22C55E" },
-              { key: "rejected", label: "Từ Chối", dot: "#EF4444" },
-            ].map((tab) => {
+          <View
+            style={styles.tabRow}
+            onLayout={(e) => setTabRowWidth(e.nativeEvent.layout.width)}
+          >
+            {tabRowWidth > 0 && (
+              <Animated.View
+                pointerEvents="none"
+                style={[styles.tabPill, pillStyle]}
+              />
+            )}
+
+            {/* {isLoadingRequests && (
+              <ActivityIndicator
+                size="small"
+                color={COLORS.Primary}
+                style={styles.tabLoadingIndicator}
+              />
+            )} */}
+
+            {TABS.map((tab) => {
               const active = requestStatus === tab.key;
               return (
                 <TouchableOpacity
                   key={tab.key}
-                  style={[styles.tab, active && styles.tabActive]}
+                  style={styles.tab}
                   activeOpacity={0.8}
-                  onPress={() => {
-                    setRequestStatus(tab.key);
-                    setPage(1);
-                  }}
+                  onPress={() => changeTab(tab.key)}
                 >
                   <View style={[styles.tabDot, { backgroundColor: tab.dot }]} />
                   <Text
@@ -192,69 +265,69 @@ export default function RequestScreen({ navigation }) {
             })}
           </View>
 
-          <View style={{ padding: 12, gap: 8 }}>
-            {isLoadingRequests ? (
-              <ActivityIndicator
-                style={{ marginVertical: 40 }}
-                color={COLORS.Primary}
-              />
-            ) : myRequests.length === 0 ? (
-              <View style={styles.emptyBox}>
-                <View style={styles.emptyIconWrap}>
-                  <Ionicons
-                    name="document-outline"
-                    size={32}
-                    color={COLORS.neutral.neutral400}
-                  />
-                </View>
-                <Text style={styles.emptyText}>Không có dữ liệu</Text>
-              </View>
-            ) : (
-              myRequests.map((item) => (
-                <RequestCard
-                  key={item._id}
-                  item={item}
-                  expanded={expandedRequestId === item._id}
-                  onToggle={() =>
-                    setExpandedRequestId((prev) =>
-                      prev === item._id ? null : item._id,
-                    )
-                  }
-                  onCancel={() =>
-                    setCancelModal({ visible: true, id: item._id })
-                  }
-                  isCancelling={isCancelling}
+          <Animated.View layout={LinearTransition.duration(250)}>
+            <View style={{ padding: 12, gap: 8 }}>
+              {isLoadingRequests ? (
+                <ActivityIndicator
+                  style={{ marginVertical: 40 }}
+                  color={COLORS.Primary}
                 />
-              ))
-            )}
-          </View>
-
-          {totalPages > 1 && (
-            <View style={styles.pagination}>
-              <TouchableOpacity
-                onPress={() => setPage((p) => Math.max(1, p - 1))}
-                disabled={page === 1}
-                style={[styles.pageBtn, page === 1 && { opacity: 0.4 }]}
-              >
-                <Ionicons name="chevron-back" size={18} color={COLORS.text.dark} />
-              </TouchableOpacity>
-              <Text style={styles.pageInfo}>
-                Trang {page}/{totalPages} • {totalItems} đơn
-              </Text>
-              <TouchableOpacity
-                onPress={() => setPage((p) => Math.min(totalPages, p + 1))}
-                disabled={page === totalPages}
-                style={[
-                  styles.pageBtn,
-                  page === totalPages && { opacity: 0.4 },
-                ]}
-              >
-                <Ionicons name="chevron-forward" size={18} color={COLORS.text.dark} />
-              </TouchableOpacity>
+              ) : myRequests.length === 0 ? (
+                <View style={styles.emptyBox}>
+                  <View style={styles.emptyIconWrap}>
+                    <Ionicons
+                      name="document-outline"
+                      size={32}
+                      color={COLORS.neutral.neutral400}
+                    />
+                  </View>
+                  <Text style={styles.emptyText}>Không có dữ liệu</Text>
+                </View>
+              ) : (
+                <View style={{ gap: 8 }}>
+                  {myRequests.map((item) => (
+                    <Animated.View
+                      key={item._id}
+                      layout={LinearTransition.duration(200)}
+                    >
+                      <RequestCard
+                        item={item}
+                        onPress={() => openDetail(item)}
+                        onCancel={() =>
+                          setCancelModal({ visible: true, id: item._id })
+                        }
+                        isCancelling={isCancelling}
+                      />
+                    </Animated.View>
+                  ))}
+                </View>
+              )}
             </View>
-          )}
+
+            {isFetchingNextPage && (
+              <View style={styles.loadMoreRow}>
+                <ActivityIndicator size="small" color={COLORS.Primary} />
+              </View>
+            )}
+
+            {!hasNextPage && myRequests.length > 0 && (
+              <Text style={styles.endOfListText}>
+                Đã hiển thị tất cả {totalItems} đơn
+              </Text>
+            )}
+          </Animated.View>
         </View>
       </ScrollView>
+
+      <RequestDetailBottomSheet
+        ref={detailSheetRef}
+        item={selectedRequest}
+        isCancelling={isCancelling}
+        onCancel={() => {
+          detailSheetRef.current?.dismiss();
+          setCancelModal({ visible: true, id: selectedRequest?._id });
+        }}
+      />
 
       <Modal
         visible={cancelModal.visible}
@@ -396,11 +469,25 @@ const styles = StyleSheet.create({
   // Tabs
   tabRow: {
     flexDirection: "row",
+    position: "relative",
     backgroundColor: COLORS.neutral.neutral100,
     margin: 10,
-    padding: 4,
+    padding: TAB_PAD,
     borderRadius: 14,
-    gap: 4,
+    gap: TAB_GAP,
+  },
+  tabPill: {
+    position: "absolute",
+    top: TAB_PAD,
+    bottom: TAB_PAD,
+    left: TAB_PAD,
+    borderRadius: 11,
+    backgroundColor: COLORS.white,
+    shadowColor: "#000",
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
   },
   tab: {
     flex: 1,
@@ -411,13 +498,10 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderRadius: 11,
   },
-  tabActive: {
-    backgroundColor: COLORS.white,
-    shadowColor: "#000",
-    shadowOpacity: 0.06,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 2,
+  tabLoadingIndicator: {
+    position: "absolute",
+    top: TAB_PAD,
+    right: -6,
   },
   tabText: { fontSize: 13, fontWeight: "700", color: COLORS.text.bland },
   tabTextActive: { color: COLORS.text.dark },
@@ -434,26 +518,14 @@ const styles = StyleSheet.create({
   },
   emptyText: { color: COLORS.text.bland, fontSize: 13, fontWeight: "500" },
 
-  // Pagination
-  pagination: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 16,
-    padding: 14,
-    borderTopWidth: 1,
-    borderTopColor: COLORS.neutral.neutral200,
-    backgroundColor: COLORS.white,
+  // Infinite loading footer
+  loadMoreRow: { paddingVertical: 16, alignItems: "center" },
+  endOfListText: {
+    textAlign: "center",
+    fontSize: 12,
+    color: COLORS.neutral.neutral400,
+    paddingVertical: 16,
   },
-  pageBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: COLORS.neutral.neutral100,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  pageInfo: { fontSize: 13, color: COLORS.text.bland, fontWeight: "500" },
 
   // Modal
   modalOverlay: {

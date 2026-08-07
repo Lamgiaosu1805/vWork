@@ -9,9 +9,9 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
-import MiniCalendar from "../../components/hrm/leaveRequest/MiniCalendar";
+import CalendarBottomSheet from "../../components/hrm/leaveRequest/CalendarBottomSheet";
 import DropdownField from "../../components/hrm/leaveRequest/DropdownField";
 import DisplayBox from "../../components/hrm/leaveRequest/DisplayBox";
 import {
@@ -44,13 +44,15 @@ const AddRequestScreen = ({ navigation }) => {
   const [session, setSession] = useState("full");
   const [fromPeriod, setFromPeriod] = useState("morning");
   const [toPeriod, setToPeriod] = useState("afternoon");
-  const [hoverDate, setHoverDate] = useState(null);
+  const [calendarTarget, setCalendarTarget] = useState("single");
   const [usePaidLeave, setUsePaidLeave] = useState(true);
   const [destinationLocation, setDestinationLocation] = useState("");
   const [startTime, setStartTime] = useState(null);
   const [endTime, setEndTime] = useState(null);
   const [showStartTimePicker, setShowStartTimePicker] = useState(false);
   const [showEndTimePicker, setShowEndTimePicker] = useState(false);
+
+  const calendarSheetRef = useRef(null);
 
   const isLongLeave = requestType?.is_long_leave;
   const isLateOrEarly = requestType?.request_type === "late_early";
@@ -104,28 +106,34 @@ const AddRequestScreen = ({ navigation }) => {
   };
 
   const handleDayPress = (date) => {
-    if ((isLateOrEarly || isForgot) && !date.isSame(selectedDate, "day"))
-      return Toast.show({
-        type: "info",
-        text1: "Không thể thay đổi ngày cho loại đơn này",
-      });
-
-    if (isRangeMode) {
-      if (!startDate || (startDate && endDate)) {
-        setStartDate(date);
-        setEndDate(null);
-      } else {
-        if (date.isBefore(startDate, "day")) {
-          setEndDate(startDate);
-          setStartDate(date);
-        } else {
-          setEndDate(date);
-        }
+    if (calendarTarget === "start") {
+      if (endDate && date.isAfter(endDate, "day")) {
+        Toast.show({
+          type: "info",
+          text1: "Ngày bắt đầu phải trước ngày kết thúc",
+        });
+        return;
       }
+      setStartDate(date);
+    } else if (calendarTarget === "end") {
+      if (startDate && date.isBefore(startDate, "day")) {
+        Toast.show({
+          type: "info",
+          text1: "Ngày kết thúc phải sau ngày bắt đầu",
+        });
+        return;
+      }
+      setEndDate(date);
     } else {
       setSelectedDate(date);
     }
-    setHoverDate(null);
+
+    calendarSheetRef.current?.dismiss();
+  };
+
+  const openCalendar = (target = "single") => {
+    setCalendarTarget(target);
+    calendarSheetRef.current?.present();
   };
 
   const handleSubmit = () => {
@@ -283,14 +291,10 @@ const AddRequestScreen = ({ navigation }) => {
 
           {/* ── FORM ── */}
           <View style={styles.card}>
-            <Text style={styles.cardTitle}>Tạo Đơn Giải Trình / Nghỉ Phép</Text>
-            <Text style={styles.cardSubtitle}>
-              Hệ thống đánh giá chống lạm dụng, phát sinh cảnh báo cuối vì phạm
-              công thời gian thực.
-            </Text>
-
             {/* Loại đơn */}
             <DropdownField
+              label="Loại đơn"
+              required
               value={requestType.value}
               onChange={(value) => {
                 const selected = REQUEST_TYPE_ITEMS.find(
@@ -312,6 +316,7 @@ const AddRequestScreen = ({ navigation }) => {
                       startDate ? dayjs(startDate).format("DD/MM/YYYY") : ""
                     }
                     placeholder="Chọn ngày bắt đầu"
+                    onPress={() => openCalendar("start")}
                   />
                   {isLongLeave && (
                     <>
@@ -331,6 +336,7 @@ const AddRequestScreen = ({ navigation }) => {
                     label="Đến ngày"
                     value={endDate ? dayjs(endDate).format("DD/MM/YYYY") : ""}
                     placeholder="Chọn ngày kết thúc"
+                    onPress={() => openCalendar("end")}
                   />
                   {isLongLeave && (
                     <>
@@ -370,6 +376,7 @@ const AddRequestScreen = ({ navigation }) => {
                         : ""
                     }
                     placeholder="Chọn ngày trên lịch"
+                    onPress={() => openCalendar("single")}
                   />
                   {isLeaveRequest && !isLateOrEarly && (
                     <>
@@ -533,31 +540,6 @@ const AddRequestScreen = ({ navigation }) => {
               </View>
             )}
 
-            {/* Luồng duyệt dự kiến */}
-            {reviewers.length > 0 && (
-              <View style={styles.reviewerBox}>
-                <Text style={styles.reviewerBoxTitle}>
-                  Luồng duyệt áp dụng
-                </Text>
-                {reviewers.map((r, index) => (
-                  <View key={r.userInfoId || r.accountId || index} style={styles.reviewerRow}>
-                    <Ionicons
-                      name="person-circle-outline"
-                      size={16}
-                      color={"#6B7280"}
-                    />
-                    <Text style={styles.reviewerRowText}>
-                      <Text style={{ fontWeight: "700" }}>
-                        Cấp {index + 1}:{" "}
-                      </Text>
-                      {r.full_name}
-                      {r.position_name ? ` - ${r.position_name}` : ""}
-                    </Text>
-                  </View>
-                ))}
-              </View>
-            )}
-
             {/* Lý do */}
             <View style={styles.fieldGroup}>
               <Text style={styles.fieldLabel}>Lý do cụ thể</Text>
@@ -597,6 +579,25 @@ const AddRequestScreen = ({ navigation }) => {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      <CalendarBottomSheet
+        ref={calendarSheetRef}
+        title={
+          calendarTarget === "start"
+            ? "Chọn ngày bắt đầu"
+            : calendarTarget === "end"
+              ? "Chọn ngày kết thúc"
+              : "Chọn ngày"
+        }
+        selectedDate={
+          calendarTarget === "start"
+            ? startDate
+            : calendarTarget === "end"
+              ? endDate
+              : selectedDate
+        }
+        onDayPress={handleDayPress}
+      />
     </SafeAreaView>
   );
 };
@@ -666,20 +667,4 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   submitBtnText: { color: "#FFFFFF", fontSize: 15, fontWeight: "700" },
-  reviewerBox: {
-    backgroundColor: "#F3F4F6",
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    marginBottom: 14,
-    gap: 6,
-  },
-  reviewerBoxTitle: {
-    fontSize: 12,
-    fontWeight: "700",
-    color: "#6B7280",
-    marginBottom: 2,
-  },
-  reviewerRow: { flexDirection: "row", alignItems: "center", gap: 6 },
-  reviewerRowText: { fontSize: 12, color: "#6B7280", flex: 1, flexWrap: "wrap" },
 });

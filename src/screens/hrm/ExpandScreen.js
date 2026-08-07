@@ -23,6 +23,7 @@ const MenuItem = ({ icon, label, description, onPress, color = '#ED2E30' }) => (
 export default function ExpandScreen({ navigation }) {
   const user = useSelector(s => s.auth.user);
   const perms = getPermissions(user);
+  console.log('ExpandScreen - perms:', perms);
 
   return (
     <View style={styles.container}>
@@ -85,31 +86,45 @@ export default function ExpandScreen({ navigation }) {
           </>
         )}
 
-        {/* Quản lý tổ chức — hiển thị nếu có quyền HRM */}
-        {perms.showDepartmentList && (
+        {/* Quản lý tổ chức */}
+        {(perms.canReviewRequests ||
+          perms.canViewAllRequests ||
+          perms.showDepartmentList) && (
           <>
             <Text style={styles.sectionLabel}>Quản lý tổ chức</Text>
             <View style={styles.group}>
-              <MenuItem
-                icon="paper-plane-outline"
-                label="Xử lý yêu cầu"
-                description="Xử lý các yêu cầu của nhân viên."
-                onPress={() => navigation.navigate('ApprovalRequestScreen')}
-              />
-              <View style={styles.divider} />
-              <MenuItem
-                icon="business"
-                label="Chi nhánh"
-                description="Danh sách và quản lý chi nhánh"
-                onPress={() => navigation.navigate('BranchScreen')}
-              />
-              <View style={styles.divider} />
-              <MenuItem
-                icon="git-branch"
-                label="Khối / Phòng ban"
-                description="Cấu trúc tổ chức theo chi nhánh"
-                onPress={() => navigation.navigate('DepartmentScreen')}
-              />
+              {(perms.canReviewRequests || perms.canViewAllRequests) && (
+                <>
+                  <MenuItem
+                    icon="paper-plane-outline"
+                    label={perms.canReviewRequests ? "Xử lý yêu cầu" : "Xem yêu cầu"}
+                    description={
+                      perms.canReviewRequests
+                        ? "Xử lý các yêu cầu của nhân viên."
+                        : "Xem các yêu cầu đã được duyệt."
+                    }
+                    onPress={() => navigation.navigate('ApprovalRequestScreen')}
+                  />
+                  {perms.showDepartmentList && <View style={styles.divider} />}
+                </>
+              )}
+              {perms.showDepartmentList && (
+                <>
+                  <MenuItem
+                    icon="business"
+                    label="Chi nhánh"
+                    description="Danh sách và quản lý chi nhánh"
+                    onPress={() => navigation.navigate('BranchScreen')}
+                  />
+                  <View style={styles.divider} />
+                  <MenuItem
+                    icon="git-branch"
+                    label="Khối / Phòng ban"
+                    description="Cấu trúc tổ chức theo chi nhánh"
+                    onPress={() => navigation.navigate('DepartmentScreen')}
+                  />
+                </>
+              )}
             </View>
           </>
         )}

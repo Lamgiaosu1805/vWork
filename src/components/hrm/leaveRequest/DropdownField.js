@@ -1,7 +1,7 @@
-import { StyleSheet, Text, View } from "react-native";
-import React from "react";
-import { Dropdown } from "react-native-element-dropdown";
+import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import React, { useMemo, useRef } from "react";
 import { Ionicons } from "@expo/vector-icons";
+import PickerBottomSheet from "./PickerBottomSheet";
 
 const DropdownField = ({
   label,
@@ -11,6 +11,12 @@ const DropdownField = ({
   placeholder,
   required,
 }) => {
+  const sheetRef = useRef(null);
+  const selected = useMemo(
+    () => items.find((item) => item.value === value),
+    [items, value],
+  );
+
   return (
     <View style={[styles.fieldGroup, { flex: 1 }]}>
       {label ? (
@@ -19,24 +25,32 @@ const DropdownField = ({
           {required ? "*" : ""}
         </Text>
       ) : null}
-      <Dropdown
+
+      <TouchableOpacity
         style={styles.dropdown}
-        placeholderStyle={styles.dropdownPlaceholder}
-        selectedTextStyle={styles.dropdownSelectedText}
-        itemTextStyle={{ fontSize: 14, color: "#2A2A2A" }}
-        activeColor="rgba(57,199,154,0.1)"
-        data={items}
-        maxHeight={220}
-        labelField="label"
-        valueField="value"
-        placeholder={placeholder || "Chọn..."}
+        activeOpacity={0.7}
+        onPress={() => sheetRef.current?.present()}
+      >
+        <Text
+          style={
+            selected ? styles.dropdownSelectedText : styles.dropdownPlaceholder
+          }
+          numberOfLines={1}
+        >
+          {selected ? selected.label : placeholder || "Chọn..."}
+        </Text>
+        <Ionicons name="chevron-down" size={16} color={"#9CA3AF"} />
+      </TouchableOpacity>
+
+      <PickerBottomSheet
+        ref={sheetRef}
+        title={label || placeholder}
+        items={items}
         value={value}
-        onChange={(item) => onChange(item.value)}
-        renderRightIcon={() => (
-          <View pointerEvents="none">
-            <Ionicons name="chevron-down" size={16} color={"#9CA3AF"} />
-          </View>
-        )}
+        onSelect={(v) => {
+          onChange(v);
+          sheetRef.current?.dismiss();
+        }}
       />
     </View>
   );
@@ -59,7 +73,10 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     paddingHorizontal: 14,
     backgroundColor: "#FFFFFF",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
   },
-  dropdownPlaceholder: { fontSize: 14, color: "#9CA3AF" },
-  dropdownSelectedText: { fontSize: 14, color: "#2A2A2A" },
+  dropdownPlaceholder: { fontSize: 14, color: "#9CA3AF", flex: 1 },
+  dropdownSelectedText: { fontSize: 14, color: "#2A2A2A", flex: 1 },
 });
