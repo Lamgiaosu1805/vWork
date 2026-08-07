@@ -17,7 +17,7 @@ import { getTabColor, TAB_CONFIG } from "./tabConfig";
 
 const SCREEN_W = Dimensions.get("window").width;
 const H_PAD = 4;
-const TAB_COUNT = 5;
+const TAB_COUNT = 4;
 const TAB_W = (SCREEN_W - H_PAD * 2) / TAB_COUNT;
 
 const CustomBottomTab = ({ state, navigation, getBadge }) => {

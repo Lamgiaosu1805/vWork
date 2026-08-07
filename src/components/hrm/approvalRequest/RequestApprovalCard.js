@@ -16,7 +16,13 @@ const StatusBadge = ({ status }) => {
   );
 };
 
-const RequestApprovalCard = ({ item, onApprove, onReject, isReviewing }) => {
+const RequestApprovalCard = ({
+  item,
+  canReview = true,
+  onApprove,
+  onReject,
+  isReviewing,
+}) => {
   const [avatarModal, setAvatarModal] = useState(false);
   const avatarUri = item.user_id?.avatar || null;
 
@@ -78,7 +84,7 @@ const RequestApprovalCard = ({ item, onApprove, onReject, isReviewing }) => {
         <Text style={[styles.infoValue]}>{item.reason || "--"}</Text>
       </View>
 
-      {item.status === "pending" && (
+      {item.status === "pending" && canReview && (
         <View style={styles.cardFooter}>
           <ActionButtons
             item={item}

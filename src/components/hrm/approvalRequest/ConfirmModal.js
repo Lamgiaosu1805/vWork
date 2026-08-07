@@ -4,14 +4,25 @@ import {
   Pressable,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Ionicons } from "@expo/vector-icons";
 
 const ConfirmModal = ({ visible, action, onConfirm, onCancel, isLoading }) => {
   const isApprove = action === "approve";
+  const [reason, setReason] = useState("");
+
+  useEffect(() => {
+    if (visible) setReason("");
+  }, [visible]);
+
+  const handleConfirm = () => {
+    if (isApprove) onConfirm();
+    else onConfirm(reason.trim());
+  };
 
   return (
     <Modal
@@ -22,28 +33,35 @@ const ConfirmModal = ({ visible, action, onConfirm, onCancel, isLoading }) => {
     >
       <Pressable style={styles.modalOverlay} onPress={onCancel}>
         <View style={styles.modalBox}>
-          <View
-            style={[
-              styles.modalIconBox,
-              { backgroundColor: isApprove ? "#ECFDF5" : "#FFF1F2" },
-            ]}
-          >
-            <Ionicons
-              name={isApprove ? "checkmark-circle" : "close-circle"}
-              size={32}
-              color={isApprove ? "#047857" : "#BE123C"}
-            />
-          </View>
-
-          <Text style={styles.modalTitle}>
-            {isApprove ? "Xác nhận duyệt?" : "Xác nhận từ chối?"}
-          </Text>
-
-          <Text style={styles.modalDesc}>
-            {isApprove
-              ? "Yêu cầu sẽ được phê duyệt và nhân viên sẽ được thông báo."
-              : "Yêu cầu sẽ bị từ chối. Hành động này không thể hoàn tác."}
-          </Text>
+          {isApprove ? (
+            <>
+              <View
+                style={[styles.modalIconBox, { backgroundColor: "#ECFDF5" }]}
+              >
+                <Ionicons name="checkmark-circle" size={32} color="#047857" />
+              </View>
+              <Text style={styles.modalTitle}>Xác nhận duyệt?</Text>
+              <Text style={styles.modalDesc}>
+                Yêu cầu sẽ được phê duyệt và nhân viên sẽ được thông báo.
+              </Text>
+            </>
+          ) : (
+            <>
+              <Text style={[styles.modalTitle, { marginBottom: 12 }]}>
+                Xác nhận từ chối?
+              </Text>
+              <TextInput
+                style={styles.reasonInput}
+                value={reason}
+                onChangeText={setReason}
+                placeholder="Nhập lí do từ chối cụ thể..."
+                placeholderTextColor="#9CA3AF"
+                multiline
+                numberOfLines={4}
+                textAlignVertical="top"
+              />
+            </>
+          )}
 
           <View style={styles.modalActions}>
             <TouchableOpacity
@@ -54,7 +72,7 @@ const ConfirmModal = ({ visible, action, onConfirm, onCancel, isLoading }) => {
             </TouchableOpacity>
 
             <TouchableOpacity
-              onPress={onConfirm}
+              onPress={handleConfirm}
               disabled={isLoading}
               style={[
                 styles.modalBtnPrimary,
@@ -118,6 +136,17 @@ const styles = StyleSheet.create({
     color: "#6B7280",
     lineHeight: 20,
     textAlign: "center",
+    marginBottom: 20,
+  },
+  reasonInput: {
+    width: "100%",
+    minHeight: 90,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+    padding: 12,
+    fontSize: 13,
+    color: "#111827",
     marginBottom: 20,
   },
   modalActions: { flexDirection: "row", gap: 10, width: "100%" },

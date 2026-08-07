@@ -11,11 +11,11 @@ const Tab = createBottomTabNavigator();
 export default function HRMBottomTab() {
   return (
     <Tab.Navigator
-      initialRouteName={"DashboardHRMScreen"}
+      initialRouteName={"AttendanceScreen"}
       tabBar={(props) => <CustomBottomTab {...props} />}
       screenOptions={{ headerShown: false }}
     >
-      <Tab.Screen name="DashboardHRMScreen" component={DashboardHRMScreen} />
+      {/* <Tab.Screen name="DashboardHRMScreen" component={DashboardHRMScreen} /> */}
       <Tab.Screen name="AttendanceScreen" component={AttendanceScreen} />
       <Tab.Screen name="RequestScreen" component={RequestScreen} />
       <Tab.Screen name="ProfileScreen" component={ProfileScreen} />

@@ -18,6 +18,25 @@ const PickerTimeModal = ({ visible, value, onClose, onConfirm }) => {
     }
   }, [visible, value]);
 
+  if (Platform.OS === "android") {
+    if (!visible) return null;
+
+    return (
+      <DateTimePicker
+        value={tempTime}
+        mode="time"
+        is24Hour={true}
+        display="default"
+        onChange={(event, selected) => {
+          if (event.type === "set" && selected) {
+            onConfirm(selected);
+          }
+          onClose();
+        }}
+      />
+    );
+  }
+
   return (
     <Modal visible={visible} transparent animationType="slide">
       <View style={styles.overlay}>
@@ -44,7 +63,7 @@ const PickerTimeModal = ({ visible, value, onClose, onConfirm }) => {
             value={tempTime}
             mode="time"
             is24Hour={true}
-            display={Platform.OS === "ios" ? "spinner" : "default"}
+            display="spinner"
             onChange={(event, selected) => {
               if (selected) {
                 setTempTime(selected);

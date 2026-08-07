@@ -1,5 +1,7 @@
 import React, { useEffect } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { RootStackNavigator } from "./src/navigators/RootStackNavigator";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { Provider } from "react-redux";
@@ -21,6 +23,8 @@ import {
 import { ThemeProvider } from "./src/assets/theme/ThemeProvider";
 
 // export const navigationRef = React.createRef();
+
+const queryClient = new QueryClient();
 
 const ChatSocketBootstrapper = () => {
   const dispatch = useDispatch();
@@ -58,11 +62,15 @@ export default function App() {
       <GestureHandlerRootView style={{ flex: 1 }}>
         <CustomAlertProvider>
           <SafeAreaProvider>
-            <Provider store={store}>
-              <ChatSocketBootstrapper />
-              <RootStackNavigator />
-              <Toast />
-            </Provider>
+            <QueryClientProvider client={queryClient}>
+              <Provider store={store}>
+                <BottomSheetModalProvider>
+                  <ChatSocketBootstrapper />
+                  <RootStackNavigator />
+                  <Toast />
+                </BottomSheetModalProvider>
+              </Provider>
+            </QueryClientProvider>
           </SafeAreaProvider>
         </CustomAlertProvider>
       </GestureHandlerRootView>

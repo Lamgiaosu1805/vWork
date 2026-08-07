@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   View,
   Text,
@@ -10,36 +10,57 @@ import {
   Modal,
   Pressable,
 } from "react-native";
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+  LinearTransition,
+} from "react-native-reanimated";
 import dayjs from "dayjs";
 import isBetween from "dayjs/plugin/isBetween";
 import { Ionicons } from "@expo/vector-icons";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { LinearGradient } from "expo-linear-gradient";
 import KpiCard from "../../components/hrm/leaveRequest/KpiCard";
 import RequestCard from "../../components/hrm/leaveRequest/RequestCard";
+import RequestDetailBottomSheet from "../../components/hrm/leaveRequest/RequestDetailBottomSheet";
 import utils from "../../helpers/utils";
 import { useSelector } from "react-redux";
 import useGetStatisticsRequests from "../../hooks/requests/useGetStatisticsRequests";
-import useGetMyRequests from "../../hooks/requests/useGetMyRequests";
-import Header from "../../components/Header";
+import useGetMyRequestsInfinite from "../../hooks/requests/useGetMyRequestsInfinite";
 import { openDrawer } from "../../helpers/navigationRef";
 import useCancelLeaveRequest from "../../hooks/requests/useCancelLeaveRequest";
 import { useFocusEffect } from "@react-navigation/native";
 import Toast from "react-native-toast-message";
-import { Menu, Plus, SquarePlus } from "lucide-react-native";
+import { Menu, FileEdit } from "lucide-react-native";
 import useTheme from "../../assets/theme/useTheme";
 import { COLORS } from "../../assets/theme/colors";
 
 dayjs.extend(isBetween);
 
+const TABS = [
+  { key: "pending", label: "Chờ Duyệt", dot: "#F59E0B" },
+  { key: "approved", label: "Đã Duyệt", dot: "#22C55E" },
+  { key: "rejected", label: "Từ Chối", dot: "#EF4444" },
+];
+const TAB_PAD = 4;
+const TAB_GAP = 4;
+
 export default function RequestScreen({ navigation }) {
   const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
   const [requestStatus, setRequestStatus] = useState("pending");
   const [filterType] = useState("");
   const [fromFilter] = useState(dayjs().startOf("month").format("YYYY-MM-DD"));
   const [toFilter] = useState(dayjs().format("YYYY-MM-DD"));
-  const [page, setPage] = useState(1);
-  const [expandedRequestId, setExpandedRequestId] = useState(null);
+  const [selectedRequest, setSelectedRequest] = useState(null);
   const [cancelModal, setCancelModal] = useState({ visible: false, id: null });
+  const detailSheetRef = useRef(null);
+
+  const openDetail = (item) => {
+    setSelectedRequest(item);
+    detailSheetRef.current?.present();
+  };
 
   // Hooks
   const { data: stats, isLoading: statsLoading } = useGetStatisticsRequests();
@@ -47,23 +68,60 @@ export default function RequestScreen({ navigation }) {
     useCancelLeaveRequest();
 
   const {
-    data: myRequestsData,
+    data: infiniteData,
     isLoading: isLoadingRequests,
+    isFetchingNextPage,
+    hasNextPage,
+    fetchNextPage,
     refetch,
-  } = useGetMyRequests({
+  } = useGetMyRequestsInfinite({
     request_type: filterType,
     status: requestStatus,
     from: fromFilter,
     to: toFilter,
-    page,
     limit: 5,
   });
 
-  const myRequests = myRequestsData?.data ?? [];
-  const totalPages = myRequestsData?.pagination?.total_pages ?? 1;
-  const totalItems = myRequestsData?.pagination?.total ?? 0;
+  const myRequests = infiniteData?.pages.flatMap((p) => p.data ?? []) ?? [];
+  const totalItems = infiniteData?.pages?.[0]?.pagination?.total ?? 0;
+
+  const handleScroll = ({ nativeEvent }) => {
+    const { contentOffset, contentSize, layoutMeasurement } = nativeEvent;
+    const distanceToBottom =
+      contentSize.height - (contentOffset.y + layoutMeasurement.height);
+
+    if (distanceToBottom < 100 && hasNextPage && !isFetchingNextPage) {
+      fetchNextPage();
+    }
+  };
 
   const auth = useSelector((state) => state.auth);
+
+  // Segmented tab pill
+  const [tabRowWidth, setTabRowWidth] = useState(0);
+  const tabW = tabRowWidth
+    ? (tabRowWidth - TAB_PAD * 2 - TAB_GAP * (TABS.length - 1)) / TABS.length
+    : 0;
+  const pillX = useSharedValue(0);
+  const activeTabIndex = TABS.findIndex((t) => t.key === requestStatus);
+
+  useEffect(() => {
+    if (!tabW) return;
+    pillX.value = withSpring(activeTabIndex * (tabW + TAB_GAP), {
+      damping: 18,
+      stiffness: 170,
+      mass: 0.9,
+    });
+  }, [activeTabIndex, tabW]);
+
+  const pillStyle = useAnimatedStyle(() => ({
+    width: tabW,
+    transform: [{ translateX: pillX.value }],
+  }));
+
+  const changeTab = (key) => {
+    setRequestStatus(key);
+  };
 
   const confirmCancel = () => {
     if (!cancelModal.id) return;
@@ -89,48 +147,67 @@ export default function RequestScreen({ navigation }) {
     });
   };
 
+  const refetchRef = useRef(refetch);
+  refetchRef.current = refetch;
+
   useFocusEffect(
     useCallback(() => {
-      refetch();
+      refetchRef.current();
     }, []),
   );
 
   return (
-    <ScrollView
-      style={[styles.screen, { backgroundColor: colors.main }]}
-      showsVerticalScrollIndicator={false}
-    >
-      <SafeAreaView edges={[]}>
-        <Header
-          title="Yêu cầu"
-          LeftIcon={Menu}
-          onLeftPress={() => {
-            openDrawer();
-          }}
-        />
-        <View style={styles.header}>
-          <Text style={styles.greeting}>
-            Mọi yêu cầu của bạn, xử lý tại một nơi.
-          </Text>
-          <Text style={styles.subtitle}>
-            Tạo và theo dõi các yêu cầu nhân sự nhanh chóng, minh bạch và thuận
-            tiện.
-          </Text>
+    <View style={[styles.screen, { backgroundColor: colors.main }]}>
+      <LinearGradient
+        colors={[COLORS.Primary, COLORS.Secondary]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={[styles.hero, { paddingTop: insets.top + 8 }]}
+      >
+        <View style={styles.heroTopRow}>
+          <TouchableOpacity
+            onPress={() => openDrawer()}
+            style={styles.heroIconBtn}
+          >
+            <Menu size={22} color={COLORS.white} />
+          </TouchableOpacity>
+          <Text style={styles.heroHeaderTitle}>Yêu cầu</Text>
+          <View style={styles.heroIconBtn} />
         </View>
 
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.kpiRow}
+        <Text style={styles.heroGreeting}>
+          Xin chào{auth.user?.full_name ? `, ${auth.user.full_name}` : ""} 👋
+        </Text>
+        <Text style={styles.heroSubtitle}>
+          Gửi và theo dõi yêu cầu nhân sự nhanh chóng, minh bạch.
+        </Text>
+      </LinearGradient>
+
+      <ScrollView
+        style={{ marginTop: -26 }}
+        contentContainerStyle={{ paddingBottom: 24 }}
+        showsVerticalScrollIndicator={false}
+        onScroll={handleScroll}
+        scrollEventThrottle={100}
+      >
+        <TouchableOpacity
+          onPress={() => navigation.navigate("AddRequestScreen")}
+          // activeOpacity={0.85}
+          style={styles.ctaPill}
         >
+          <View style={styles.ctaIconWrap}>
+            <FileEdit size={18} color={COLORS.Primary} />
+          </View>
+          <Text style={styles.ctaText}>Tạo yêu cầu mới</Text>
+        </TouchableOpacity>
+
+        <View style={styles.kpiRow}>
           <KpiCard
             icon="finger-print"
             colorIcon={"#4F46E5"}
             title="Lượt quên chấm công"
             value={statsLoading ? "--" : stats?.missed_clock_days}
             unit="ngày"
-            note="Thử việc chưa được cấp lượt quên công."
-            noteColor="#EAB308"
           />
           <KpiCard
             icon="calendar-outline"
@@ -138,8 +215,6 @@ export default function RequestScreen({ navigation }) {
             title="Ngày phép tích lũy"
             value={statsLoading ? "--" : stats?.leave_balance}
             unit="ngày"
-            note="Tự động mở khóa 3 lượt quên công."
-            noteColor="#EAB308"
           />
           <KpiCard
             icon="alert-circle-outline"
@@ -147,121 +222,112 @@ export default function RequestScreen({ navigation }) {
             title="Ngày nghỉ không phép"
             value={statsLoading ? "--" : stats?.absent_days}
             unit="ngày"
-            note="Số ngày bạn bị phạt"
-            noteColor={"#EF4444"}
           />
-        </ScrollView>
+        </View>
 
-        <TouchableOpacity
-          onPress={() => navigation.navigate("AddRequestScreen")}
-          style={{
-            flexDirection: "row",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: 8,
-            backgroundColor: COLORS.Primary,
-            marginHorizontal: 10,
-            borderRadius: 16,
-            height: 104,
-            marginTop: 4,
-          }}
-          activeOpacity={0.85}
-        >
-          <SquarePlus size={24} color={COLORS.white} />
-
-          <Text
-            style={{ color: COLORS.white, fontWeight: "500", fontSize: 16 }}
-          >
-            Tạo yêu cầu mới
-          </Text>
-        </TouchableOpacity>
         <View style={[styles.card, { padding: 0, overflow: "hidden" }]}>
-          <View style={styles.tabRow}>
-            {[
-              { key: "pending", label: "Chờ Duyệt", dot: "#F59E0B" },
-              { key: "approved", label: "Đã Duyệt", dot: "#22C55E" },
-              { key: "rejected", label: "Từ Chối", dot: "#EF4444" },
-            ].map((tab) => {
+          <View
+            style={styles.tabRow}
+            onLayout={(e) => setTabRowWidth(e.nativeEvent.layout.width)}
+          >
+            {tabRowWidth > 0 && (
+              <Animated.View
+                pointerEvents="none"
+                style={[styles.tabPill, pillStyle]}
+              />
+            )}
+
+            {/* {isLoadingRequests && (
+              <ActivityIndicator
+                size="small"
+                color={COLORS.Primary}
+                style={styles.tabLoadingIndicator}
+              />
+            )} */}
+
+            {TABS.map((tab) => {
               const active = requestStatus === tab.key;
               return (
                 <TouchableOpacity
                   key={tab.key}
-                  style={[styles.tab, active && styles.tabActive]}
-                  onPress={() => {
-                    setRequestStatus(tab.key);
-                    setPage(1);
-                  }}
+                  style={styles.tab}
+                  activeOpacity={0.8}
+                  onPress={() => changeTab(tab.key)}
                 >
+                  <View style={[styles.tabDot, { backgroundColor: tab.dot }]} />
                   <Text
                     style={[styles.tabText, active && styles.tabTextActive]}
                   >
                     {tab.label}
                   </Text>
-                  <View style={[styles.tabDot, { backgroundColor: tab.dot }]} />
                 </TouchableOpacity>
               );
             })}
           </View>
 
-          <View style={{ padding: 12, gap: 8 }}>
-            {isLoadingRequests ? (
-              <ActivityIndicator
-                style={{ marginVertical: 40 }}
-                color={COLORS.Primary}
-              />
-            ) : myRequests.length === 0 ? (
-              <View style={styles.emptyBox}>
-                <Ionicons name="document-outline" size={40} color={"#9CA3AF"} />
-                <Text style={{ color: "#9CA3AF", marginTop: 8 }}>
-                  Không có dữ liệu
-                </Text>
-              </View>
-            ) : (
-              myRequests.map((item) => (
-                <RequestCard
-                  key={item._id}
-                  item={item}
-                  expanded={expandedRequestId === item._id}
-                  onToggle={() =>
-                    setExpandedRequestId((prev) =>
-                      prev === item._id ? null : item._id,
-                    )
-                  }
-                  onCancel={() =>
-                    setCancelModal({ visible: true, id: item._id })
-                  }
-                  isCancelling={isCancelling}
+          <Animated.View layout={LinearTransition.duration(250)}>
+            <View style={{ padding: 12, gap: 8 }}>
+              {isLoadingRequests ? (
+                <ActivityIndicator
+                  style={{ marginVertical: 40 }}
+                  color={COLORS.Primary}
                 />
-              ))
-            )}
-          </View>
-
-          {totalPages > 1 && (
-            <View style={styles.pagination}>
-              <TouchableOpacity
-                onPress={() => setPage((p) => Math.max(1, p - 1))}
-                disabled={page === 1}
-                style={[styles.pageBtn, page === 1 && { opacity: 0.4 }]}
-              >
-                <Ionicons name="chevron-back" size={18} color={"#2A2A2A"} />
-              </TouchableOpacity>
-              <Text style={styles.pageInfo}>
-                {page} / {totalPages} • {totalItems} đơn
-              </Text>
-              <TouchableOpacity
-                onPress={() => setPage((p) => Math.min(totalPages, p + 1))}
-                disabled={page === totalPages}
-                style={[
-                  styles.pageBtn,
-                  page === totalPages && { opacity: 0.4 },
-                ]}
-              >
-                <Ionicons name="chevron-forward" size={18} color={"#2A2A2A"} />
-              </TouchableOpacity>
+              ) : myRequests.length === 0 ? (
+                <View style={styles.emptyBox}>
+                  <View style={styles.emptyIconWrap}>
+                    <Ionicons
+                      name="document-outline"
+                      size={32}
+                      color={COLORS.neutral.neutral400}
+                    />
+                  </View>
+                  <Text style={styles.emptyText}>Không có dữ liệu</Text>
+                </View>
+              ) : (
+                <View style={{ gap: 8 }}>
+                  {myRequests.map((item) => (
+                    <Animated.View
+                      key={item._id}
+                      layout={LinearTransition.duration(200)}
+                    >
+                      <RequestCard
+                        item={item}
+                        onPress={() => openDetail(item)}
+                        onCancel={() =>
+                          setCancelModal({ visible: true, id: item._id })
+                        }
+                        isCancelling={isCancelling}
+                      />
+                    </Animated.View>
+                  ))}
+                </View>
+              )}
             </View>
-          )}
+
+            {isFetchingNextPage && (
+              <View style={styles.loadMoreRow}>
+                <ActivityIndicator size="small" color={COLORS.Primary} />
+              </View>
+            )}
+
+            {!hasNextPage && myRequests.length > 0 && (
+              <Text style={styles.endOfListText}>
+                Đã hiển thị tất cả {totalItems} đơn
+              </Text>
+            )}
+          </Animated.View>
         </View>
-      </SafeAreaView>
+      </ScrollView>
+
+      <RequestDetailBottomSheet
+        ref={detailSheetRef}
+        item={selectedRequest}
+        isCancelling={isCancelling}
+        onCancel={() => {
+          detailSheetRef.current?.dismiss();
+          setCancelModal({ visible: true, id: selectedRequest?._id });
+        }}
+      />
 
       <Modal
         visible={cancelModal.visible}
@@ -274,6 +340,9 @@ export default function RequestScreen({ navigation }) {
           onPress={() => setCancelModal({ visible: false, id: null })}
         >
           <View style={styles.modalBox}>
+            <View style={styles.modalIconWrap}>
+              <Ionicons name="alert-circle" size={30} color={COLORS.error.error600} />
+            </View>
             <Text style={styles.modalTitle}>Thu hồi đơn?</Text>
             <Text style={styles.modalDesc}>
               Đơn sẽ bị huỷ và không thể khôi phục lại.
@@ -283,7 +352,9 @@ export default function RequestScreen({ navigation }) {
                 onPress={() => setCancelModal({ visible: false, id: null })}
                 style={styles.modalBtnSecondary}
               >
-                <Text style={{ color: "#666", fontWeight: "600" }}>Đóng</Text>
+                <Text style={{ color: COLORS.text.dark, fontWeight: "600" }}>
+                  Đóng
+                </Text>
               </TouchableOpacity>
               <TouchableOpacity
                 onPress={confirmCancel}
@@ -305,7 +376,7 @@ export default function RequestScreen({ navigation }) {
           </View>
         </Pressable>
       </Modal>
-    </ScrollView>
+    </View>
   );
 }
 
@@ -313,105 +384,202 @@ export default function RequestScreen({ navigation }) {
 const styles = StyleSheet.create({
   screen: { flex: 1 },
 
-  // Header
-  header: { padding: 20, paddingBottom: 8 },
-  greeting: { fontSize: 22, fontWeight: "700", color: "#2A2A2A" },
-  subtitle: { marginTop: 4, fontSize: 14, color: "#9CA3AF", fontWeight: "500" },
+  // Hero
+  hero: {
+    paddingHorizontal: 16,
+    paddingBottom: 44,
+    borderBottomLeftRadius: 28,
+    borderBottomRightRadius: 28,
+  },
+  heroTopRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  heroIconBtn: {
+    width: 36,
+    height: 36,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  heroHeaderTitle: { color: COLORS.white, fontWeight: "700", fontSize: 17 },
+  heroGreeting: {
+    marginTop: 18,
+    color: COLORS.white,
+    fontWeight: "800",
+    fontSize: 20,
+  },
+  heroSubtitle: {
+    marginTop: 4,
+    color: "rgba(255,255,255,0.85)",
+    fontWeight: "500",
+    fontSize: 13,
+  },
 
   // KPI
-  kpiRow: { paddingHorizontal: 10, paddingVertical: 8, gap: 12 },
+  kpiRow: {
+    flexDirection: "row",
+    paddingHorizontal: 10,
+    paddingTop: 16,
+    paddingBottom: 8,
+    gap: 10,
+  },
+
+  // CTA
+  ctaPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 10,
+    marginHorizontal: 20,
+    backgroundColor: COLORS.white,
+    borderRadius: 999,
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    shadowColor: "#000",
+    shadowOpacity: 0.12,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 5,
+  },
+  ctaIconWrap: {
+    width: 30,
+    height: 30,
+    borderRadius: 10,
+    backgroundColor: `${COLORS.Primary}1A`,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  ctaText: { color: COLORS.Primary, fontWeight: "700", fontSize: 15 },
 
   // Card
   card: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 12,
+    backgroundColor: COLORS.white,
+    borderRadius: 18,
     margin: 10,
-    marginTop: 12,
-    padding: 16,
+    marginTop: 16,
     borderWidth: 1,
-    borderColor: "#E5E7EB",
+    borderColor: COLORS.neutral.neutral200,
+    shadowColor: "#000",
+    shadowOpacity: 0.03,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 1,
   },
   // Tabs
   tabRow: {
     flexDirection: "row",
-    borderBottomWidth: 1,
-    borderBottomColor: "#E5E7EB",
-    paddingHorizontal: 16,
+    position: "relative",
+    backgroundColor: COLORS.neutral.neutral100,
+    margin: 10,
+    padding: TAB_PAD,
+    borderRadius: 14,
+    gap: TAB_GAP,
+  },
+  tabPill: {
+    position: "absolute",
+    top: TAB_PAD,
+    bottom: TAB_PAD,
+    left: TAB_PAD,
+    borderRadius: 11,
+    backgroundColor: COLORS.white,
+    shadowColor: "#000",
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
   },
   tab: {
+    flex: 1,
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "center",
     gap: 6,
-    paddingVertical: 14,
-    marginRight: 24,
-    borderBottomWidth: 2,
-    borderBottomColor: "transparent",
+    paddingVertical: 10,
+    borderRadius: 11,
   },
-  tabActive: { borderBottomColor: COLORS.Primary },
-  tabText: { fontSize: 14, fontWeight: "700", color: "#9CA3AF" },
-  tabTextActive: { color: COLORS.Primary },
+  tabLoadingIndicator: {
+    position: "absolute",
+    top: TAB_PAD,
+    right: -6,
+  },
+  tabText: { fontSize: 13, fontWeight: "700", color: COLORS.text.bland },
+  tabTextActive: { color: COLORS.text.dark },
   tabDot: { width: 6, height: 6, borderRadius: 3 },
-  emptyBox: { height: 150, alignItems: "center", justifyContent: "center" },
+  emptyBox: { paddingVertical: 32, alignItems: "center", justifyContent: "center" },
+  emptyIconWrap: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: COLORS.neutral.neutral100,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 10,
+  },
+  emptyText: { color: COLORS.text.bland, fontSize: 13, fontWeight: "500" },
 
-  // Pagination
-  pagination: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 16,
-    padding: 14,
-    borderTopWidth: 1,
-    borderTopColor: "#E5E7EB",
-    backgroundColor: "#FFFFFF",
+  // Infinite loading footer
+  loadMoreRow: { paddingVertical: 16, alignItems: "center" },
+  endOfListText: {
+    textAlign: "center",
+    fontSize: 12,
+    color: COLORS.neutral.neutral400,
+    paddingVertical: 16,
   },
-  pageBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: "#F3F4F6",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  pageInfo: { fontSize: 13, color: "#9CA3AF" },
 
   // Modal
   modalOverlay: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.4)",
+    backgroundColor: "rgba(0,0,0,0.45)",
     alignItems: "center",
     justifyContent: "center",
   },
   modalBox: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 18,
+    backgroundColor: COLORS.white,
+    borderRadius: 20,
     padding: 20,
     width: 300,
+    alignItems: "center",
     elevation: 8,
+  },
+  modalIconWrap: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: COLORS.error.error50,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 12,
   },
   modalTitle: {
     fontSize: 16,
     fontWeight: "700",
-    color: "#2A2A2A",
-    marginBottom: 8,
+    color: COLORS.text.dark,
+    marginBottom: 6,
+    textAlign: "center",
   },
   modalDesc: {
     fontSize: 13,
-    color: "#9CA3AF",
+    color: COLORS.text.bland,
     lineHeight: 20,
-    marginBottom: 16,
+    marginBottom: 18,
+    textAlign: "center",
   },
-  modalActions: { flexDirection: "row", justifyContent: "flex-end", gap: 10 },
+  modalActions: { flexDirection: "row", justifyContent: "center", gap: 10, width: "100%" },
   modalBtnSecondary: {
+    flex: 1,
+    alignItems: "center",
     paddingHorizontal: 14,
-    paddingVertical: 9,
-    borderRadius: 10,
+    paddingVertical: 11,
+    borderRadius: 12,
+    backgroundColor: COLORS.neutral.neutral100,
   },
   modalBtnDanger: {
-    backgroundColor: "#EF4444",
+    flex: 1,
+    backgroundColor: COLORS.error.error600,
     paddingHorizontal: 16,
-    paddingVertical: 9,
-    borderRadius: 10,
-    minWidth: 80,
+    paddingVertical: 11,
+    borderRadius: 12,
     alignItems: "center",
   },
 });
