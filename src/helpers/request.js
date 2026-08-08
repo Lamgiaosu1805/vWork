@@ -1,5 +1,5 @@
 import dayjs from "dayjs";
-import { PERIOD_LABEL } from "../constants/hrm";
+import { PERIOD_LABEL_SHORT } from "../constants/hrm";
 
 export const getRequestTypeLabel = (item) => {
   if (item.request_type === "leave") {
@@ -22,23 +22,10 @@ export const getRequestTypeLabel = (item) => {
 };
 
 export const getTimeLabel = (item) => {
-  if (item.request_type === "leave") {
+  if (item.request_type === "leave" || item.request_type === "business_trip") {
     const fromDate = dayjs(item.from_date).format("DD/MM/YYYY");
     const toDate = dayjs(item.to_date).format("DD/MM/YYYY");
-    const fromPeriod = PERIOD_LABEL[item.from_period] || "--";
-    const toPeriod = PERIOD_LABEL[item.to_period] || "--";
-    if (fromDate === toDate) {
-      return item.from_period === item.to_period
-        ? `${fromPeriod} ngày ${fromDate}`
-        : `Cả ngày ${fromDate}`;
-    }
-    return `${fromPeriod} ${fromDate} → ${toPeriod} ${toDate}`;
-  }
-
-  if (item.request_type === "business_trip") {
-    const fromDate = dayjs(item.from_date).format("DD/MM/YYYY");
-    const toDate = dayjs(item.to_date).format("DD/MM/YYYY");
-    return fromDate === toDate ? fromDate : `${fromDate} → ${toDate}`;
+    return fromDate === toDate ? fromDate : `${fromDate} · ${toDate}`;
   }
 
   if (item.request_type === "client_visit") {
@@ -52,6 +39,19 @@ export const getTimeLabel = (item) => {
 
   if (item.date) return dayjs(item.date).format("DD/MM/YYYY");
   return "--";
+};
+
+export const getLeaveTimeLabel = (item) => {
+  const fromDate = dayjs(item.from_date).format("DD/MM/YYYY");
+  const toDate = dayjs(item.to_date).format("DD/MM/YYYY");
+  const fromAbbr = PERIOD_LABEL_SHORT[item.from_period];
+  const toAbbr = PERIOD_LABEL_SHORT[item.to_period];
+  const fromLabel = fromAbbr ? `${fromDate} (${fromAbbr})` : fromDate;
+  const toLabel = toAbbr ? `${toDate} (${toAbbr})` : toDate;
+
+  return fromDate === toDate && fromAbbr === toAbbr
+    ? fromLabel
+    : `${fromLabel} · ${toLabel}`;
 };
 
 export const getAmountLabel = (item) => {

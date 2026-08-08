@@ -34,14 +34,12 @@ const attendanceApi = {
         const startTime = earliestShift.start_time;
         const endTime = latestShift.end_time;
 
-        // Tạo thời gian end-time đầy đủ bằng date của worksheet
         const workDate = dayjs(currentWorkSheet.date);
         const endDateTime = dayjs(`${workDate.format("YYYY-MM-DD")} ${endTime}`);
 
         const now = dayjs();
         const isEarly = now.isBefore(endDateTime);
 
-        // Luôn xác nhận trước khi checkout — cảnh báo riêng nếu checkout sớm hơn giờ kết thúc ca
         return Alert.alert(
             isEarly ? "Bạn đang checkout sớm" : "Xác nhận check out",
             isEarly

@@ -102,3 +102,4 @@ export const FILTER_ITEMS = [
 ];
 
 export const PERIOD_LABEL = { morning: "Buổi sáng", afternoon: "Buổi chiều" };
+export const PERIOD_LABEL_SHORT = { morning: "AM", afternoon: "PM" };

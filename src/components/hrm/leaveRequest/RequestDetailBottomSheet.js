@@ -8,7 +8,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import dayjs from "dayjs";
 import { STATUS_MAP, FORGOT_TYPE_ITEMS } from "../../../constants/hrm";
-import { getRequestTypeLabel, getTimeLabel } from "../../../helpers/request";
+import { getRequestTypeLabel, getTimeLabel, getLeaveTimeLabel } from "../../../helpers/request";
 import { COLORS } from "../../../assets/theme/colors";
 
 const DetailRow = ({ label, value, valueColor }) => {
@@ -49,7 +49,8 @@ const RequestDetailBottomSheet = forwardRef(({ item, onCancel, isCancelling }, r
 
   const st = STATUS_MAP[item.status] || STATUS_MAP.pending;
   const typeLabel = getRequestTypeLabel(item);
-  const timeLabel = getTimeLabel(item);
+  const timeLabel =
+    item.request_type === "leave" ? getLeaveTimeLabel(item) : getTimeLabel(item);
 
   return (
     <BottomSheetModal
