@@ -109,18 +109,18 @@ export default function RootDrawerNavigator({ route }) {
         <Drawer.Screen
           name="WorkPlaceStackNavigator"
           component={WorkPlaceStackNavigator}
-          options={{ title: "WORKPLACE" }}
+          options={{ title: "WORKPLACE", unmountOnBlur: true }}
         />
         <Drawer.Screen
           name="HRMStackNavigator"
           component={HRMStackNavigator}
-          options={{ title: "HRM" }}
+          options={{ title: "HRM", unmountOnBlur: true }}
         />
         {hasCrm && (
           <Drawer.Screen
             name="CRMStackNavigator"
             component={CRMStackNavigator}
-            options={{ title: "CRM" }}
+            options={{ title: "CRM", unmountOnBlur: true }}
           />
         )}
       </Drawer.Navigator>

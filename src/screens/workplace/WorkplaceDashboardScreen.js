@@ -168,8 +168,8 @@ export default function WorkplaceDashboardScreen() {
                 title="Workplace"
                 LeftIcon={Menu}
                 onLeftPress={() => openDrawer()}
-                RightIcon={Bell}
-                onRightPress={() => navigation.navigate('Notification')}
+                // RightIcon={Bell}
+                // onRightPress={() => navigation.navigate('Notification')}
             />
             <ScrollView
                 showsVerticalScrollIndicator={false}

@@ -9,12 +9,14 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { CommonActions } from "@react-navigation/native";
 import { Bell, ChevronLeft, CheckCheck } from "lucide-react-native";
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
 import "dayjs/locale/vi";
 import Header from "../components/Header";
 import { COLORS } from "../assets/theme/colors";
+import { navigationRef } from "../helpers/navigationRef";
 import {
   useMarkAllNotificationsRead,
   useMarkNotificationRead,
@@ -25,31 +27,70 @@ import {
 dayjs.extend(relativeTime);
 dayjs.locale("vi");
 
-const goToMyRequest = (navigation, requestId) => {
-  navigation.navigate("RootDrawer", {
-    screen: "HRMStackNavigator",
-    params: {
-      screen: "HRMBottomTab",
-      params: { screen: "RequestScreen", params: { requestId } },
-    },
-  });
+// Dùng navigationRef (ref gốc) thay vì `navigation` prop của NotificationScreen vì
+// bước 1 xóa hẳn lịch sử cũ nên `navigation` prop của màn Notification không còn hợp lệ
+// cho lệnh điều hướng thứ 2 ở bước sau (giống cách fcmConfig.js xử lý deep link chat).
+//
+// Reset thẳng về HRMBottomTab (Chấm công) làm gốc duy nhất, xóa sạch lịch sử cũ
+// (Workplace/CRM/Notification...), để hành vi back luôn chắc chắn quay về đây.
+const resetToHRMHome = () => {
+  navigationRef.dispatch(
+    CommonActions.reset({
+      index: 0,
+      routes: [
+        {
+          name: "RootDrawer",
+          state: {
+            routes: [
+              {
+                name: "HRMStackNavigator",
+                state: { routes: [{ name: "HRMBottomTab" }] },
+              },
+            ],
+          },
+        },
+      ],
+    }),
+  );
 };
 
-const goToApproval = (navigation, requestId) => {
-  navigation.navigate("RootDrawer", {
-    screen: "HRMStackNavigator",
-    params: {
-      screen: "ApprovalRequestScreen",
-      params: { requestId },
-    },
-  });
+const goToMyRequest = (requestId) => {
+  if (!navigationRef.isReady()) return;
+
+  resetToHRMHome();
+
+  setTimeout(() => {
+    navigationRef.navigate("RootDrawer", {
+      screen: "HRMStackNavigator",
+      params: {
+        screen: "HRMBottomTab",
+        params: { screen: "RequestScreen", params: { requestId } },
+      },
+    });
+  }, 50);
 };
 
-const goToRequestNotification = (navigation, item) => {
+const goToApproval = (requestId) => {
+  if (!navigationRef.isReady()) return;
+
+  resetToHRMHome();
+
+  setTimeout(() => {
+    navigationRef.navigate("RootDrawer", {
+      screen: "HRMStackNavigator",
+      params: {
+        screen: "ApprovalRequestScreen",
+        params: { requestId },
+      },
+    });
+  }, 50);
+};
+
+const goToRequestNotification = (item) => {
   if (item.type?.endsWith("_created")) {
-    goToApproval(navigation, item.ref_id);
+    goToApproval(item.ref_id);
   } else {
-    goToMyRequest(navigation, item.ref_id);
+    goToMyRequest(item.ref_id);
   }
 };
 
@@ -107,7 +148,7 @@ const NotificationScreen = ({ navigation }) => {
   const handlePress = (item) => {
     if (!item.is_read) markRead(item._id);
     if (item.ref_type === "request" && item.ref_id) {
-      goToRequestNotification(navigation, item);
+      goToRequestNotification(item);
     }
   };
 
