@@ -6,6 +6,7 @@ import RootDrawerNavigator from './RootDrawerNavigator';
 import SettingsScreen from '../screens/SettingsScreen';
 import { navigationRef } from '../helpers/navigationRef';
 import SplashScreen from '../screens/SplashScreen';
+import NotificationScreen from '../screens/NotificationScreen';
 import useDailyAppRestart from '../hooks/useDailyAppRestart';
 
 const Stack = createNativeStackNavigator();
@@ -20,6 +21,7 @@ export function RootStackNavigator() {
                 <Stack.Screen name="SplashScreen" component={SplashScreen} />
                 <Stack.Screen name="LoginScreen" component={LoginScreen} />
                 <Stack.Screen name="RootDrawer" component={RootDrawerNavigator} />
+                <Stack.Screen name="Notification" component={NotificationScreen} />
                 <Stack.Screen
                     name="Settings"
                     component={SettingsScreen}

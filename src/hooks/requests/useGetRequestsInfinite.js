@@ -1,5 +1,7 @@
 import { useInfiniteQuery, keepPreviousData } from "@tanstack/react-query";
+import { useSelector } from "react-redux";
 import requestsApi from "../../api/requestsApi";
+import { isAlreadyApprovedByMe } from "../../helpers/request";
 
 const useGetRequestsInfinite = ({
   request_type,
@@ -9,6 +11,8 @@ const useGetRequestsInfinite = ({
   to,
   limit = 6,
 }) => {
+  const user = useSelector((s) => s.auth.user);
+
   return useInfiniteQuery({
     queryKey: ["requests", { request_type, status, search, from, to, limit }],
     queryFn: async ({ pageParam }) => {
@@ -22,7 +26,15 @@ const useGetRequestsInfinite = ({
         page: pageParam,
       });
       const body = res.data;
-      return Array.isArray(body) ? { data: body, pagination: {} } : body;
+      const page = Array.isArray(body) ? { data: body, pagination: {} } : body;
+
+      return {
+        ...page,
+        data: (page.data ?? []).map((item) => ({
+          ...item,
+          alreadyApprovedByMe: isAlreadyApprovedByMe(item, user),
+        })),
+      };
     },
     initialPageParam: 1,
     getNextPageParam: (lastPage, allPages) => {

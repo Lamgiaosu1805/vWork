@@ -34,15 +34,12 @@ const requestsApi = {
       params,
     }),
 
+  getRequestById: (requestId) =>
+    api.get(`/requests/${requestId}`, { requiresAuth: true }),
+
   reviewRequest: (requestId, payload) =>
     api.patch(`/requests/review/${requestId}`, payload, {
       requiresAuth: true,
-    }),
-
-  getAttendanceCalendar: (params) =>
-    api.get("/attendance/calendar", {
-      requiresAuth: true,
-      params,
     }),
 };
 

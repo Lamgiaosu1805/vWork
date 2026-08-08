@@ -3,7 +3,6 @@ import React, { useState } from "react";
 import { Ionicons } from "@expo/vector-icons";
 import dayjs from "dayjs";
 import { DAYS_LABEL } from "../../../constants/hrm";
-import useGetAttendanceCalendar from "../../../hooks/requests/useGetAttendanceCalendar";
 
 const MiniCalendar = ({
   selectedDate,
@@ -15,11 +14,6 @@ const MiniCalendar = ({
   onDayHover,
 }) => {
   const [currentMonth, setCurrentMonth] = useState(dayjs());
-  const { data: attendanceCalendar, isLoading: attendanceCalendarLoading } =
-    useGetAttendanceCalendar({
-      month: currentMonth.month() + 1,
-      year: currentMonth.year(),
-    });
   const firstDay = currentMonth.startOf("month").day();
   const daysInMonth = currentMonth.daysInMonth();
 
@@ -121,22 +115,6 @@ const MiniCalendar = ({
           })}
         </View>
       ))}
-
-      {/* Chú thích */}
-      <View style={styles.calLegend}>
-        {[
-          { label: "Ngày nghỉ lễ", color: "#38BDF8" },
-          { label: "Xin nghỉ", color: "#FACC15" },
-          { label: "Nghỉ không phép", color: "#EF4444" },
-        ].map((it) => (
-          <View key={it.label} style={styles.calLegendItem}>
-            <View
-              style={[styles.calLegendDot, { backgroundColor: it.color }]}
-            />
-            <Text style={styles.calLegendText}>{it.label}</Text>
-          </View>
-        ))}
-      </View>
     </View>
   );
 };
@@ -177,14 +155,4 @@ const styles = StyleSheet.create({
   calDayToday: { color: "#39C79A", fontWeight: "700" },
   calDaySelectedText: { color: "#FFFFFF", fontWeight: "700" },
   calDayRangeText: { color: "#2FB286" },
-  calLegend: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 12,
-    marginTop: 12,
-    justifyContent: "center",
-  },
-  calLegendItem: { flexDirection: "row", alignItems: "center", gap: 6 },
-  calLegendDot: { width: 8, height: 8, borderRadius: 4 },
-  calLegendText: { fontSize: 11, color: "#9CA3AF" },
 });

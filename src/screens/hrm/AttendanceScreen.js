@@ -368,7 +368,7 @@ export default function AttendanceScreen() {
         LeftIcon={Menu}
         onLeftPress={() => openDrawer()}
         RightIcon={Bell}
-        onRightPress={() => Alert.alert("Notifications Pressed")}
+        onRightPress={() => navigation.navigate("Notification")}
       />
 
       <ScrollView

@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
     ActivityIndicator,
-    Alert,
     RefreshControl,
     ScrollView,
     StyleSheet,
@@ -170,7 +169,7 @@ export default function WorkplaceDashboardScreen() {
                 LeftIcon={Menu}
                 onLeftPress={() => openDrawer()}
                 RightIcon={Bell}
-                onRightPress={() => Alert.alert('Thông báo')}
+                onRightPress={() => navigation.navigate('Notification')}
             />
             <ScrollView
                 showsVerticalScrollIndicator={false}

@@ -54,6 +54,32 @@ export const getLeaveTimeLabel = (item) => {
     : `${fromLabel} · ${toLabel}`;
 };
 
+export const needsTwoLevelApproval = (item) => {
+  if (item.request_type === "leave" && (item.total_days ?? 0) > 2) return true;
+  if (item.request_type === "forgot_checkin" && (item.occurrence ?? 0) >= 6) return true;
+  return false;
+};
+
+const collectIds = (obj) => {
+  if (!obj) return [];
+  return [obj.user_id, obj._id, obj.id, obj.account_id, obj.account]
+    .filter((id) => id !== undefined && id !== null)
+    .map(String);
+};
+
+export const isAlreadyApprovedByMe = (item, currentUser) => {
+  if (item.status !== "pending") return false;
+  if (!needsTwoLevelApproval(item)) return false;
+
+  const approvals = item.approvals ?? [];
+  if (!approvals.length) return false;
+
+  const myIds = collectIds(currentUser);
+  if (!myIds.length) return false;
+
+  return approvals.some((a) => collectIds(a).some((id) => myIds.includes(id)));
+};
+
 export const getAmountLabel = (item) => {
   if (["leave", "remote"].includes(item.request_type)) {
     return `${item.total_days ?? 0} ngày`;

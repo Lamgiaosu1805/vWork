@@ -29,6 +29,7 @@ import useGetEligibleReviewers from "../../hooks/requests/useGetEligibleReviewer
 import useCreateRequest from "../../hooks/requests/useCreateRequest";
 import PickerTimeModal from "../../components/hrm/leaveRequest/PickerTimeModal";
 import { ChevronLeft } from "lucide-react-native";
+import { COLORS } from "../../assets/theme/colors";
 
 const AddRequestScreen = ({ navigation }) => {
   const [selectedDate, setSelectedDate] = useState(null);
@@ -107,22 +108,8 @@ const AddRequestScreen = ({ navigation }) => {
 
   const handleDayPress = (date) => {
     if (calendarTarget === "start") {
-      if (endDate && date.isAfter(endDate, "day")) {
-        Toast.show({
-          type: "info",
-          text1: "Ngày bắt đầu phải trước ngày kết thúc",
-        });
-        return;
-      }
       setStartDate(date);
     } else if (calendarTarget === "end") {
-      if (startDate && date.isBefore(startDate, "day")) {
-        Toast.show({
-          type: "info",
-          text1: "Ngày kết thúc phải sau ngày bắt đầu",
-        });
-        return;
-      }
       setEndDate(date);
     } else {
       setSelectedDate(date);
@@ -137,12 +124,23 @@ const AddRequestScreen = ({ navigation }) => {
   };
 
   const handleSubmit = () => {
+    if (!reason.trim()) {
+      Toast.show({ type: "info", text1: "Vui lòng nhập lý do cụ thể" });
+      return;
+    }
     if (isRangeMode && (!startDate || !endDate)) {
       Toast.show({
         type: "info",
         text1: isBusinessTrip
           ? "Vui lòng chọn khoảng thời gian công tác"
           : "Vui lòng chọn khoảng thời gian nghỉ",
+      });
+      return;
+    }
+    if (isRangeMode && startDate && endDate && dayjs(endDate).isBefore(startDate, "day")) {
+      Toast.show({
+        type: "info",
+        text1: "Ngày kết thúc phải sau ngày bắt đầu",
       });
       return;
     }
@@ -284,7 +282,7 @@ const AddRequestScreen = ({ navigation }) => {
           keyboardShouldPersistTaps="handled"
         >
           <Header
-            title="Tạo Đơn Giải Trình / Nghỉ Phép"
+            title="Tạo Đơn"
             LeftIcon={ChevronLeft}
             onLeftPress={() => navigation.goBack()}
           />
@@ -542,7 +540,7 @@ const AddRequestScreen = ({ navigation }) => {
 
             {/* Lý do */}
             <View style={styles.fieldGroup}>
-              <Text style={styles.fieldLabel}>Lý do cụ thể</Text>
+              <Text style={styles.fieldLabel}>Lý do cụ thể*</Text>
               <TextInput
                 style={[styles.input, styles.textarea]}
                 value={reason}
@@ -572,7 +570,7 @@ const AddRequestScreen = ({ navigation }) => {
                   style={{ flexDirection: "row", alignItems: "center", gap: 8 }}
                 >
                   <Ionicons name="send" size={16} color="#fff" />
-                  <Text style={styles.submitBtnText}>Gửi yêu cầu duyệt</Text>
+                  <Text style={styles.submitBtnText}>Gửi yêu cầu</Text>
                 </View>
               )}
             </TouchableOpacity>
@@ -659,7 +657,7 @@ const styles = StyleSheet.create({
   radioActive: { borderColor: "#39C79A", backgroundColor: "#39C79A" },
   radioLabel: { fontSize: 14, color: "#2A2A2A" },
   submitBtn: {
-    backgroundColor: "#39C79A",
+    backgroundColor: COLORS.Primary,
     borderRadius: 12,
     height: 50,
     alignItems: "center",

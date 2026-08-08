@@ -48,7 +48,7 @@ export default function ExpandScreen({ navigation }) {
 
         {/* In tài liệu — tất cả mọi người */}
         <Text style={styles.sectionLabel}>Tiện ích</Text>
-        <View style={styles.group}>
+        {/* <View style={styles.group}>
           <MenuItem
             icon="print-outline"
             label="In tài liệu"
@@ -56,7 +56,7 @@ export default function ExpandScreen({ navigation }) {
             onPress={() => navigation.navigate('PrintScreen')}
             color="#2563EB"
           />
-        </View>
+        </View> */}
 
         {/* Chấm công — có module hrm (has hrm) */}
         {perms.showDepartmentList && (
@@ -87,44 +87,23 @@ export default function ExpandScreen({ navigation }) {
         )}
 
         {/* Quản lý tổ chức */}
-        {(perms.canReviewRequests ||
-          perms.canViewAllRequests ||
-          perms.showDepartmentList) && (
+        {perms.showDepartmentList && (
           <>
             <Text style={styles.sectionLabel}>Quản lý tổ chức</Text>
             <View style={styles.group}>
-              {(perms.canReviewRequests || perms.canViewAllRequests) && (
-                <>
-                  <MenuItem
-                    icon="paper-plane-outline"
-                    label={perms.canReviewRequests ? "Xử lý yêu cầu" : "Xem yêu cầu"}
-                    description={
-                      perms.canReviewRequests
-                        ? "Xử lý các yêu cầu của nhân viên."
-                        : "Xem các yêu cầu đã được duyệt."
-                    }
-                    onPress={() => navigation.navigate('ApprovalRequestScreen')}
-                  />
-                  {perms.showDepartmentList && <View style={styles.divider} />}
-                </>
-              )}
-              {perms.showDepartmentList && (
-                <>
-                  <MenuItem
-                    icon="business"
-                    label="Chi nhánh"
-                    description="Danh sách và quản lý chi nhánh"
-                    onPress={() => navigation.navigate('BranchScreen')}
-                  />
-                  <View style={styles.divider} />
-                  <MenuItem
-                    icon="git-branch"
-                    label="Khối / Phòng ban"
-                    description="Cấu trúc tổ chức theo chi nhánh"
-                    onPress={() => navigation.navigate('DepartmentScreen')}
-                  />
-                </>
-              )}
+              <MenuItem
+                icon="business"
+                label="Chi nhánh"
+                description="Danh sách và quản lý chi nhánh"
+                onPress={() => navigation.navigate('BranchScreen')}
+              />
+              <View style={styles.divider} />
+              <MenuItem
+                icon="git-branch"
+                label="Khối / Phòng ban"
+                description="Cấu trúc tổ chức theo chi nhánh"
+                onPress={() => navigation.navigate('DepartmentScreen')}
+              />
             </View>
           </>
         )}

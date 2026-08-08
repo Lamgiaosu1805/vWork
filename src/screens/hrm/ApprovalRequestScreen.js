@@ -15,6 +15,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { Dropdown } from "react-native-element-dropdown";
 import dayjs from "dayjs";
+import { useQuery } from "@tanstack/react-query";
 import { useSelector } from "react-redux";
 import Header from "../../components/Header";
 import useGetRequestsInfinite from "../../hooks/requests/useGetRequestsInfinite";
@@ -22,12 +23,15 @@ import { FILTER_ITEMS, TABS } from "../../constants/hrm";
 import ConfirmModal from "../../components/hrm/approvalRequest/ConfirmModal";
 import RequestApprovalCard from "../../components/hrm/approvalRequest/RequestApprovalCard";
 import useReviewRequest from "../../hooks/requests/useReviewRequest";
+import useGetRequestById from "../../hooks/requests/useGetRequestById";
 import Toast from "react-native-toast-message";
 import DatePickerApprovalModal from "../../components/hrm/approvalRequest/DatePickerApprovalModal";
 import { ChevronLeft } from "lucide-react-native";
 import { getPermissions } from "../../helpers/permissions";
+import requestsApi from "../../api/requestsApi";
+import { isAlreadyApprovedByMe } from "../../helpers/request";
 
-const ApprovalRequestScreen = ({ navigation }) => {
+const ApprovalRequestScreen = ({ navigation, route }) => {
   const user = useSelector((s) => s.auth.user);
   const { canReviewRequests, canViewAllRequests } = getPermissions(user);
   const viewOnly = !canReviewRequests && canViewAllRequests;
@@ -48,6 +52,21 @@ const ApprovalRequestScreen = ({ navigation }) => {
   });
   const [isTyping, setIsTyping] = useState(false);
 
+  // Mở đơn được điều hướng tới từ màn hình thông báo
+  const linkedRequestId = route?.params?.requestId;
+  const [linkedModalVisible, setLinkedModalVisible] = useState(!!linkedRequestId);
+  const { data: linkedRequest, isLoading: isLoadingLinked } =
+    useGetRequestById(linkedRequestId);
+
+  const closeLinkedModal = () => {
+    setLinkedModalVisible(false);
+    navigation.setParams({ requestId: undefined });
+  };
+
+  useEffect(() => {
+    if (linkedRequestId) setLinkedModalVisible(true);
+  }, [linkedRequestId]);
+
   const {
     data: infiniteData,
     isLoading,
@@ -66,8 +85,41 @@ const ApprovalRequestScreen = ({ navigation }) => {
 
   const { mutate: handleRequest, isPending: isReviewing } = useReviewRequest();
 
-  const requests = infiniteData?.pages.flatMap((p) => p.data ?? []) ?? [];
-  const total = infiniteData?.pages?.[0]?.pagination?.total ?? 0;
+  const { data: approvedByMeData } = useQuery({
+    queryKey: [
+      "requests",
+      "pending-approved-by-me",
+      { request_type: requestType, search, from, to },
+    ],
+    queryFn: async () => {
+      const res = await requestsApi.getRequests({
+        request_type: requestType,
+        status: "pending",
+        search,
+        from,
+        to,
+        limit: 50,
+        page: 1,
+      });
+      const body = res.data;
+      const list = Array.isArray(body) ? body : (body?.data ?? []);
+      return list
+        .map((item) => ({ ...item, alreadyApprovedByMe: isAlreadyApprovedByMe(item, user) }))
+        .filter((item) => item.alreadyApprovedByMe);
+    },
+    enabled: canReviewRequests && effectiveStatus === "approved",
+  });
+
+  const rawRequests = infiniteData?.pages.flatMap((p) => p.data ?? []) ?? [];
+  const requests =
+    effectiveStatus === "pending"
+      ? rawRequests.filter((r) => !r.alreadyApprovedByMe)
+      : effectiveStatus === "approved"
+        ? [...(approvedByMeData ?? []), ...rawRequests]
+        : rawRequests;
+  const total =
+    (infiniteData?.pages?.[0]?.pagination?.total ?? 0) +
+    (effectiveStatus === "approved" ? (approvedByMeData?.length ?? 0) : 0);
 
   const onRefresh = () => {
     setIsRefreshing(true);
@@ -113,7 +165,8 @@ const ApprovalRequestScreen = ({ navigation }) => {
         onSuccess: () => {
           refetch();
           closeConfirm();
-          Toast.show({ 
+          if (confirmModal.id === linkedRequestId) closeLinkedModal();
+          Toast.show({
             type: "success",
             text1:
               confirmModal.action === "approve"
@@ -354,6 +407,45 @@ const ApprovalRequestScreen = ({ navigation }) => {
         onClose={() => setShowToPicker(false)}
       />
 
+      <Modal
+        visible={linkedModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={closeLinkedModal}
+      >
+        <Pressable style={styles.linkedModalOverlay} onPress={closeLinkedModal}>
+          <Pressable style={styles.linkedModalBox} onPress={() => {}}>
+            <View style={styles.linkedModalHeader}>
+              <Text style={styles.linkedModalTitle}>Chi tiết đơn</Text>
+              <TouchableOpacity onPress={closeLinkedModal}>
+                <Ionicons name="close" size={22} color="#6B7280" />
+              </TouchableOpacity>
+            </View>
+            {isLoadingLinked ? (
+              <ActivityIndicator
+                size="large"
+                color="#2563EB"
+                style={{ paddingVertical: 30 }}
+              />
+            ) : linkedRequest ? (
+              <RequestApprovalCard
+                item={{
+                  ...linkedRequest,
+                  alreadyApprovedByMe: isAlreadyApprovedByMe(linkedRequest, user),
+                }}
+                canReview={canReviewRequests}
+                onApprove={(id) => openConfirm(id, "approve")}
+                onReject={(id) => openConfirm(id, "reject")}
+                isReviewing={isReviewing}
+                noShadow
+              />
+            ) : (
+              <Text style={styles.emptyText}>Không tìm thấy đơn</Text>
+            )}
+          </Pressable>
+        </Pressable>
+      </Modal>
+
       <Toast />
     </View>
   );
@@ -492,4 +584,24 @@ const styles = StyleSheet.create({
     color: "#9CA3AF",
     paddingVertical: 16,
   },
+
+  linkedModalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.45)",
+    justifyContent: "flex-end",
+  },
+  linkedModalBox: {
+    backgroundColor: "#F5F7FB",
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: 16,
+    maxHeight: "80%",
+  },
+  linkedModalHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 12,
+  },
+  linkedModalTitle: { fontSize: 16, fontWeight: "700", color: "#111827" },
 });

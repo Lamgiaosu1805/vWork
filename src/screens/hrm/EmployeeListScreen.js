@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
     ActivityIndicator, FlatList, RefreshControl,
     StyleSheet, Text, TextInput, TouchableOpacity, View,
@@ -7,10 +7,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import Header from '../../components/Header';
-import { getUsersApi } from '../../api/user';
+import useGetEmployeesInfinite from '../../hooks/hrm/useGetEmployeesInfinite';
 import { ChevronLeft } from 'lucide-react-native';
-
-const LIMIT = 20;
 
 const getInitials = (name = '') => {
     const parts = name.trim().split(' ');
@@ -46,55 +44,34 @@ const EmployeeRow = ({ item }) => {
 
 export default function EmployeeListScreen() {
     const navigation = useNavigation();
-    const [employees, setEmployees] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [refreshing, setRefreshing] = useState(false);
-    const [loadingMore, setLoadingMore] = useState(false);
-    const [page, setPage] = useState(1);
-    const [totalPages, setTotalPages] = useState(1);
+    const [searchInput, setSearchInput] = useState('');
     const [search, setSearch] = useState('');
-    const searchTimeout = useRef(null);
+    const [isRefreshing, setIsRefreshing] = useState(false);
 
-    const fetchEmployees = useCallback(async ({ pageNum = 1, searchVal = '', reset = false } = {}) => {
-        try {
-            const res = await getUsersApi({ page: pageNum, limit: LIMIT, search: searchVal || undefined });
-            const data = res.data?.data ?? [];
-            const pagination = res.data?.pagination ?? {};
-            setTotalPages(pagination.total_pages ?? 1);
-            setEmployees((prev) => (reset || pageNum === 1) ? data : [...prev, ...data]);
-            setPage(pageNum);
-        } catch (err) {
-            console.log('EmployeeList fetch error:', err?.message);
-        }
-    }, []);
-
+    // Debounce 400ms trước khi đổi query key để không bắn API liên tục khi đang gõ
     useEffect(() => {
-        setLoading(true);
-        fetchEmployees({ pageNum: 1, searchVal: search, reset: true })
-            .finally(() => setLoading(false));
-    }, []);
-
-    const onRefresh = useCallback(async () => {
-        setRefreshing(true);
-        await fetchEmployees({ pageNum: 1, searchVal: search, reset: true });
-        setRefreshing(false);
-    }, [fetchEmployees, search]);
-
-    const onLoadMore = useCallback(async () => {
-        if (loadingMore || page >= totalPages) return;
-        setLoadingMore(true);
-        await fetchEmployees({ pageNum: page + 1, searchVal: search });
-        setLoadingMore(false);
-    }, [loadingMore, page, totalPages, fetchEmployees, search]);
-
-    const onSearchChange = (text) => {
-        setSearch(text);
-        clearTimeout(searchTimeout.current);
-        searchTimeout.current = setTimeout(async () => {
-            setLoading(true);
-            await fetchEmployees({ pageNum: 1, searchVal: text, reset: true });
-            setLoading(false);
+        const timeout = setTimeout(() => {
+            setSearch(searchInput.trim());
         }, 400);
+
+        return () => clearTimeout(timeout);
+    }, [searchInput]);
+
+    const {
+        data: infiniteData,
+        isLoading,
+        isFetchingNextPage,
+        hasNextPage,
+        fetchNextPage,
+        refetch,
+    } = useGetEmployeesInfinite({ search });
+
+    const employees = infiniteData?.pages.flatMap((p) => p.data ?? []) ?? [];
+
+    const onRefresh = async () => {
+        setIsRefreshing(true);
+        await refetch();
+        setIsRefreshing(false);
     };
 
     return (
@@ -112,18 +89,18 @@ export default function EmployeeListScreen() {
                     style={styles.searchInput}
                     placeholder="Tìm theo tên, mã NV..."
                     placeholderTextColor="#9CA3AF"
-                    value={search}
-                    onChangeText={onSearchChange}
+                    value={searchInput}
+                    onChangeText={setSearchInput}
                     returnKeyType="search"
                 />
-                {search.length > 0 && (
-                    <TouchableOpacity onPress={() => onSearchChange('')}>
+                {searchInput.length > 0 && (
+                    <TouchableOpacity onPress={() => setSearchInput('')}>
                         <Ionicons name="close-circle" size={18} color="#9CA3AF" />
                     </TouchableOpacity>
                 )}
             </View>
 
-            {loading ? (
+            {isLoading ? (
                 <View style={styles.center}>
                     <ActivityIndicator size="large" color="#ED2E30" />
                 </View>
@@ -133,9 +110,11 @@ export default function EmployeeListScreen() {
                     keyExtractor={(item) => item._id}
                     renderItem={({ item }) => <EmployeeRow item={item} />}
                     refreshControl={
-                        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#ED2E30']} tintColor="#ED2E30" />
+                        <RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} colors={['#ED2E30']} tintColor="#ED2E30" />
                     }
-                    onEndReached={onLoadMore}
+                    onEndReached={() => {
+                        if (hasNextPage && !isFetchingNextPage) fetchNextPage();
+                    }}
                     onEndReachedThreshold={0.3}
                     ItemSeparatorComponent={() => <View style={styles.separator} />}
                     ListEmptyComponent={
@@ -145,7 +124,9 @@ export default function EmployeeListScreen() {
                         </View>
                     }
                     ListFooterComponent={
-                        loadingMore ? <ActivityIndicator size="small" color="#ED2E30" style={{ py: 12 }} /> : null
+                        isFetchingNextPage ? (
+                            <ActivityIndicator size="small" color="#ED2E30" style={{ paddingVertical: 12 }} />
+                        ) : null
                     }
                     contentContainerStyle={styles.listContent}
                 />

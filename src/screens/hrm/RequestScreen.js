@@ -28,11 +28,13 @@ import utils from "../../helpers/utils";
 import { useSelector } from "react-redux";
 import useGetStatisticsRequests from "../../hooks/requests/useGetStatisticsRequests";
 import useGetMyRequestsInfinite from "../../hooks/requests/useGetMyRequestsInfinite";
+import useGetRequestById from "../../hooks/requests/useGetRequestById";
 import { openDrawer } from "../../helpers/navigationRef";
+import { getPermissions } from "../../helpers/permissions";
 import useCancelLeaveRequest from "../../hooks/requests/useCancelLeaveRequest";
 import { useFocusEffect } from "@react-navigation/native";
 import Toast from "react-native-toast-message";
-import { Menu, FileEdit } from "lucide-react-native";
+import { Menu, FileEdit, ClipboardCheck } from "lucide-react-native";
 import useTheme from "../../assets/theme/useTheme";
 import { COLORS } from "../../assets/theme/colors";
 
@@ -46,7 +48,7 @@ const TABS = [
 const TAB_PAD = 4;
 const TAB_GAP = 4;
 
-export default function RequestScreen({ navigation }) {
+export default function RequestScreen({ navigation, route }) {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const [requestStatus, setRequestStatus] = useState("pending");
@@ -96,6 +98,8 @@ export default function RequestScreen({ navigation }) {
   };
 
   const auth = useSelector((state) => state.auth);
+  const perms = getPermissions(auth.user);
+  const canOpenApproval = perms.canReviewRequests || perms.canViewAllRequests;
 
   // Segmented tab pill
   const [tabRowWidth, setTabRowWidth] = useState(0);
@@ -156,6 +160,16 @@ export default function RequestScreen({ navigation }) {
     }, []),
   );
 
+  // Mở chi tiết đơn khi được điều hướng tới từ màn hình thông báo
+  const linkedRequestId = route?.params?.requestId;
+  const { data: linkedRequest } = useGetRequestById(linkedRequestId);
+
+  useEffect(() => {
+    if (!linkedRequest) return;
+    openDetail(linkedRequest);
+    navigation.setParams({ requestId: undefined });
+  }, [linkedRequest]);
+
   return (
     <View style={[styles.screen, { backgroundColor: colors.main }]}>
       <LinearGradient
@@ -172,7 +186,16 @@ export default function RequestScreen({ navigation }) {
             <Menu size={22} color={COLORS.white} />
           </TouchableOpacity>
           <Text style={styles.heroHeaderTitle}>Yêu cầu</Text>
-          <View style={styles.heroIconBtn} />
+          {canOpenApproval ? (
+            <TouchableOpacity
+              onPress={() => navigation.navigate("ApprovalRequestScreen")}
+              style={styles.heroIconBtn}
+            >
+              <ClipboardCheck size={22} color={COLORS.white} />
+            </TouchableOpacity>
+          ) : (
+            <View style={styles.heroIconBtn} />
+          )}
         </View>
 
         <Text style={styles.heroGreeting}>

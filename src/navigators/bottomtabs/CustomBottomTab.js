@@ -17,13 +17,13 @@ import { getTabColor, TAB_CONFIG } from "./tabConfig";
 
 const SCREEN_W = Dimensions.get("window").width;
 const H_PAD = 4;
-const TAB_COUNT = 4;
-const TAB_W = (SCREEN_W - H_PAD * 2) / TAB_COUNT;
 
 const CustomBottomTab = ({ state, navigation, getBadge }) => {
-  const pillX = useSharedValue(state.index * TAB_W);
+  const tabW = (SCREEN_W - H_PAD * 2) / state.routes.length;
+  const pillX = useSharedValue(state.index * tabW);
 
   const pillStyle = useAnimatedStyle(() => ({
+    width: tabW,
     transform: [{ translateX: pillX.value }],
   }));
 
@@ -31,7 +31,7 @@ const CustomBottomTab = ({ state, navigation, getBadge }) => {
     (index, routeKey, routeName) => {
       const isFocused = state.index === index;
 
-      pillX.value = withSpring(index * TAB_W, {
+      pillX.value = withSpring(index * tabW, {
         damping: 18,
         stiffness: 170,
         mass: 0.9,
@@ -47,7 +47,7 @@ const CustomBottomTab = ({ state, navigation, getBadge }) => {
         navigation.navigate(routeName);
       }
     },
-    [navigation, pillX, state.index],
+    [navigation, pillX, state.index, tabW],
   );
 
   return (
@@ -125,7 +125,6 @@ const styles = StyleSheet.create({
     position: "absolute",
     top: 7,
     left: H_PAD,
-    width: TAB_W,
     height: 54,
     borderRadius: 27,
     backgroundColor: COLORS.Tertiary,

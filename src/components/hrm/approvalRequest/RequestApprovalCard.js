@@ -22,12 +22,14 @@ const RequestApprovalCard = ({
   onApprove,
   onReject,
   isReviewing,
+  noShadow = false,
 }) => {
   const [avatarModal, setAvatarModal] = useState(false);
   const avatarUri = item.user_id?.avatar || null;
+  const alreadyApprovedByMe = item.alreadyApprovedByMe === true;
 
   return (
-    <View style={styles.requestCard}>
+    <View style={[styles.requestCard, noShadow && styles.requestCardNoShadow]}>
       <View style={styles.cardTopRow}>
         <AuthAvatar
           size={42}
@@ -43,8 +45,9 @@ const RequestApprovalCard = ({
           <Text style={styles.employeeCode}>{item.user_id?.ma_nv || "--"}</Text>
         </View>
 
-        <StatusBadge status={item.status} />
+        <StatusBadge status={alreadyApprovedByMe ? "approved" : item.status} />
       </View>
+
 
       <View style={styles.infoRow}>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
@@ -84,7 +87,7 @@ const RequestApprovalCard = ({
         <Text style={[styles.infoValue]}>{item.reason || "--"}</Text>
       </View>
 
-      {item.status === "pending" && canReview && (
+      {item.status === "pending" && canReview && !alreadyApprovedByMe && (
         <View style={styles.cardFooter}>
           <ActionButtons
             item={item}
@@ -134,6 +137,12 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     elevation: 2,
   },
+  requestCardNoShadow: {
+    shadowOpacity: 0,
+    shadowRadius: 0,
+    shadowOffset: { width: 0, height: 0 },
+    elevation: 0,
+  },
   cardTopRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -145,6 +154,12 @@ const styles = StyleSheet.create({
 
   badge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999 },
   badgeText: { fontSize: 12, fontWeight: "700" },
+  waitingNextLevelText: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#15803D",
+    marginBottom: 10,
+  },
 
   infoRow: {
     flexDirection: "row",
