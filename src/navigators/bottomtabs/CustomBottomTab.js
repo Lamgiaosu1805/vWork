@@ -1,5 +1,6 @@
 import {
   Dimensions,
+  Platform,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -11,6 +12,7 @@ import Animated, {
   useSharedValue,
   withSpring,
 } from "react-native-reanimated";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { COLORS } from "../../assets/theme/colors";
 import { Ionicons } from "@expo/vector-icons";
 import { getTabColor, TAB_CONFIG } from "./tabConfig";
@@ -19,6 +21,7 @@ const SCREEN_W = Dimensions.get("window").width;
 const H_PAD = 4;
 
 const CustomBottomTab = ({ state, navigation, getBadge }) => {
+  const insets = useSafeAreaInsets();
   const tabW = (SCREEN_W - H_PAD * 2) / state.routes.length;
   const pillX = useSharedValue(state.index * tabW);
 
@@ -52,7 +55,14 @@ const CustomBottomTab = ({ state, navigation, getBadge }) => {
 
   return (
     <View style={styles.container}>
-      <View style={styles.tabContainer}>
+      <View
+        style={[
+          styles.tabContainer,
+          Platform.OS === "android" && {
+            paddingBottom: Math.max(insets.bottom + 8, 16),
+          },
+        ]}
+      >
         <Animated.View
           pointerEvents="none"
           style={[styles.activePill, pillStyle]}

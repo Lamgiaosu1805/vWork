@@ -23,8 +23,9 @@ import * as Location from "expo-location";
 import { ensureLocationPermission } from "../../helpers/location";
 import { getPeriodDates } from "../../helpers/payrollPeriod";
 import useMyPayrollStats from "../../hooks/attendance/useMyPayrollStats";
+import useCurrentWorkSheet from "../../hooks/attendance/useCurrentWorkSheet";
 import Toast from "react-native-toast-message";
-import { useDispatch, useSelector } from "react-redux";
+import { useDispatch } from "react-redux";
 import utils from "../../helpers/utils";
 import {
   Bell,
@@ -346,8 +347,7 @@ export default function AttendanceScreen() {
   const [pageWidth, setPageWidth] = useState(0);
   const dispatch = useDispatch();
 
-  const attendance = useSelector((state) => state.attendance);
-  const { currentWorkSheet } = attendance;
+  const { currentWorkSheet } = useCurrentWorkSheet();
 
   const activeOffset = periodOffsets[activeIndex] ?? 0;
 

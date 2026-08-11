@@ -1,4 +1,4 @@
-import { Alert, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View, ActivityIndicator, RefreshControl } from 'react-native'
+import { Image, ScrollView, StyleSheet, Text, TouchableOpacity, View, ActivityIndicator, RefreshControl } from 'react-native'
 import React, { useEffect, useState, useCallback } from 'react'
 import Header from '../../components/Header'
 import { openDrawer } from '../../helpers/navigationRef'
@@ -9,8 +9,41 @@ import { useCustomAlert } from '../../components/CustomAlertProvider'
 import api from '../../api/axiosInstance'
 import { setCredentials } from '../../redux/slice/authSlice'
 import { Bell, Menu } from 'lucide-react-native'
+import useTheme from '../../assets/theme/useTheme'
+import { COLORS } from '../../assets/theme/colors'
+
+const InfoItem = ({ icon, label, value }) => (
+    <View style={styles.infoItem}>
+        <View style={styles.infoIconCircle}>
+            <Ionicons name={icon} size={20} color={COLORS.Primary} />
+        </View>
+        <View style={styles.infoTextWrap}>
+            <Text style={styles.infoLabel}>{label}</Text>
+            <Text style={styles.infoValue} numberOfLines={1} ellipsizeMode="tail">
+                {value || 'Chưa có'}
+            </Text>
+        </View>
+    </View>
+);
+
+const ActionRow = ({ icon, label, onPress, isLast }) => (
+    <TouchableOpacity
+        style={[styles.actionRow, isLast && { borderBottomWidth: 0 }]}
+        activeOpacity={0.7}
+        onPress={onPress}
+    >
+        <View style={styles.actionLeft}>
+            <Ionicons name={icon} size={22} color={COLORS.Primary} />
+            <Text style={styles.actionLabel} numberOfLines={1} ellipsizeMode="tail">
+                {label}
+            </Text>
+        </View>
+        <Ionicons name="chevron-forward-outline" size={20} color={COLORS.neutral.neutral400} />
+    </TouchableOpacity>
+);
 
 export default function ProfileScreen({ navigation }) {
+    const { colors } = useTheme();
     const dispatch = useDispatch();
     const { showAlert } = useCustomAlert();
 
@@ -27,9 +60,9 @@ export default function ProfileScreen({ navigation }) {
     }, [user?.avatar]);
 
     const fetchAvatar = async () => {
-        
+
         if (!user?.avatar) return;
-         setAvatarBase64(user?.avatar);
+        setAvatarBase64(user?.avatar);
     };
 
     // Gọi lại getUserInfo và cập nhật redux
@@ -51,14 +84,18 @@ export default function ProfileScreen({ navigation }) {
         setRefreshing(false);
     }, [accessToken]);
 
+    const positionLine = (user?.departments || [])
+        .map(item => `${item?.position?.position_name} - ${item?.department?.department_name}`)
+        .join(', ');
+
     return (
-        <View style={styles.container}>
+        <View style={[styles.container, { backgroundColor: colors.main }]}>
             <Header
                 title="Hồ sơ cá nhân"
                 LeftIcon={Menu}
                 onLeftPress={() => openDrawer()}
                 RightIcon={Bell}
-                onRightPress={() => Alert.alert('Notifications Pressed')}
+                onRightPress={() => navigation.navigate('Notification')}
             />
             <ScrollView
                 showsVerticalScrollIndicator={false}
@@ -72,134 +109,95 @@ export default function ProfileScreen({ navigation }) {
                     <RefreshControl
                         refreshing={refreshing}
                         onRefresh={onRefresh}
-                        colors={["#004643"]}        // Android
-                        tintColor="#004643"          // iOS
+                        colors={[COLORS.Primary]}        // Android
+                        tintColor={COLORS.Primary}          // iOS
                         title="Đang cập nhật..."    // iOS
-                        titleColor="#004643"         // iOS
+                        titleColor={COLORS.Primary}         // iOS
                     />
                 }
             >
-                <View style={[styles.block, { flexDirection: 'row' }]}>
-                    <View style={styles.info}>
-                        {avatarLoading ? (
-                            <View style={styles.avatarPlaceholder}>
-                                <ActivityIndicator color="#004643" />
-                            </View>
-                        ) : avatarBase64 ? (
-                            <Image source={{ uri: avatarBase64 }} style={styles.avatarImage} />
-                        ) : (
-                            <View style={styles.avatarPlaceholder}>
-                                <Ionicons name="person" size={32} color="#aaa" />
-                            </View>
-                        )}
+                <View style={[styles.block, styles.headerBlock]}>
+                    {avatarLoading ? (
+                        <View style={styles.avatarPlaceholder}>
+                            <ActivityIndicator color={COLORS.Primary} />
+                        </View>
+                    ) : avatarBase64 ? (
+                        <Image source={{ uri: avatarBase64 }} style={styles.avatarImage} />
+                    ) : (
+                        <View style={styles.avatarPlaceholder}>
+                            <Ionicons name="person" size={32} color={COLORS.neutral.neutral400} />
+                        </View>
+                    )}
 
-                        <View style={{ marginLeft: 12 }}>
-                            <Text style={styles.titleText}>{user?.full_name}</Text>
-                            {user?.departments.map((item, index) => (
-                                <Text style={styles.infoText} key={index}>
-                                    {item?.position?.position_name} - {item?.department?.department_name}
-                                </Text>
-                            ))}
-                            <Text style={styles.infoText}>Mã NV: {user?.ma_nv}</Text>
-                            <Text style={styles.infoText}>Hình thức: {user?.employment_type || "chưa có"}</Text>
-                            <Text style={styles.infoText}>
-                                Trạng thái: <Text style={{ color: "#22C55E", fontWeight: '800' }}>Đang làm việc</Text>
+                    <View style={styles.headerInfo}>
+                        <Text style={styles.nameText} numberOfLines={1} ellipsizeMode="tail">
+                            {user?.full_name}
+                        </Text>
+                        {!!positionLine && (
+                            <Text style={styles.subText} numberOfLines={2} ellipsizeMode="tail">
+                                {positionLine}
                             </Text>
+                        )}
+                        <Text style={styles.subText} numberOfLines={1} ellipsizeMode="tail">
+                            Mã NV: {user?.ma_nv}
+                        </Text>
+                        <View style={styles.statusBadge}>
+                            <View style={styles.statusDot} />
+                            <Text style={styles.statusText}>Đang làm việc</Text>
                         </View>
                     </View>
                 </View>
 
-                <View style={{ marginTop: 32 }}>
-                    <Text style={styles.titleText}>Thông tin nhân sự</Text>
+                <View style={{ marginTop: 24 }}>
+                    <Text style={styles.sectionTitle}>Thông tin nhân sự</Text>
                     <View style={[styles.block, { marginTop: 12 }]}>
-                        <View style={styles.infoItem}>
-                            <Ionicons name="mail-outline" size={24} color="#004643" />
-                            <View style={{ marginLeft: 8 }}>
-                                <Text style={{ fontSize: 12, color: 'gray', marginBottom: 4 }}>Email</Text>
-                                <Text style={{ color: '#004643' }}>chưa có</Text>
+                        <InfoItem icon="mail-outline" label="Email" value={user?.email} />
+                        <InfoItem icon="call-outline" label="Số điện thoại" value={user?.phone_number} />
+                        <InfoItem icon="card-outline" label="Số CC/CCCD/CMND" value={user?.cccd} />
+                        <InfoItem icon="calendar-outline" label="Ngày sinh" value={utils.formatDate(user?.date_of_birth)} />
+                        <InfoItem icon="school-outline" label="Trình độ" value="Đại học" />
+                        <InfoItem
+                            icon="male-female-outline"
+                            label="Giới tính"
+                            value={user?.sex === 0 ? 'Nữ' : user?.sex === 1 ? 'Nam' : null}
+                        />
+                        <View style={[styles.infoItem, { marginBottom: 0 }]}>
+                            <View style={styles.infoIconCircle}>
+                                <Ionicons name="star-outline" size={20} color={COLORS.Primary} />
                             </View>
-                        </View>
-                        <View style={styles.infoItem}>
-                            <Ionicons name="call-outline" size={24} color="#004643" />
-                            <View style={{ marginLeft: 8 }}>
-                                <Text style={{ fontSize: 12, color: 'gray', marginBottom: 4 }}>Số điện thoại</Text>
-                                <Text style={{ color: '#004643' }}>{user?.phone_number}</Text>
-                            </View>
-                        </View>
-                        <View style={styles.infoItem}>
-                            <Ionicons name="card-outline" size={24} color="#004643" />
-                            <View style={{ marginLeft: 8 }}>
-                                <Text style={{ fontSize: 12, color: 'gray', marginBottom: 4 }}>Số CC/CCCD/CMND</Text>
-                                <Text style={{ color: '#004643' }}>{user?.cccd}</Text>
-                            </View>
-                        </View>
-                        <View style={styles.infoItem}>
-                            <Ionicons name="calendar-outline" size={24} color="#004643" />
-                            <View style={{ marginLeft: 8 }}>
-                                <Text style={{ fontSize: 12, color: 'gray', marginBottom: 4 }}>Ngày sinh</Text>
-                                <Text style={{ color: '#004643' }}>{utils.formatDate(user?.date_of_birth)}</Text>
-                            </View>
-                        </View>
-                        <View style={styles.infoItem}>
-                            <Ionicons name="school-outline" size={24} color="#004643" />
-                            <View style={{ marginLeft: 8 }}>
-                                <Text style={{ fontSize: 12, color: 'gray', marginBottom: 4 }}>Trình Độ</Text>
-                                <Text style={{ color: '#004643' }}>Đại học</Text>
-                            </View>
-                        </View>
-                        <View style={styles.infoItem}>
-                            <Ionicons name="male-female-outline" size={24} color="#004643" />
-                            <View style={{ marginLeft: 8 }}>
-                                <Text style={{ fontSize: 12, color: 'gray', marginBottom: 4 }}>Giới tính</Text>
-                                <Text style={{ color: '#004643' }}>{user?.sex === 0 ? "Nữ" : user?.sex === 1 ? "Nam" : "—"}</Text>
-                            </View>
-                        </View>
-                        <View style={styles.infoItem}>
-                            <Ionicons name="star-outline" size={24} color="#004643" />
-                            <View style={{ marginLeft: 8 }}>
-                                <Text style={{ fontSize: 12, color: 'gray', marginBottom: 4 }}>Tình trạng hôn nhân</Text>
-                                <Text style={{ color: '#004643' }}>{utils.renderMaritalStatus(user?.tinh_trang_hon_nhan)}</Text>
+                            <View style={styles.infoTextWrap}>
+                                <Text style={styles.infoLabel}>Tình trạng hôn nhân</Text>
+                                <Text style={styles.infoValue} numberOfLines={1} ellipsizeMode="tail">
+                                    {utils.renderMaritalStatus(user?.tinh_trang_hon_nhan) || 'Chưa có'}
+                                </Text>
                             </View>
                         </View>
                     </View>
                 </View>
 
-                <View style={[styles.block, { paddingVertical: 8 }]}>
-                    <TouchableOpacity
-                        style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderBottomWidth: 1, borderColor: '#E5E7EB', paddingVertical: 12 }}
-                        activeOpacity={0.7}
-                        onPress={() => navigation.navigate('DocumentInfoScreen')}
-                    >
-                        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                            <Ionicons name="document-outline" size={24} color="#004643" />
-                            <Text style={{ fontSize: 14, fontWeight: '600', color: '#004643', marginLeft: 16 }}>Tài liệu hồ sơ</Text>
-                        </View>
-                        <Ionicons name="chevron-forward-outline" size={24} color="#004643" />
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                        style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderBottomWidth: 1, borderColor: '#E5E7EB', paddingVertical: 12 }}
-                        activeOpacity={0.7}
-                        onPress={() => (user?.laborContracts && user?.laborContracts?.length > 0)
-                            ? navigation.navigate('ShowFileScreen')
-                            : showAlert("Thông báo", "Hợp đồng của bạn chưa được tải lên !")
-                        }
-                    >
-                        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                            <Ionicons name="document-text-outline" size={24} color="#004643" />
-                            <Text style={{ fontSize: 14, fontWeight: '600', color: '#004643', marginLeft: 16 }}>Hợp đồng lao động</Text>
-                        </View>
-                        <Ionicons name="chevron-forward-outline" size={24} color="#004643" />
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                        style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 12 }}
-                        activeOpacity={0.7}
-                    >
-                        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                            <Ionicons name="timer-outline" size={24} color="#004643" />
-                            <Text style={{ fontSize: 14, fontWeight: '600', color: '#004643', marginLeft: 16 }}>Lịch sử làm việc</Text>
-                        </View>
-                        <Ionicons name="chevron-forward-outline" size={24} color="#004643" />
-                    </TouchableOpacity>
+                <View style={{ marginTop: 24 }}>
+                    <Text style={styles.sectionTitle}>Giấy tờ &amp; lịch sử</Text>
+                    <View style={[styles.block, { marginTop: 12, paddingVertical: 4, paddingHorizontal: 16 }]}>
+                        <ActionRow
+                            icon="document-outline"
+                            label="Tài liệu hồ sơ"
+                            onPress={() => navigation.navigate('DocumentInfoScreen')}
+                        />
+                        <ActionRow
+                            icon="document-text-outline"
+                            label="Hợp đồng lao động"
+                            onPress={() => (user?.laborContracts && user?.laborContracts?.length > 0)
+                                ? navigation.navigate('ShowFileScreen')
+                                : showAlert("Thông báo", "Hợp đồng của bạn chưa được tải lên !")
+                            }
+                        />
+                        <ActionRow
+                            icon="timer-outline"
+                            label="Lịch sử làm việc"
+                            onPress={() => { }}
+                            isLast
+                        />
+                    </View>
                 </View>
             </ScrollView>
         </View>
@@ -212,27 +210,110 @@ const styles = StyleSheet.create({
     },
     block: {
         padding: 16,
-        backgroundColor: 'white',
+        backgroundColor: COLORS.white,
+        borderRadius: 20,
+        shadowColor: '#000',
+        shadowOpacity: 0.05,
+        shadowRadius: 10,
+        shadowOffset: { width: 0, height: 3 },
+        elevation: 2,
+    },
+    headerBlock: {
         marginTop: 20,
-        borderRadius: 8
+        flexDirection: 'row',
+        alignItems: 'flex-start',
     },
-    info: {
-        flexDirection: 'row'
+    headerInfo: {
+        flex: 1,
+        minWidth: 0,
+        marginLeft: 14,
     },
-    titleText: {
-        fontSize: 16,
-        fontWeight: '600',
-        color: '#004643'
+    nameText: {
+        fontSize: 17,
+        fontWeight: '700',
+        color: COLORS.neutral.neutral900,
     },
-    infoText: {
-        fontSize: 14,
+    subText: {
+        fontSize: 13,
+        marginTop: 6,
+        color: COLORS.text.bland,
+    },
+    statusBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        alignSelf: 'flex-start',
+        backgroundColor: COLORS.success.success50,
+        borderRadius: 999,
+        paddingHorizontal: 10,
+        paddingVertical: 4,
         marginTop: 8,
-        color: '#004643',
+    },
+    statusDot: {
+        width: 6,
+        height: 6,
+        borderRadius: 3,
+        backgroundColor: COLORS.success.success500,
+        marginRight: 6,
+    },
+    statusText: {
+        fontSize: 12,
+        fontWeight: '600',
+        color: COLORS.success.success700,
+    },
+    sectionTitle: {
+        fontSize: 15,
+        fontWeight: '700',
+        color: COLORS.neutral.neutral900,
     },
     infoItem: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginBottom: 16
+        marginBottom: 16,
+    },
+    infoIconCircle: {
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        backgroundColor: `${COLORS.Primary}1A`,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    infoTextWrap: {
+        flex: 1,
+        minWidth: 0,
+        marginLeft: 12,
+    },
+    infoLabel: {
+        fontSize: 12,
+        color: COLORS.text.bland,
+        marginBottom: 4,
+    },
+    infoValue: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: COLORS.neutral.neutral800,
+    },
+    actionRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        borderBottomWidth: 1,
+        borderColor: COLORS.neutral.neutral100,
+        paddingVertical: 14,
+    },
+    actionLeft: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        flex: 1,
+        minWidth: 0,
+        marginRight: 12,
+    },
+    actionLabel: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: COLORS.neutral.neutral800,
+        marginLeft: 14,
+        flexShrink: 1,
     },
     avatarImage: {
         width: 64,
@@ -243,7 +324,7 @@ const styles = StyleSheet.create({
         width: 64,
         height: 64,
         borderRadius: 32,
-        backgroundColor: '#f0f0f0',
+        backgroundColor: COLORS.neutral.neutral100,
         alignItems: 'center',
         justifyContent: 'center',
     },
