@@ -19,6 +19,10 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 const { width } = Dimensions.get("window");
 const PRIMARY = "#5B5BD6";
+const CRM_COMPANIES = [
+  { value: "vnfite", label: "VNFITE" },
+  { value: "tikluy", label: "TIKLUY" },
+];
 const FUNNEL_COLORS = ["#332D85", "#4437A6", "#5847BE", "#6D59D1", "#806CE0", "#9583EA", "#AA9BF3", "#BFB4F8"];
 const AUM_COLORS = ["#5B5BD6", "#21A179", "#F59E0B"];
 
@@ -114,6 +118,7 @@ const FunnelModal = ({ stage, range, onClose }) => {
 };
 
 export default function CrmExecutiveDashboard() {
+  const [companyCode, setCompanyCode] = useState("vnfite");
   const [period, setPeriod] = useState("all");
   const [customRange, setCustomRange] = useState({});
   const [showDateModal, setShowDateModal] = useState(false);
@@ -122,19 +127,20 @@ export default function CrmExecutiveDashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const range = useMemo(() => period === "custom" ? customRange : getRange(period), [customRange, period]);
+  const dashboardFilters = useMemo(() => ({ ...range, app_code: companyCode }), [companyCode, range]);
 
   const load = useCallback(async () => {
-    if (period === "custom" && !range.from_date) return;
+    if (period === "custom" && !dashboardFilters.from_date) return;
     setLoading(true);
     setError("");
     try {
-      setData(await getCrmExecutiveDashboard(range));
+      setData(await getCrmExecutiveDashboard(dashboardFilters));
     } catch (requestError) {
       setError(requestError.response?.data?.message || "Không thể tải dữ liệu Dashboard CRM");
     } finally {
       setLoading(false);
     }
-  }, [period, range]);
+  }, [dashboardFilters, period]);
   useEffect(() => { load(); }, [load]);
 
   const periods = [["all", "Tất cả"], ["today", "Hôm nay"], ["month", "Tháng này"], ["quarter", "Quý này"], ["year", "Năm nay"], ["custom", "Tùy chọn"]];
@@ -148,6 +154,9 @@ export default function CrmExecutiveDashboard() {
   return (
     <View style={styles.section}>
       <View style={styles.sectionHeader}><View><Text style={styles.sectionTitle}>Dashboard điều hành CRM</Text><Text style={styles.sectionSubtitle}>Chuyển đổi khách hàng và dòng vốn theo thời gian thực</Text></View>{loading && data && <ActivityIndicator color={PRIMARY} />}</View>
+      <View style={styles.companySelector}>
+        {CRM_COMPANIES.map((company) => <TouchableOpacity key={company.value} style={[styles.companyChip, companyCode === company.value && styles.companyChipActive]} onPress={() => { setData(null); setSelectedStage(null); setCompanyCode(company.value); }}><Text style={[styles.companyText, companyCode === company.value && styles.companyTextActive]}>{company.label}</Text></TouchableOpacity>)}
+      </View>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.periods}>
         {periods.map(([value, label]) => <TouchableOpacity key={value} style={[styles.periodChip, period === value && styles.periodChipActive]} onPress={() => { setPeriod(value); if (value === "custom") setShowDateModal(true); }}><Text style={[styles.periodText, period === value && styles.periodTextActive]}>{label}</Text></TouchableOpacity>)}
       </ScrollView>
@@ -167,7 +176,7 @@ export default function CrmExecutiveDashboard() {
         <View style={styles.card}><Text style={styles.cardTitle}>KPI tác nghiệp tương tác</Text><Text style={styles.sectionSubtitle}>Cột: thực tế · Đường: chỉ tiêu</Text>{barData.length ? <ScrollView horizontal><BarChart data={barData} showLine lineData={lineData} lineConfig={{ color: "#22A06B", thickness: 2, strokeDashArray: [5, 4], dataPointsColor: "#22A06B" }} height={240} width={Math.max(width - 72, 520)} barWidth={26} spacing={45} initialSpacing={25} yAxisThickness={0} xAxisThickness={0} xAxisLabelTextStyle={styles.xAxisLabel} noOfSections={4} /></ScrollView> : <Text style={styles.emptyText}>Chưa có dữ liệu tương tác</Text>}</View>
       </>}
       <DateRangeModal visible={showDateModal} value={customRange} onClose={() => setShowDateModal(false)} onApply={(value) => { setCustomRange(value); setPeriod("custom"); setShowDateModal(false); }} />
-      <FunnelModal stage={selectedStage} range={range} onClose={() => setSelectedStage(null)} />
+      <FunnelModal stage={selectedStage} range={dashboardFilters} onClose={() => setSelectedStage(null)} />
     </View>
   );
 }
@@ -177,6 +186,11 @@ const styles = StyleSheet.create({
   sectionHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
   sectionTitle: { fontSize: 18, fontWeight: "800", color: "#111827" },
   sectionSubtitle: { fontSize: 12, color: "#6B7280", marginTop: 3 },
+  companySelector: { flexDirection: "row", alignSelf: "flex-start", backgroundColor: "#F3F4F6", borderRadius: 12, padding: 4, marginTop: 12 },
+  companyChip: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 9 },
+  companyChipActive: { backgroundColor: PRIMARY },
+  companyText: { fontSize: 12, fontWeight: "800", color: "#4B5563" },
+  companyTextActive: { color: "#fff" },
   periods: { gap: 8, paddingVertical: 12 },
   periodChip: { paddingHorizontal: 13, paddingVertical: 8, borderRadius: 18, backgroundColor: "#F3F4F6" },
   periodChipActive: { backgroundColor: PRIMARY },

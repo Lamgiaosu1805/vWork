@@ -1,6 +1,7 @@
 import api from "../axiosInstance";
 
 const rangeParams = (range = {}) => ({
+  ...(range.app_code ? { app_code: range.app_code } : {}),
   ...(range.from_date ? { from_date: range.from_date } : {}),
   ...(range.to_date ? { to_date: range.to_date } : {}),
 });
