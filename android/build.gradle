@@ -15,6 +15,16 @@ buildscript {
 
 allprojects {
   repositories {
+        // omikit-plugin maven repos (added by omikit-plugin config plugin)
+        maven { url 'https://jitpack.io' }
+        maven {
+            url 'https://maven.pkg.github.com/omicall/OMICall-SDK'
+            credentials {
+                username = System.getenv('OMI_USER') ?: (project.findProperty('OMI_USER') ?: '')
+                password = System.getenv('OMI_TOKEN') ?: (project.findProperty('OMI_TOKEN') ?: '')
+            }
+            authentication { basic(BasicAuthentication) }
+        }
     google()
     mavenCentral()
     maven { url 'https://www.jitpack.io' }
