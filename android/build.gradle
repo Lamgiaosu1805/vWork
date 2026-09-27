@@ -1,5 +1,3 @@
-// Top-level build file where you can add configuration options common to all sub-projects/modules.
-
 buildscript {
   repositories {
     google()
@@ -13,15 +11,20 @@ buildscript {
   }
 }
 
+def omiProperties = new Properties()
+def omiPropertiesFile = file("local.properties")
+if (omiPropertiesFile.exists()) {
+    omiPropertiesFile.withInputStream { omiProperties.load(it) }
+}
+
 allprojects {
   repositories {
-        // omikit-plugin maven repos (added by omikit-plugin config plugin)
         maven { url 'https://jitpack.io' }
         maven {
             url 'https://maven.pkg.github.com/omicall/OMICall-SDK'
             credentials {
-                username = System.getenv('OMI_USER') ?: (project.findProperty('OMI_USER') ?: '')
-                password = System.getenv('OMI_TOKEN') ?: (project.findProperty('OMI_TOKEN') ?: '')
+                username = System.getenv('OMI_USER') ?: omiProperties.getProperty('OMI_USER', '')
+                password = System.getenv('OMI_TOKEN') ?: omiProperties.getProperty('OMI_TOKEN', '')
             }
             authentication { basic(BasicAuthentication) }
         }

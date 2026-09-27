@@ -1,8 +1,8 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { AppState } from "react-native";
 import { io } from "socket.io-client";
 
 import utils from "../helpers/utils";
+import { getAccessToken } from "./secureTokenStorage";
 import {
   upsertConversation,
   appendMessage,
@@ -204,7 +204,7 @@ const createChatSocket = (token) => {
 
 export const connectChatSocket = async (token) => {
   const resolvedToken =
-    token || currentToken || (await AsyncStorage.getItem("accessToken"));
+    token || currentToken || (await getAccessToken());
 
   if (!resolvedToken) {
     return null;

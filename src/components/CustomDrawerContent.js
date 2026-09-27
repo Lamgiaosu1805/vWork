@@ -19,6 +19,7 @@ import api from "../api/axiosInstance";
 import { unregisterFcmTokenFromServer } from "../utils/notifications/fcmConfig";
 import { getPermissions } from "../helpers/permissions";
 import { disconnectChatSocket } from "../libs/chatSocket";
+import { clearTokens } from "../libs/secureTokenStorage";
 import utils from "../helpers/utils";
 import { COLORS } from "../assets/theme/colors";
 
@@ -116,8 +117,7 @@ export default function CustomDrawerContent(props) {
   const handleLogout = async () => {
     await unregisterFcmTokenFromServer();
     await AsyncStorage.removeItem("lastStack");
-    await AsyncStorage.removeItem("accessToken");
-    await AsyncStorage.removeItem("refreshToken");
+    await clearTokens();
     disconnectChatSocket();
     navigation.replace("LoginScreen");
   };

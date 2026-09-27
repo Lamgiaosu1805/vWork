@@ -22,6 +22,11 @@ import Toast from "react-native-toast-message";
 import ChangeFirstPasswordModal from "../components/ChangeFirstPasswordModal";
 import { useDispatch } from "react-redux";
 import { setCredentials } from "../redux/slice/authSlice";
+import {
+  setAccessToken as saveAccessToken,
+  setRefreshToken as saveRefreshToken,
+  removeAccessToken,
+} from "../libs/secureTokenStorage";
 import { syncFcmTokenWithServer } from "../utils/notifications/fcmConfig";
 import { Icons } from "../assets/icons";
 import { Images } from "../assets/images";
@@ -71,11 +76,11 @@ export default function LoginScreen({ navigation }) {
         dispatch(setCredentials({ user, accessToken, refreshToken }));
 
         if (remember) {
-          await AsyncStorage.setItem("accessToken", accessToken);
+          await saveAccessToken(accessToken);
         } else {
-          await AsyncStorage.multiRemove(["accessToken"]);
+          await removeAccessToken();
         }
-        await AsyncStorage.setItem("refreshToken", refreshToken);
+        await saveRefreshToken(refreshToken);
         syncFcmTokenWithServer();
 
         const lastStack =

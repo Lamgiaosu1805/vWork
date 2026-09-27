@@ -1,4 +1,3 @@
-// src/screens/SplashScreen.js
 import React, { useEffect } from "react";
 import { View, ActivityIndicator, StyleSheet } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -6,6 +5,7 @@ import { useDispatch } from "react-redux";
 import { setCredentials } from "../redux/slice/authSlice";
 import api from "../api/axiosInstance";
 import dayjs from "dayjs";
+import { getAccessToken } from "../libs/secureTokenStorage";
 
 
 export default function SplashScreen({ navigation }) {
@@ -16,9 +16,8 @@ export default function SplashScreen({ navigation }) {
             try {
                 const today = dayjs().format("YYYY-MM-DD");
                 await AsyncStorage.setItem("LAST_OPEN_DATE", today);
-                const accessToken = await AsyncStorage.getItem("accessToken");
+                const accessToken = await getAccessToken();
                 const res = await api.get("/user/getUserInfo", { requiresAuth: true });
-                // console.log(JSON.stringify(res.data, null, 2));
                 if (accessToken) {
                     dispatch(
                         setCredentials({

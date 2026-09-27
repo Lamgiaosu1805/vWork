@@ -2,7 +2,7 @@ const { withDangerousMod } = require("@expo/config-plugins");
 const fs = require("fs");
 const path = require("path");
 
-const RNFB_TARGETS = ["RNFBApp", "RNFBMessaging"]; // add more if you add e.g. RNFBAuth, RNFBAnalytics, etc.
+const RNFB_TARGETS = ["RNFBApp", "RNFBMessaging"];
 
 const GLOBAL_MARKER = "# @withModularHeadersFix:global_non_modular";
 const RNFB_MARKER = "# @withModularHeadersFix:rnfb_non_modular";

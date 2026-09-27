@@ -14,6 +14,7 @@ import { useNavigation } from "@react-navigation/native";
 import useAuth from "../../hooks/useAuth";
 import Header from "../../components/Header";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { removeAccessToken } from "../../libs/secureTokenStorage";
 import { unregisterFcmTokenFromServer } from "../../utils/notifications/fcmConfig";
 import { ChevronLeft } from "lucide-react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -71,7 +72,7 @@ const ChangePasswordScreen = () => {
       if (navigation.canGoBack()) {
         await unregisterFcmTokenFromServer();
         await AsyncStorage.removeItem("lastStack");
-        await AsyncStorage.removeItem("accessToken");
+        await removeAccessToken();
         navigation.replace("LoginScreen");
       } else {
         navigation.navigate("HRMBottomTab");

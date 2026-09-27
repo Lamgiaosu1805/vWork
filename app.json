@@ -75,9 +75,12 @@
       [
         "react-native-permissions",
         {
-          "iosPermissions": ["Microphone"]
+          "iosPermissions": [
+            "Microphone"
+          ]
         }
-      ]
+      ],
+      "expo-secure-store"
     ],
     "extra": {
       "eas": {
