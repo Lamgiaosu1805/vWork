@@ -1,17 +1,20 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import AsyncStorage from "@react-native-async-storage/async-storage";
-export default function SettingsScreen({ route }) {
+import { useLocalSearchParams } from "expo-router";
+
+export default function SettingsScreen() {
+  const { ref } = useLocalSearchParams();
   const [refCode, setRefCode] = useState(null);
   useEffect(() => {
     const init = async () => {
       const savedRef = await AsyncStorage.getItem("ref_code");
 
-      setRefCode(route?.params?.ref || savedRef);
+      setRefCode(ref || savedRef);
     };
 
     init();
-  }, []);
+  }, [ref]);
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Cài đặt</Text>

@@ -15,7 +15,7 @@ import {
 } from "react-native";
 import React, { useRef, useState } from "react";
 import { Ionicons } from "@expo/vector-icons";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import { router } from "expo-router";
 import api from "../api/axiosInstance";
 import { useCustomAlert } from "../components/CustomAlertProvider";
 import Toast from "react-native-toast-message";
@@ -28,6 +28,8 @@ import {
   removeAccessToken,
 } from "../libs/secureTokenStorage";
 import { syncFcmTokenWithServer } from "../utils/notifications/fcmConfig";
+import { getPermissions } from "../helpers/permissions";
+import { resolveInitialRoute } from "../helpers/lastStack";
 import { Icons } from "../assets/icons";
 import { Images } from "../assets/images";
 import useTheme from "../assets/theme/useTheme";
@@ -36,7 +38,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { COLORS } from "../assets/theme/colors";
 import { Eye, EyeOff } from "lucide-react-native";
 
-export default function LoginScreen({ navigation }) {
+export default function LoginScreen() {
   const theme = useTheme();
   const [visible, setVisible] = useState(false);
   const [password, setPassword] = useState("");
@@ -83,18 +85,9 @@ export default function LoginScreen({ navigation }) {
         await saveRefreshToken(refreshToken);
         syncFcmTokenWithServer();
 
-        const lastStack =
-          (await AsyncStorage.getItem("lastStack")) ||
-          "WorkPlaceStackNavigator";
-        navigation.reset({
-          index: 0,
-          routes: [
-            {
-              name: "RootDrawer",
-              params: { initialRoute: lastStack },
-            },
-          ],
-        });
+        const hasCrm = getPermissions(user).showCRM;
+        const target = await resolveInitialRoute(hasCrm);
+        router.replace(`/${target}`);
       }
     } catch (error) {
       console.log("Login error:", error.response?.data || error.message);

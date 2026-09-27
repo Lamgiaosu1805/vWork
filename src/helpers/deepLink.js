@@ -1,27 +1,16 @@
 import * as Linking from "expo-linking";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import { router } from "expo-router";
 
-export function initDeepLink(navigationRef) {
-    const handleUrl = async ({ url }) => {
-        const parsed = Linking.parse(url);
-        console.log("DEEPLINK:", parsed);
+export function initDeepLink() {
+  const handleUrl = ({ url }) => {
+    const parsed = Linking.parse(url);
+    const ref = parsed.queryParams?.ma_nv;
+    router.push({ pathname: "/settings", params: { ref } });
+  };
 
-        const ref = parsed.queryParams?.ma_nv;
+  Linking.addEventListener("url", handleUrl);
 
-        const tryNavigate = () => {
-            if (navigationRef.isReady()) {
-                navigationRef.navigate("Settings", { ref });
-            } else {
-                setTimeout(tryNavigate, 300);
-            }
-        };
-
-        tryNavigate();
-    };
-
-    Linking.addEventListener("url", handleUrl);
-
-    Linking.getInitialURL().then((url) => {
-        if (url) handleUrl({ url });
-    });
+  Linking.getInitialURL().then((url) => {
+    if (url) handleUrl({ url });
+  });
 }

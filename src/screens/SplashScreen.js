@@ -2,13 +2,15 @@ import React, { useEffect } from "react";
 import { View, ActivityIndicator, StyleSheet } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useDispatch } from "react-redux";
+import { router } from "expo-router";
 import { setCredentials } from "../redux/slice/authSlice";
 import api from "../api/axiosInstance";
 import dayjs from "dayjs";
 import { getAccessToken } from "../libs/secureTokenStorage";
+import { getPermissions } from "../helpers/permissions";
+import { resolveInitialRoute } from "../helpers/lastStack";
 
-
-export default function SplashScreen({ navigation }) {
+export default function SplashScreen() {
     const dispatch = useDispatch();
 
     useEffect(() => {
@@ -25,23 +27,16 @@ export default function SplashScreen({ navigation }) {
                             user: res.data,
                         })
                     );
-                    navigation.reset({
-                        index: 0,
-                        routes: [{ name: "RootDrawer" }],
-                    });
+                    const hasCrm = getPermissions(res.data).showCRM;
+                    const target = await resolveInitialRoute(hasCrm);
+                    router.replace(`/${target}`);
                 } else {
-                    navigation.reset({
-                        index: 0,
-                        routes: [{ name: "LoginScreen" }],
-                    });
+                    router.replace("/login");
                 }
             } catch (e) {
                 console.log("Lỗi khi load SplashScreen")
                 console.log(e.response?.data || e)
-                navigation.reset({
-                    index: 0,
-                    routes: [{ name: "LoginScreen" }],
-                });
+                router.replace("/login");
             }
         };
 

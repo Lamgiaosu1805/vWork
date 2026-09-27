@@ -1,5 +1,5 @@
 import dayjs from "dayjs";
-import { resolveDisplayName } from "../hooks/workplace/useNicknameMap";
+import { resolveDisplayName } from "../features/workplace/hooks/useNicknameMap";
 
 const resolveConversationId = (conversation) => conversation?._id ?? null;
 

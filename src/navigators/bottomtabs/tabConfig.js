@@ -5,19 +5,19 @@ export const TAB_CONFIG = {
     title: "HRM",
     icon: "people",
   },
-  AttendanceScreen: {
+  attendance: {
     title: "Chấm công",
     icon: "alarm",
   },
-  RequestScreen: {
+  requests: {
     title: "Yêu cầu",
     icon: "create",
   },
-  ProfileScreen: {
+  profile: {
     title: "Hồ sơ",
     icon: "person",
   },
-  ExpandScreen: {
+  expand: {
     title: "Mở rộng",
     icon: "apps",
   },
@@ -37,23 +37,23 @@ export const TAB_CONFIG = {
     title: "Hoa hồng",
     icon: "cash-outline",
   },
-  WorkplaceDashboard: {
+  dashboard: {
     title: "Workplace",
     icon: "business-outline",
   },
-  FeedScreen: {
+  feed: {
     title: "Bảng tin",
     icon: "newspaper-outline",
   },
-  ChatScreen: {
+  chat: {
     title: "Chat",
     icon: "chatbubbles-outline",
   },
-  WeeklyReportScreen: {
+  "weekly-report": {
     title: "Báo cáo",
     icon: "calendar-outline",
   },
-  InternalFilesScreen: {
+  "internal-files": {
     title: "Ổ File",
     icon: "folder-open-outline",
   },

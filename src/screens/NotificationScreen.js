@@ -9,14 +9,13 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { CommonActions } from "@react-navigation/native";
+import { router } from "expo-router";
 import { Bell, ChevronLeft, CheckCheck } from "lucide-react-native";
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
 import "dayjs/locale/vi";
 import Header from "../components/Header";
 import { COLORS } from "../assets/theme/colors";
-import { navigationRef } from "../helpers/navigationRef";
 import {
   useMarkAllNotificationsRead,
   useMarkNotificationRead,
@@ -27,62 +26,19 @@ import {
 dayjs.extend(relativeTime);
 dayjs.locale("vi");
 
-// Dùng navigationRef (ref gốc) thay vì `navigation` prop của NotificationScreen vì
-// bước 1 xóa hẳn lịch sử cũ nên `navigation` prop của màn Notification không còn hợp lệ
-// cho lệnh điều hướng thứ 2 ở bước sau (giống cách fcmConfig.js xử lý deep link chat).
-//
-// Reset thẳng về HRMBottomTab (Chấm công) làm gốc duy nhất, xóa sạch lịch sử cũ
-// (Workplace/CRM/Notification...), để hành vi back luôn chắc chắn quay về đây.
-const resetToHRMHome = () => {
-  navigationRef.dispatch(
-    CommonActions.reset({
-      index: 0,
-      routes: [
-        {
-          name: "RootDrawer",
-          state: {
-            routes: [
-              {
-                name: "HRMStackNavigator",
-                state: { routes: [{ name: "HRMBottomTab" }] },
-              },
-            ],
-          },
-        },
-      ],
-    }),
-  );
-};
-
 const goToMyRequest = (requestId) => {
-  if (!navigationRef.isReady()) return;
-
-  resetToHRMHome();
+  router.replace("/hrm");
 
   setTimeout(() => {
-    navigationRef.navigate("RootDrawer", {
-      screen: "HRMStackNavigator",
-      params: {
-        screen: "HRMBottomTab",
-        params: { screen: "RequestScreen", params: { requestId } },
-      },
-    });
+    router.push({ pathname: "/hrm/requests", params: { requestId } });
   }, 50);
 };
 
 const goToApproval = (requestId) => {
-  if (!navigationRef.isReady()) return;
-
-  resetToHRMHome();
+  router.replace("/hrm");
 
   setTimeout(() => {
-    navigationRef.navigate("RootDrawer", {
-      screen: "HRMStackNavigator",
-      params: {
-        screen: "ApprovalRequestScreen",
-        params: { requestId },
-      },
-    });
+    router.push({ pathname: "/hrm/approval-request", params: { requestId } });
   }, 50);
 };
 
@@ -128,7 +84,7 @@ const NotificationItem = ({ item, onPress }) => (
   </TouchableOpacity>
 );
 
-const NotificationScreen = ({ navigation }) => {
+const NotificationScreen = () => {
   const {
     data,
     isLoading,
@@ -157,7 +113,7 @@ const NotificationScreen = ({ navigation }) => {
       <Header
         title="Thông báo"
         LeftIcon={ChevronLeft}
-        onLeftPress={() => navigation.goBack()}
+        onLeftPress={() => router.back()}
         RightIcon={unreadCount > 0 ? CheckCheck : undefined}
         onRightPress={() => !isMarkingAll && markAllRead()}
       />

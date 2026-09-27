@@ -6,7 +6,7 @@ import notifyKit, {
 } from "react-native-notify-kit";
 import { PermissionsAndroid, Platform } from "react-native";
 import DeviceInfo from "react-native-device-info";
-import { navigationRef } from "../../helpers/navigationRef";
+import { router } from "expo-router";
 import {
   registerDeviceTokenApi,
   unregisterDeviceTokenApi,
@@ -51,7 +51,6 @@ export async function getFcmToken() {
     await registerAppWithFCM();
 
     const token = await messaging().getToken();
-    console.log("token o day", token);
     if (token) {
       await AsyncStorage.setItem(FCM_TOKEN_STORAGE_KEY, token);
     }
@@ -131,27 +130,9 @@ function navigateToChatFromRemoteMessage(remoteMessage) {
   const data = remoteMessage?.data ?? {};
   const conversationId = data?.conversationId;
 
-  if (!conversationId || !navigationRef.isReady()) return false;
+  if (!conversationId) return false;
 
-  navigationRef.navigate("RootDrawer", {
-    screen: "WorkPlaceStackNavigator",
-    params: {
-      screen: "WorkPlaceBottomTab",
-      params: {
-        screen: "ChatScreen",
-      },
-    },
-  });
-
-  setTimeout(() => {
-    navigationRef.navigate("RootDrawer", {
-      screen: "WorkPlaceStackNavigator",
-      params: {
-        screen: "ChatRoomScreen",
-        params: { conversationId },
-      },
-    });
-  }, 50);
+  router.push("/workplace");
 
   return true;
 }
@@ -170,13 +151,7 @@ export function registerNotificationListeners() {
           "Notification opened from quit state:",
           JSON.stringify(remoteMessage),
         );
-        const tryNavigate = () => {
-          if (!navigateToChatFromRemoteMessage(remoteMessage)) {
-            setTimeout(tryNavigate, 300);
-          }
-        };
-
-        tryNavigate();
+        navigateToChatFromRemoteMessage(remoteMessage);
       }
     });
 

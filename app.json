@@ -42,6 +42,7 @@
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
+      "expo-router",
       "@config-plugins/react-native-blob-util",
       "@config-plugins/react-native-pdf",
       "react-native-wifi-reborn",
@@ -83,6 +84,9 @@
       "expo-secure-store"
     ],
     "extra": {
+      "router": {
+        "root": "src/app"
+      },
       "eas": {
         "projectId": "4d08bf8a-8c6d-4a94-a647-767f9e86e0f8"
       }

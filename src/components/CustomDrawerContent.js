@@ -14,6 +14,7 @@ import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as ImagePicker from "expo-image-picker";
 import * as ImageManipulator from "expo-image-manipulator";
+import { router } from "expo-router";
 import { useSelector } from "react-redux";
 import api from "../api/axiosInstance";
 import { unregisterFcmTokenFromServer } from "../utils/notifications/fcmConfig";
@@ -33,7 +34,6 @@ export default function CustomDrawerContent(props) {
 
   const currentRoute = state?.routeNames[state?.index];
 
-  // Fetch ảnh avatar kèm token
   useEffect(() => {
     const fetchAvatar = async () => {
       if (!user?.avatar) return;
@@ -45,7 +45,6 @@ export default function CustomDrawerContent(props) {
   }, [user?.avatar, user?.updatedAt]);
 
   const handlePickAvatar = async () => {
-    // Xin quyền truy cập thư viện ảnh
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== "granted") {
       Alert.alert(
@@ -65,11 +64,10 @@ export default function CustomDrawerContent(props) {
       return;
     }
 
-    // Mở thư viện ảnh + crop vuông ngay trong picker
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true, // bật crop
-      aspect: [1, 1], // crop vuông
+      allowsEditing: true,
+      aspect: [1, 1],
       quality: 0.8,
     });
 
@@ -80,14 +78,12 @@ export default function CustomDrawerContent(props) {
     try {
       setUploading(true);
 
-      // Resize về 400x400 trước khi upload
       const manipulated = await ImageManipulator.manipulateAsync(
         selectedUri,
         [{ resize: { width: 400, height: 400 } }],
         { compress: 0.8, format: ImageManipulator.SaveFormat.JPEG },
       );
 
-      // Tạo FormData upload lên server
       const formData = new FormData();
       formData.append("avatar", {
         uri: manipulated.uri,
@@ -100,7 +96,6 @@ export default function CustomDrawerContent(props) {
         headers: { "Content-Type": "multipart/form-data" },
       });
 
-      // Hiển thị ảnh mới ngay, không cần fetch lại
       setAvatarBase64(manipulated.uri);
     } catch (error) {
       console.log("uploadAvatar error:", error.message);
@@ -119,14 +114,12 @@ export default function CustomDrawerContent(props) {
     await AsyncStorage.removeItem("lastStack");
     await clearTokens();
     disconnectChatSocket();
-    navigation.replace("LoginScreen");
+    router.replace("/login");
   };
 
   const handleChangePassword = async () => {
     navigation.closeDrawer?.();
-    navigation.navigate("HRMStackNavigator", {
-      screen: "ChangePasswordScreen",
-    });
+    router.push("/hrm/change-password");
   };
 
   const DrawerItemCustom = ({ label, icon, routeName }) => {
@@ -158,15 +151,9 @@ export default function CustomDrawerContent(props) {
         onPress={() => {
           if (!routeName) return;
           if (routeName === "Settings") {
-            const parent = navigation.getParent ? navigation.getParent() : null;
-            if (parent && parent.navigate) {
-              parent.navigate("Settings");
-            } else {
-              navigation.navigate("Settings");
-            }
+            router.push("/settings");
             return;
           }
-          // navigation.navigate(routeName);
           Alert.alert(
             label,
             "Tính năng đang được phát triển",
@@ -188,9 +175,7 @@ export default function CustomDrawerContent(props) {
 
   return (
     <DrawerContentScrollView {...props} contentContainerStyle={{ flex: 1 }}>
-      {/* Header profile */}
       <View style={styles.profileContainer}>
-        {/* Avatar + nút chỉnh sửa */}
         <TouchableOpacity
           onPress={handlePickAvatar}
           disabled={uploading}
@@ -205,14 +190,12 @@ export default function CustomDrawerContent(props) {
             </View>
           )}
 
-          {/* Overlay loading khi đang upload */}
           {uploading && (
             <View style={styles.avatarOverlay}>
               <ActivityIndicator color="#fff" />
             </View>
           )}
 
-          {/* Icon camera góc dưới phải */}
           {!uploading && (
             <View style={styles.cameraIcon}>
               <Ionicons name="camera" size={14} color="#fff" />
@@ -230,23 +213,22 @@ export default function CustomDrawerContent(props) {
 
       <View style={styles.divider} />
 
-      {/* Menu items */}
       <View style={{ paddingHorizontal: 12 }}>
         <DrawerItemCustom
           label="WORKPLACE"
           icon="business-outline"
-          routeName="WorkPlaceStackNavigator"
+          routeName="workplace"
         />
         <DrawerItemCustom
           label="HRM"
           icon="people-outline"
-          routeName="HRMStackNavigator"
+          routeName="hrm"
         />
         {showCRM && (
           <DrawerItemCustom
             label="CRM"
             icon="cart-outline"
-            routeName="CRMStackNavigator"
+            routeName="crm"
           />
         )}
       </View>
@@ -274,7 +256,6 @@ export default function CustomDrawerContent(props) {
         </View>
       </View>
 
-      {/* Footer logout */}
       <View style={styles.footer}>
         <TouchableOpacity
           style={styles.changePassBtn}

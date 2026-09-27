@@ -1,5 +1,5 @@
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
-import AttendanceScreen from "../../screens/hrm/AttendanceScreen";
+import AttendanceScreen from "../../features/attendance/screens/AttendanceScreen";
 import DashboardCRMScreen from "../../screens/crm/DashboardCRMScreen";
 import CustomerScreen from "../../screens/crm/CustomerScreen";
 import CommissionScreen from "../../screens/crm/CommissionScreen";

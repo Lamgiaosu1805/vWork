@@ -1,12 +1,13 @@
-// src/navigationRef.js
-import { createNavigationContainerRef, DrawerActions } from '@react-navigation/native';
+let drawerNavigation = null;
 
-export const navigationRef = createNavigationContainerRef();
+export function registerDrawerNavigation(navigation) {
+  drawerNavigation = navigation;
+}
 
 export function openDrawer() {
-  if (navigationRef.isReady()) {
-    navigationRef.dispatch(DrawerActions.openDrawer());
+  if (drawerNavigation?.openDrawer) {
+    drawerNavigation.openDrawer();
   } else {
-    console.log('Navigation not ready yet');
+    console.log("Drawer not ready yet");
   }
 }

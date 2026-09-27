@@ -21,7 +21,7 @@ import ImageView from "react-native-image-viewing";
 
 import { store } from "../redux/store";
 import utils from "../helpers/utils";
-import feedApi from "../api/feedApi";
+import feedApi from "../features/workplace/api/feedApi";
 
 dayjs.extend(relativeTime);
 dayjs.locale("vi");
