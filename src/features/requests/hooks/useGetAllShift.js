@@ -1,38 +1,16 @@
-import { useEffect, useState } from "react";
-import requestsApi from "../api/requestsApi";
+import { useQuery } from "@tanstack/react-query";
 import shiftApi from "../api/shift";
 
 const useGetAllShift = () => {
-  const [data, setData] = useState([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const { data, isLoading, refetch } = useQuery({
+    queryKey: ["shifts"],
+    queryFn: async () => {
+      const res = await shiftApi.getAllShifts();
+      return res?.data?.data ?? [];
+    },
+  });
 
-  const fetchData = async () => {
-    setIsLoading(true);
-
-    try {
-      const response = await shiftApi.getAllShifts();
-
-      setData(response?.data?.data || []);
-
-      return response?.data?.data;
-    } catch (error) {
-      console.log("[Error GET all shifts]", error);
-
-      return null;
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchData();
-  }, []);
-
-  return {
-    data,
-    isLoading,
-    refetch: fetchData,
-  };
+  return { data: data ?? [], isLoading, refetch };
 };
 
 export default useGetAllShift;

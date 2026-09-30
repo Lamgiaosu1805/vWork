@@ -1,1 +1,636 @@
-export { default } from "../../../features/hrm/screens/ApprovalRequestScreen";
+import React, { useEffect, useState } from "react";
+import {
+  View,
+  Text,
+  ScrollView,
+  TouchableOpacity,
+  StyleSheet,
+  ActivityIndicator,
+  FlatList,
+  TextInput,
+  Modal,
+  Pressable,
+  Platform,
+} from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import { router, useLocalSearchParams } from "expo-router";
+import { Dropdown } from "react-native-element-dropdown";
+import dayjs from "dayjs";
+import { useQuery } from "@tanstack/react-query";
+import { useSelector } from "react-redux";
+import Header from "../../../components/Header";
+import useGetRequestsInfinite from "../../../features/requests/hooks/useGetRequestsInfinite";
+import { FILTER_ITEMS, TABS } from "../../../constants/hrm";
+import ConfirmModal from "../../../features/requests/components/approvalRequest/ConfirmModal";
+import RequestApprovalCard from "../../../features/requests/components/approvalRequest/RequestApprovalCard";
+import useReviewRequest from "../../../features/requests/hooks/useReviewRequest";
+import useGetRequestById from "../../../features/requests/hooks/useGetRequestById";
+import Toast from "react-native-toast-message";
+import DatePickerApprovalModal from "../../../features/requests/components/approvalRequest/DatePickerApprovalModal";
+import { ChevronLeft } from "lucide-react-native";
+import { getPermissions } from "../../../helpers/permissions";
+import requestsApi from "../../../features/requests/api/requestsApi";
+import { isAlreadyApprovedByMe } from "../../../helpers/request";
+import { Skeleton, SkeletonCircle } from "../../../components/Skeleton";
+
+const RequestApprovalCardSkeleton = () => (
+  <View style={styles.skeletonCard}>
+    <View style={styles.skeletonTopRow}>
+      <SkeletonCircle size={42} />
+      <View style={{ flex: 1, marginLeft: 10 }}>
+        <Skeleton width={120} height={14} borderRadius={4} />
+        <Skeleton width={60} height={11} borderRadius={4} style={{ marginTop: 6 }} />
+      </View>
+      <Skeleton width={70} height={20} borderRadius={999} />
+    </View>
+    {[0, 1, 2].map((i) => (
+      <View key={i} style={styles.skeletonInfoRow}>
+        <Skeleton width={22} height={22} borderRadius={6} />
+        <Skeleton width={70} height={11} borderRadius={4} style={{ marginLeft: 8 }} />
+        <Skeleton width={100} height={11} borderRadius={4} style={{ marginLeft: "auto" }} />
+      </View>
+    ))}
+  </View>
+);
+
+const ApprovalRequestScreen = () => {
+  const user = useSelector((s) => s.auth.user);
+  const { canReviewRequests, canViewAllRequests } = getPermissions(user);
+  const viewOnly = !canReviewRequests && canViewAllRequests;
+  const [status, setStatus] = useState("");
+  const effectiveStatus = viewOnly ? "approved" : status;
+  const [requestType, setRequestType] = useState("");
+  const [search, setSearch] = useState("");
+  const [searchInput, setSearchInput] = useState("");
+  const [from, setFrom] = useState("");
+  const [to, setTo] = useState("");
+  const [showFromPicker, setShowFromPicker] = useState(false);
+  const [showToPicker, setShowToPicker] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [confirmModal, setConfirmModal] = useState({
+    visible: false,
+    id: null,
+    action: null,
+  });
+  const [isTyping, setIsTyping] = useState(false);
+
+  const { requestId: linkedRequestId } = useLocalSearchParams();
+  const [linkedModalVisible, setLinkedModalVisible] = useState(!!linkedRequestId);
+  const { data: linkedRequest, isLoading: isLoadingLinked } =
+    useGetRequestById(linkedRequestId);
+
+  const closeLinkedModal = () => {
+    setLinkedModalVisible(false);
+    router.setParams({ requestId: undefined });
+  };
+
+  useEffect(() => {
+    if (linkedRequestId) setLinkedModalVisible(true);
+  }, [linkedRequestId]);
+
+  const {
+    data: infiniteData,
+    isLoading,
+    isFetchingNextPage,
+    hasNextPage,
+    fetchNextPage,
+    refetch,
+  } = useGetRequestsInfinite({
+    request_type: requestType,
+    status: effectiveStatus,
+    limit: 6,
+    search,
+    from,
+    to,
+  });
+
+  const { mutate: handleRequest, isPending: isReviewing } = useReviewRequest();
+
+  const { data: approvedByMeData } = useQuery({
+    queryKey: [
+      "requests",
+      "pending-approved-by-me",
+      { request_type: requestType, search, from, to },
+    ],
+    queryFn: async () => {
+      const res = await requestsApi.getRequests({
+        request_type: requestType,
+        status: "pending",
+        search,
+        from,
+        to,
+        limit: 50,
+        page: 1,
+      });
+      const body = res.data;
+      const list = Array.isArray(body) ? body : (body?.data ?? []);
+      return list
+        .map((item) => ({ ...item, alreadyApprovedByMe: isAlreadyApprovedByMe(item, user) }))
+        .filter((item) => item.alreadyApprovedByMe);
+    },
+    enabled: canReviewRequests && effectiveStatus === "approved",
+  });
+
+  const rawRequests = infiniteData?.pages.flatMap((p) => p.data ?? []) ?? [];
+  const requests =
+    effectiveStatus === "pending"
+      ? rawRequests.filter((r) => !r.alreadyApprovedByMe)
+      : effectiveStatus === "approved"
+        ? [...(approvedByMeData ?? []), ...rawRequests]
+        : rawRequests;
+  const total =
+    (infiniteData?.pages?.[0]?.pagination?.total ?? 0) +
+    (effectiveStatus === "approved" ? (approvedByMeData?.length ?? 0) : 0);
+
+  const onRefresh = () => {
+    setIsRefreshing(true);
+    refetch().finally(() => setIsRefreshing(false));
+  };
+
+  const clearFilters = () => {
+    setSearch("");
+    setSearchInput("");
+    setFrom("");
+    setTo("");
+    setRequestType("");
+    setStatus("");
+  };
+
+  const hasActiveFilter = search || from || to || requestType;
+
+  useEffect(() => {
+    setIsTyping(true);
+
+    const timeout = setTimeout(() => {
+      const keyword = searchInput.trim();
+
+      setSearch(keyword);
+      setIsTyping(false);
+    }, 500);
+
+    return () => {
+      clearTimeout(timeout);
+    };
+  }, [searchInput]);
+
+  const openConfirm = (id, action) =>
+    setConfirmModal({ visible: true, id, action });
+  const closeConfirm = () =>
+    setConfirmModal({ visible: false, id: null, action: null });
+
+  const onConfirm = (reviewerNote = "") => {
+    handleRequest(
+      confirmModal.id,
+      { action: confirmModal.action, reviewer_note: reviewerNote },
+      {
+        onSuccess: () => {
+          refetch();
+          closeConfirm();
+          if (confirmModal.id === linkedRequestId) closeLinkedModal();
+          Toast.show({
+            type: "success",
+            text1:
+              confirmModal.action === "approve"
+                ? "Đã duyệt yêu cầu thành công"
+                : "Đã từ chối yêu cầu",
+          });
+        },
+        onError: (error) => {
+          Toast.show({
+            type: "error",
+            text1: error?.response?.data?.message || "Đã có lỗi xảy ra",
+          });
+        },
+      },
+    );
+  };
+
+  return (
+    <View style={styles.screen}>
+      <Header
+        title={viewOnly ? "Xem yêu cầu" : "Xử lý yêu cầu"}
+        LeftIcon={ChevronLeft}
+        onLeftPress={() => router.back()}
+      />
+
+      <View style={styles.filterBar}>
+        <View style={styles.searchBox}>
+          {isTyping ? (
+            <Ionicons name="pencil" size={16} color="#9CA3AF" />
+          ) : (
+            <Ionicons name="search-outline" size={16} color="#9CA3AF" />
+          )}
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Tìm tên, mã NV..."
+            placeholderTextColor="#9CA3AF"
+            value={searchInput}
+            onChangeText={setSearchInput}
+          />
+          {searchInput.length > 0 && (
+            <TouchableOpacity
+              onPress={() => {
+                setSearchInput("");
+                setSearch("");
+              }}
+            >
+              <Ionicons name="close-circle" size={16} color="#9CA3AF" />
+            </TouchableOpacity>
+          )}
+        </View>
+
+        <Dropdown
+          style={styles.filterDropdown}
+          placeholderStyle={{ fontSize: 12, color: "#9CA3AF" }}
+          selectedTextStyle={{ fontSize: 12, color: "#111827" }}
+          itemTextStyle={{ fontSize: 13, color: "#111827" }}
+          activeColor="rgba(37,99,235,0.08)"
+          data={FILTER_ITEMS}
+          labelField="label"
+          valueField="value"
+          placeholder="Loại đơn"
+          value={requestType}
+          onChange={(item) => {
+            setRequestType(item.value);
+          }}
+          renderRightIcon={() => (
+            <Ionicons name="chevron-down" size={13} color="#9CA3AF" />
+          )}
+        />
+      </View>
+
+      <View style={styles.dateRow}>
+        <TouchableOpacity
+          style={styles.datePicker}
+          onPress={() => setShowFromPicker(true)}
+          activeOpacity={0.7}
+        >
+          <Ionicons name="calendar-outline" size={14} color="#6B7280" />
+          <Text style={[styles.datePickerText, !from && { color: "#9CA3AF" }]}>
+            {from ? dayjs(from).format("DD/MM/YYYY") : "Từ ngày"}
+          </Text>
+          {from && (
+            <TouchableOpacity
+              onPress={() => {
+                setFrom("");
+              }}
+            >
+              <Ionicons name="close-circle" size={14} color="#9CA3AF" />
+            </TouchableOpacity>
+          )}
+        </TouchableOpacity>
+
+        <Ionicons name="arrow-forward" size={14} color="#D1D5DB" />
+
+        <TouchableOpacity
+          style={styles.datePicker}
+          onPress={() => setShowToPicker(true)}
+          activeOpacity={0.7}
+        >
+          <Ionicons name="calendar-outline" size={14} color="#6B7280" />
+          <Text style={[styles.datePickerText, !to && { color: "#9CA3AF" }]}>
+            {to ? dayjs(to).format("DD/MM/YYYY") : "Đến ngày"}
+          </Text>
+          {to && (
+            <TouchableOpacity
+              onPress={() => {
+                setTo("");
+              }}
+            >
+              <Ionicons name="close-circle" size={14} color="#9CA3AF" />
+            </TouchableOpacity>
+          )}
+        </TouchableOpacity>
+
+        {hasActiveFilter && (
+          <TouchableOpacity style={styles.clearBtn} onPress={clearFilters}>
+            <Ionicons name="refresh-outline" size={20} color="#EF4444" />
+          </TouchableOpacity>
+        )}
+      </View>
+
+      {!viewOnly && (
+        <View style={styles.tabContainer}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.tabScroll}
+          >
+            {TABS.map((tab) => {
+              const active = status === tab.key;
+              const count = active ? total : null;
+              return (
+                <TouchableOpacity
+                  key={tab.key}
+                  style={[styles.tab, active && styles.tabActive]}
+                  onPress={() => {
+                    setStatus(tab.key);
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[styles.tabText, active && styles.tabTextActive]}>
+                    {tab.label}
+                  </Text>
+                  {count !== null && (
+                    <View
+                      style={[styles.tabCount, active && styles.tabCountActive]}
+                    >
+                      <Text
+                        style={[
+                          styles.tabCountText,
+                          active && styles.tabCountTextActive,
+                        ]}
+                      >
+                        {count}
+                      </Text>
+                    </View>
+                  )}
+                  <View style={[styles.tabDot, { backgroundColor: tab.dot }]} />
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+        </View>
+      )}
+
+      {isLoading && !isRefreshing ? (
+        <View style={styles.listContent}>
+          {[0, 1, 2].map((i) => (
+            <RequestApprovalCardSkeleton key={i} />
+          ))}
+        </View>
+      ) : requests.length === 0 ? (
+        <View style={styles.centerBox}>
+          <Ionicons name="document-outline" size={52} color="#9CA3AF" />
+          <Text style={styles.emptyText}>Không có dữ liệu</Text>
+        </View>
+      ) : (
+        <FlatList
+          data={requests}
+          keyExtractor={(item) => item._id}
+          contentContainerStyle={styles.listContent}
+          showsVerticalScrollIndicator={false}
+          refreshing={isRefreshing}
+          onRefresh={onRefresh}
+          onEndReachedThreshold={0.3}
+          onEndReached={() => {
+            if (hasNextPage && !isFetchingNextPage) {
+              fetchNextPage();
+            }
+          }}
+          renderItem={({ item }) => (
+            <RequestApprovalCard
+              item={item}
+              canReview={canReviewRequests}
+              onApprove={(id) => openConfirm(id, "approve")}
+              onReject={(id) => openConfirm(id, "reject")}
+              isReviewing={isReviewing}
+            />
+          )}
+          ListFooterComponent={
+            isFetchingNextPage ? (
+              <View style={styles.loadMoreRow}>
+                <ActivityIndicator size="small" color="#2563EB" />
+              </View>
+            ) : !hasNextPage && requests.length > 0 ? (
+              <Text style={styles.endOfListText}>
+                Đã hiển thị tất cả {total} đơn
+              </Text>
+            ) : null
+          }
+        />
+      )}
+
+      <ConfirmModal
+        visible={confirmModal.visible}
+        action={confirmModal.action}
+        onConfirm={onConfirm}
+        onCancel={closeConfirm}
+        isLoading={isReviewing}
+      />
+
+      <DatePickerApprovalModal
+        visible={showFromPicker}
+        value={from}
+        title="Chọn ngày bắt đầu"
+        onConfirm={(val) => {
+          setFrom(val);
+        }}
+        onClose={() => setShowFromPicker(false)}
+      />
+
+      <DatePickerApprovalModal
+        visible={showToPicker}
+        value={to}
+        title="Chọn ngày kết thúc"
+        onConfirm={(val) => {
+          setTo(val);
+        }}
+        onClose={() => setShowToPicker(false)}
+      />
+
+      <Modal
+        visible={linkedModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={closeLinkedModal}
+      >
+        <Pressable style={styles.linkedModalOverlay} onPress={closeLinkedModal}>
+          <Pressable style={styles.linkedModalBox} onPress={() => {}}>
+            <View style={styles.linkedModalHeader}>
+              <Text style={styles.linkedModalTitle}>Chi tiết đơn</Text>
+              <TouchableOpacity onPress={closeLinkedModal}>
+                <Ionicons name="close" size={22} color="#6B7280" />
+              </TouchableOpacity>
+            </View>
+            {isLoadingLinked ? (
+              <RequestApprovalCardSkeleton />
+            ) : linkedRequest ? (
+              <RequestApprovalCard
+                item={{
+                  ...linkedRequest,
+                  alreadyApprovedByMe: isAlreadyApprovedByMe(linkedRequest, user),
+                }}
+                canReview={canReviewRequests}
+                onApprove={(id) => openConfirm(id, "approve")}
+                onReject={(id) => openConfirm(id, "reject")}
+                isReviewing={isReviewing}
+                noShadow
+              />
+            ) : (
+              <Text style={styles.emptyText}>Không tìm thấy đơn</Text>
+            )}
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      <Toast />
+    </View>
+  );
+};
+
+export default ApprovalRequestScreen;
+
+const styles = StyleSheet.create({
+  screen: { flex: 1, backgroundColor: "#F5F7FB" },
+
+  skeletonCard: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 16,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+    marginBottom: 10,
+  },
+  skeletonTopRow: { flexDirection: "row", alignItems: "center", marginBottom: 12 },
+  skeletonInfoRow: { flexDirection: "row", alignItems: "center", marginBottom: 8 },
+
+  filterBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    backgroundColor: "#FFFFFF",
+    borderBottomWidth: 1,
+    borderBottomColor: "#E5E7EB",
+  },
+  searchBox: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    height: 40,
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    backgroundColor: "#F9FAFB",
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 13,
+    color: "#111827",
+    padding: 0,
+  },
+  filterDropdown: {
+    width: 120,
+    height: 40,
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    backgroundColor: "#FFFFFF",
+  },
+
+  dateRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    backgroundColor: "#FFFFFF",
+    borderBottomWidth: 1,
+    borderBottomColor: "#E5E7EB",
+  },
+  datePicker: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    height: 36,
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    backgroundColor: "#F9FAFB",
+  },
+  datePickerText: {
+    flex: 1,
+    fontSize: 12,
+    color: "#374151",
+  },
+  clearBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    padding: 8,
+    borderRadius: 8,
+    backgroundColor: "#FEF2F2",
+  },
+
+  tabContainer: {
+    backgroundColor: "#FFFFFF",
+    borderBottomWidth: 1,
+    borderBottomColor: "#E5E7EB",
+  },
+  tabScroll: { paddingHorizontal: 16, gap: 4 },
+  tab: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingVertical: 12,
+    paddingHorizontal: 6,
+    marginRight: 16,
+    borderBottomWidth: 2,
+    borderBottomColor: "transparent",
+  },
+  tabActive: { borderBottomColor: "#2563EB" },
+  tabText: { fontSize: 14, fontWeight: "700", color: "#6B7280" },
+  tabTextActive: { color: "#2563EB" },
+  tabCount: {
+    minWidth: 18,
+    height: 18,
+    paddingHorizontal: 4,
+    borderRadius: 999,
+    backgroundColor: "#F3F4F6",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  tabCountActive: { backgroundColor: "#DBEAFE" },
+  tabCountText: { fontSize: 11, fontWeight: "700", color: "#6B7280" },
+  tabCountTextActive: { color: "#2563EB" },
+  tabDot: { width: 6, height: 6, borderRadius: 3 },
+
+  listContent: { padding: 12, gap: 10 },
+  centerBox: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+  },
+  emptyText: {
+    fontSize: 14,
+    color: "#9CA3AF",
+    fontWeight: "600",
+    marginTop: 4,
+  },
+
+  loadMoreRow: { paddingVertical: 16, alignItems: "center" },
+  endOfListText: {
+    textAlign: "center",
+    fontSize: 12,
+    color: "#9CA3AF",
+    paddingVertical: 16,
+  },
+
+  linkedModalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.45)",
+    justifyContent: "flex-end",
+  },
+  linkedModalBox: {
+    backgroundColor: "#F5F7FB",
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: 16,
+    maxHeight: "80%",
+  },
+  linkedModalHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 12,
+  },
+  linkedModalTitle: { fontSize: 16, fontWeight: "700", color: "#111827" },
+});

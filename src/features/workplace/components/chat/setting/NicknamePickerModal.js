@@ -12,8 +12,8 @@ import { Ionicons } from "@expo/vector-icons";
 import { AuthAvatar } from "../../../../../components/PostCard";
 import { resolveDisplayName } from "../../../hooks/useNicknameMap";
 import { SafeAreaView } from "react-native-safe-area-context";
-import BottomSheet from "../../../../../components/crm/BottomSheet";
-import { HEIGHT_SHEET } from "../../../../../screens/crm/CustomerScreen";
+import BottomSheet from "../../../../../components/BottomSheet";
+import { HEIGHT_SHEET } from "../../../../../helpers/layout";
 import { withTiming } from "react-native-reanimated";
 
 function PickerRow({ member, nicknameMap, onPress }) {

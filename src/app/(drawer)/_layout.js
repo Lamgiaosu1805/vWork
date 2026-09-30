@@ -1,15 +1,14 @@
 import React, { useRef } from "react";
-import { useSelector } from "react-redux";
 import { Drawer } from "expo-router/drawer";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { getPermissions } from "../../helpers/permissions";
+import { useMyPermissions, CRM_ACCESS_PERMISSIONS, HRM_ACCESS_PERMISSIONS } from "../../features/permission";
 import CustomDrawerContent from "../../components/CustomDrawerContent";
 import TwoFingerDrawerGestureWrapper from "../../components/TwoFingerDrawerGestureWrapper";
 
 export default function DrawerLayout() {
-  const user = useSelector((state) => state.auth.user);
-  const perms = getPermissions(user);
-  const hasCrm = perms.showCRM;
+  const { canAny } = useMyPermissions();
+  const hasCrm = canAny(CRM_ACCESS_PERMISSIONS);
+  const hasHrm = canAny(HRM_ACCESS_PERMISSIONS);
   const lastSavedRoute = useRef(null);
 
   return (
@@ -47,7 +46,7 @@ export default function DrawerLayout() {
         }}
       >
         <Drawer.Screen name="workplace" options={{ title: "WORKPLACE" }} />
-        <Drawer.Screen name="hrm" options={{ title: "HRM" }} />
+        {hasHrm && <Drawer.Screen name="hrm" options={{ title: "HRM" }} />}
         {hasCrm && <Drawer.Screen name="crm" options={{ title: "CRM" }} />}
       </Drawer>
     </TwoFingerDrawerGestureWrapper>

@@ -8,4 +8,8 @@ const getUsersApi = async (params = {}) => {
   return api.get("/user/getUsers", { requiresAuth: true, params });
 };
 
-export { getBirthdayThisMonthApi, getUsersApi };
+const getUserInfoApi = async () => {
+  return api.get("/user/getUserInfo", { requiresAuth: true });
+};
+
+export { getBirthdayThisMonthApi, getUsersApi, getUserInfoApi };

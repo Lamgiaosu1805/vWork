@@ -30,11 +30,6 @@ export const getPermissions = (user) => {
     role,
     isAdminRole: role === "admin",
 
-    // Drawer — module visibility
-    showHRM: true,
-    showWorkplace: true,
-    showCRM: has(user, "crm"),
-
     // HRM
     showEmployeeList: true,
     showAddEmployee: canMgr(user, "hrm"),

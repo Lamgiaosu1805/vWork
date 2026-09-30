@@ -13,6 +13,7 @@ import { router } from "expo-router";
 
 import chatApi from "../../../api/chat";
 import { AuthAvatar } from "../../../../../components/PostCard";
+import { Skeleton } from "../../../../../components/Skeleton";
 
 const NUM_COLUMNS = 3;
 const SPACING = 8;
@@ -76,8 +77,10 @@ const MediaSection = ({
 
   if (loading) {
     return (
-      <View style={styles.center}>
-        <ActivityIndicator />
+      <View style={styles.grid}>
+        {Array.from({ length: 6 }).map((_, i) => (
+          <Skeleton key={i} style={styles.item} />
+        ))}
       </View>
     );
   }
@@ -122,11 +125,6 @@ const MediaSection = ({
 export default React.memo(MediaSection);
 
 const styles = StyleSheet.create({
-  center: {
-    paddingVertical: 20,
-    alignItems: "center",
-  },
-
   grid: {
     flexDirection: "row",
     flexWrap: "wrap",

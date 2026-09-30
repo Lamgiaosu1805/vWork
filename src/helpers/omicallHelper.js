@@ -12,6 +12,8 @@ export const showCallError = (code, fallback) => {
 };
 
 export const parseErrorMessage = (error) => {
+  if (error?.response?.data?.message) return error.response.data.message;
+
   const errorString =
     error?.message || error?.toString() || "Lỗi không xác định";
   const statusMatch = errorString.match(/Status:\s*(\d+)/);

@@ -7,10 +7,12 @@ import useTheme from "../assets/theme/useTheme";
 
 const Header = ({
   title,
+  centerContent,
   LeftIcon,
   onLeftPress,
   RightIcon,
   onRightPress,
+  rightContent,
 }) => {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
@@ -47,12 +49,14 @@ const Header = ({
       {renderIcon(LeftIcon, onLeftPress)}
 
       <View style={styles.titleContainer}>
-        <Text style={styles.title} numberOfLines={1}>
-          {title}
-        </Text>
+        {centerContent ?? (
+          <Text style={styles.title} numberOfLines={1}>
+            {title}
+          </Text>
+        )}
       </View>
 
-      {renderIcon(RightIcon, onRightPress)}
+      {rightContent ?? renderIcon(RightIcon, onRightPress)}
     </View>
   );
 };

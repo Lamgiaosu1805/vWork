@@ -1,1 +1,679 @@
-export { default } from "../../../../features/workplace/screens/InternalFilesScreen";
+import React, { useEffect, useRef, useState } from 'react';
+import {
+    ActivityIndicator,
+    Alert,
+    BackHandler,
+    FlatList,
+    Image,
+    KeyboardAvoidingView,
+    Modal,
+    Platform,
+    RefreshControl,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
+} from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { router } from 'expo-router';
+import { useSelector } from 'react-redux';
+import Toast from 'react-native-toast-message';
+import * as ImagePicker from 'expo-image-picker';
+import * as DocumentPicker from 'expo-document-picker';
+import dayjs from 'dayjs';
+import 'dayjs/locale/vi';
+
+import Header from "../../../../components/Header";
+import { openDrawer } from "../../../../helpers/navigationRef";
+import { getPermissions } from "../../../../helpers/permissions";
+import useAccessibleDepts from "../../../../features/workplace/hooks/useAccessibleDepts";
+import useDeptFolders from "../../../../features/workplace/hooks/useDeptFolders";
+import useDeptFiles from "../../../../features/workplace/hooks/useDeptFiles";
+import useUploadDeptFile from "../../../../features/workplace/hooks/useUploadDeptFile";
+import useCreateFolder from "../../../../features/workplace/hooks/useCreateFolder";
+import useDeleteFile from "../../../../features/workplace/hooks/useDeleteFile";
+import useDeleteFolder from "../../../../features/workplace/hooks/useDeleteFolder";
+import utils from "../../../../helpers/utils";
+import { ChevronLeft, Menu } from 'lucide-react-native';
+import { Skeleton } from '../../../../components/Skeleton';
+
+dayjs.locale('vi');
+
+const MIME_EXT = {
+    'application/pdf': 'PDF',
+    'image/png': 'PNG',
+    'image/jpeg': 'JPG',
+    'image/jpg': 'JPG',
+    'image/heic': 'HEIC',
+    'image/heif': 'HEIF',
+    'image/gif': 'GIF',
+    'image/webp': 'WEBP',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'DOCX',
+    'application/msword': 'DOC',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': 'XLSX',
+    'application/vnd.ms-excel': 'XLS',
+};
+const getExt = (mime) => MIME_EXT[mime] ?? mime?.split('/')[1]?.toUpperCase() ?? 'FILE';
+const EXT_COLOR = {
+    PDF: '#E53935', PNG: '#1E88E5', JPG: '#1E88E5', JPEG: '#1E88E5',
+    HEIC: '#1E88E5', HEIF: '#1E88E5', GIF: '#1E88E5', WEBP: '#1E88E5',
+    DOCX: '#1565C0', DOC: '#1565C0', XLSX: '#2E7D32', XLS: '#2E7D32',
+};
+const formatSize = (bytes) => {
+    if (!bytes) return '';
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+};
+
+const IMAGE_MIMES = new Set([
+    'image/jpeg', 'image/jpg', 'image/png',
+    'image/heic', 'image/heif', 'image/gif', 'image/webp',
+]);
+
+const _thumbCache = new Map();
+
+const ImageThumbnail = ({ fileId, authToken, size = 56 }) => {
+    const [uri, setUri] = useState(() => _thumbCache.get(fileId) ?? null);
+
+    useEffect(() => {
+        if (!fileId || !authToken) return;
+        if (_thumbCache.has(fileId)) { setUri(_thumbCache.get(fileId)); return; }
+        let cancelled = false;
+        const url = `${utils.BASE_URL}/internal-files/file/${fileId}/view`;
+        fetch(url, { headers: { Authorization: `Bearer ${authToken}` } })
+            .then((r) => r.blob())
+            .then((blob) => new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = reject;
+                reader.readAsDataURL(blob);
+            }))
+            .then((dataUri) => {
+                if (!cancelled) {
+                    _thumbCache.set(fileId, dataUri);
+                    setUri(dataUri);
+                }
+            })
+            .catch(() => {});
+        return () => { cancelled = true; };
+    }, [fileId, authToken]);
+
+    return (
+        <View style={[styles.thumbBox, { width: size, height: size }]}>
+            {uri ? (
+                <Image source={{ uri }} style={styles.thumbImage} resizeMode="cover" />
+            ) : (
+                <ActivityIndicator size="small" color="#9CA3AF" />
+            )}
+        </View>
+    );
+};
+
+const FileListSkeleton = () => (
+    <View style={{ paddingHorizontal: 16, paddingTop: 4 }}>
+        {Array.from({ length: 6 }).map((_, i) => (
+            <View key={i} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 10, gap: 10 }}>
+                <Skeleton width={40} height={40} borderRadius={8} />
+                <View style={{ flex: 1, gap: 6 }}>
+                    <Skeleton width="55%" height={13} />
+                    <Skeleton width="30%" height={11} />
+                </View>
+            </View>
+        ))}
+    </View>
+);
+
+const DeptChip = ({ dept, selected, onPress }) => (
+    <TouchableOpacity
+        style={[styles.deptChip, selected && styles.deptChipActive]}
+        onPress={onPress}
+        activeOpacity={0.7}
+    >
+        <Ionicons name="folder-outline" size={14} color={selected ? '#fff' : '#6B7280'} />
+        <Text style={[styles.deptChipText, selected && styles.deptChipTextActive]} numberOfLines={1}>
+            {dept.department_name}
+        </Text>
+    </TouchableOpacity>
+);
+
+const FolderItem = ({ folder, onOpen, onDelete, canDelete }) => (
+    <TouchableOpacity style={styles.folderCard} onPress={() => onOpen(folder)} activeOpacity={0.7}>
+        <View style={styles.folderIcon}>
+            <Ionicons name="folder" size={28} color="#3B82F6" />
+        </View>
+        <View style={styles.folderInfo}>
+            <Text style={styles.folderName} numberOfLines={1}>{folder.name}</Text>
+            <Text style={styles.folderMeta}>
+                {folder.createdBy?.full_name ?? folder.createdBy?.username ?? '—'}
+            </Text>
+        </View>
+        {canDelete && (
+            <TouchableOpacity
+                style={styles.actionBtn}
+                onPress={() => onDelete(folder)}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+                <Ionicons name="trash-outline" size={16} color="#EF4444" />
+            </TouchableOpacity>
+        )}
+        <Ionicons name="chevron-forward" size={16} color="#9CA3AF" />
+    </TouchableOpacity>
+);
+
+const FileItem = ({ file, onView, onDelete, isAdmin, currentUserId, authToken }) => {
+    const ext = getExt(file.mimeType);
+    const extColor = EXT_COLOR[ext] ?? '#6B7280';
+    const canDelete = isAdmin || file.uploadedBy?._id === currentUserId;
+    const isImage = IMAGE_MIMES.has(file.mimeType);
+
+    return (
+        <TouchableOpacity style={styles.fileCard} onPress={() => onView(file)} activeOpacity={0.7}>
+            {isImage ? (
+                <ImageThumbnail fileId={file._id} authToken={authToken} size={56} />
+            ) : (
+                <View style={[styles.extBox, { backgroundColor: `${extColor}18` }]}>
+                    <Text style={[styles.extText, { color: extColor }]}>{ext}</Text>
+                </View>
+            )}
+            <View style={styles.fileInfo}>
+                <Text style={styles.fileName} numberOfLines={2}>{decodeURIComponent(file.originalName ?? '')}</Text>
+                <Text style={styles.fileMeta}>
+                    {file.uploadedBy?.full_name ?? file.uploadedBy?.username ?? '—'} · {dayjs(file.createdAt).format('DD/MM/YYYY')}
+                    {file.size ? ` · ${formatSize(file.size)}` : ''}
+                </Text>
+                {file.category === 'weekly_report' && (
+                    <View style={styles.categoryBadge}>
+                        <Text style={styles.categoryText}>Báo cáo</Text>
+                    </View>
+                )}
+            </View>
+            <View style={styles.fileActions}>
+                <TouchableOpacity style={styles.actionBtn} onPress={() => onView(file)}>
+                    <Ionicons name="eye-outline" size={18} color="#3B82F6" />
+                </TouchableOpacity>
+                {canDelete && (
+                    <TouchableOpacity style={styles.actionBtn} onPress={() => onDelete(file)}>
+                        <Ionicons name="trash-outline" size={18} color="#EF4444" />
+                    </TouchableOpacity>
+                )}
+            </View>
+        </TouchableOpacity>
+    );
+};
+
+const CreateFolderModal = ({ visible, onClose, onCreate, creating }) => {
+    const [name, setName] = useState('');
+    const inputRef = useRef(null);
+
+    useEffect(() => {
+        if (visible) setTimeout(() => inputRef.current?.focus(), 100);
+        else setName('');
+    }, [visible]);
+
+    const handleCreate = () => {
+        if (!name.trim()) return;
+        onCreate(name.trim());
+    };
+
+    return (
+        <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+            <KeyboardAvoidingView
+                behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+                style={styles.modalOverlay}
+            >
+                <View style={styles.modalBox}>
+                    <Text style={styles.modalTitle}>Tạo thư mục mới</Text>
+                    <TextInput
+                        ref={inputRef}
+                        style={styles.modalInput}
+                        placeholder="Tên thư mục..."
+                        value={name}
+                        onChangeText={setName}
+                        onSubmitEditing={handleCreate}
+                        returnKeyType="done"
+                    />
+                    <View style={styles.modalActions}>
+                        <TouchableOpacity style={styles.modalCancelBtn} onPress={onClose} disabled={creating}>
+                            <Text style={styles.modalCancelText}>Huỷ</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                            style={[styles.modalCreateBtn, (!name.trim() || creating) && styles.modalCreateBtnDisabled]}
+                            onPress={handleCreate}
+                            disabled={!name.trim() || creating}
+                        >
+                            {creating ? (
+                                <ActivityIndicator size="small" color="#fff" />
+                            ) : (
+                                <Text style={styles.modalCreateText}>Tạo</Text>
+                            )}
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            </KeyboardAvoidingView>
+        </Modal>
+    );
+};
+
+export default function InternalFilesScreen() {
+    const user = useSelector((state) => state.auth.user);
+    const accessToken = useSelector((state) => state.auth.accessToken);
+    const perms = getPermissions(user);
+    const currentUserId = user?._id ?? user?.user_id;
+
+    const [selectedDept, setSelectedDept] = useState(null);
+    const [folderStack, setFolderStack] = useState([]);
+    const currentFolderId = folderStack[folderStack.length - 1]?._id ?? null;
+    const [createFolderVisible, setCreateFolderVisible] = useState(false);
+
+    const {
+        data: depts = [],
+        isLoading: loadingDepts,
+        isFetching: deptsFetching,
+        refetch: refetchDepts,
+    } = useAccessibleDepts();
+    const {
+        data: folders = [],
+        isLoading: foldersLoading,
+        refetch: refetchFolders,
+    } = useDeptFolders(selectedDept?._id, currentFolderId);
+    const {
+        data: files = [],
+        isLoading: filesLoading,
+        refetch: refetchFiles,
+    } = useDeptFiles(selectedDept?._id, currentFolderId);
+    const loadingContent = foldersLoading || filesLoading;
+    const refreshing = deptsFetching && !loadingDepts;
+
+    const uploadDeptFile = useUploadDeptFile();
+    const createFolderMutation = useCreateFolder();
+    const deleteFile = useDeleteFile();
+    const deleteFolder = useDeleteFolder();
+    const uploading = uploadDeptFile.isPending;
+    const creatingFolder = createFolderMutation.isPending;
+
+    useEffect(() => {
+        if (depts.length > 0 && !selectedDept) setSelectedDept(depts[0]);
+    }, [depts, selectedDept]);
+
+    useEffect(() => {
+        const handler = BackHandler.addEventListener('hardwareBackPress', () => {
+            if (folderStack.length > 0) {
+                setFolderStack((prev) => prev.slice(0, -1));
+                return true;
+            }
+            return false;
+        });
+        return () => handler.remove();
+    }, [folderStack]);
+
+    const onRefresh = () => {
+        refetchDepts();
+        refetchFolders();
+        refetchFiles();
+    };
+
+    const handleSelectDept = (dept) => {
+        setSelectedDept(dept);
+        setFolderStack([]);
+    };
+
+    const handleOpenFolder = (folder) => {
+        setFolderStack((prev) => [...prev, { _id: folder._id, name: folder.name }]);
+    };
+
+    const handleGoBack = () => {
+        if (folderStack.length > 0) setFolderStack((prev) => prev.slice(0, -1));
+    };
+
+    const handleViewFile = (file) => {
+        const initialIndex = files.findIndex((f) => f._id === file._id);
+        router.push({
+            pathname: '/workplace/file-viewer',
+            params: {
+                files: JSON.stringify(files),
+                initialIndex: initialIndex >= 0 ? initialIndex : 0,
+                authToken: accessToken,
+            },
+        });
+    };
+
+    const pickFromLibrary = async () => {
+        const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (status !== 'granted') {
+            Toast.show({ type: 'error', text1: 'Cần quyền truy cập thư viện ảnh' });
+            return [];
+        }
+        const result = await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: ['images', 'videos'],
+            allowsMultipleSelection: true,
+            copyToCacheDirectory: true,
+        });
+        if (result.canceled) return [];
+        return result.assets.map((a) => ({
+            uri: a.uri,
+            name: decodeURIComponent(a.fileName ?? a.uri.split('/').pop()),
+            type: a.mimeType ?? 'application/octet-stream',
+        }));
+    };
+
+    const pickFromFiles = async () => {
+        const result = await DocumentPicker.getDocumentAsync({
+            copyToCacheDirectory: true,
+            multiple: true,
+        });
+        if (result.canceled) return [];
+        return result.assets.map((a) => ({
+            uri: a.uri,
+            name: a.name,
+            type: a.mimeType ?? 'application/octet-stream',
+        }));
+    };
+
+    const handleUpload = async () => {
+        if (!selectedDept?._id) return;
+
+        const picked = await new Promise((resolve) => {
+            Alert.alert('Chọn nguồn tệp', null, [
+                { text: 'Thư viện ảnh', onPress: () => pickFromLibrary().then(resolve) },
+                { text: 'Tệp', onPress: () => pickFromFiles().then(resolve) },
+                { text: 'Huỷ', style: 'cancel', onPress: () => resolve([]) },
+            ]);
+        });
+        if (!picked.length) return;
+
+        let successCount = 0;
+        let failCount = 0;
+        for (const file of picked) {
+            const fd = new FormData();
+            fd.append('files', { uri: file.uri, name: file.name, type: file.type });
+            if (currentFolderId) fd.append('folder_id', currentFolderId);
+            try {
+                await uploadDeptFile.mutateAsync({ deptId: selectedDept._id, formData: fd });
+                successCount++;
+            } catch {
+                failCount++;
+            }
+        }
+        if (successCount > 0)
+            Toast.show({ type: 'success', text1: `Tải lên thành công ${successCount} file` });
+        if (failCount > 0)
+            Toast.show({ type: 'error', text1: `${failCount} file tải lên thất bại` });
+    };
+
+    const handleCreateFolder = (name) => {
+        createFolderMutation.mutate(
+            { deptId: selectedDept._id, name, parentId: currentFolderId },
+            {
+                onSuccess: () => {
+                    Toast.show({ type: 'success', text1: `Đã tạo thư mục "${name}"` });
+                    setCreateFolderVisible(false);
+                },
+                onError: (err) => {
+                    const msg = err?.response?.data?.message || 'Tạo thư mục thất bại';
+                    Toast.show({ type: 'error', text1: msg });
+                },
+            },
+        );
+    };
+
+    const handleDeleteFile = (file) => {
+        Alert.alert('Xác nhận xóa', `Xóa file "${file.originalName}"?`, [
+            { text: 'Huỷ', style: 'cancel' },
+            {
+                text: 'Xóa', style: 'destructive',
+                onPress: () => {
+                    deleteFile.mutate(file._id, {
+                        onSuccess: () => Toast.show({ type: 'success', text1: 'Đã xóa file' }),
+                        onError: () => Toast.show({ type: 'error', text1: 'Xóa thất bại' }),
+                    });
+                },
+            },
+        ]);
+    };
+
+    const handleDeleteFolder = (folder) => {
+        Alert.alert(
+            'Xóa thư mục',
+            `Xóa "${folder.name}" và toàn bộ nội dung bên trong?`,
+            [
+                { text: 'Huỷ', style: 'cancel' },
+                {
+                    text: 'Xóa', style: 'destructive',
+                    onPress: () => {
+                        deleteFolder.mutate(
+                            { deptId: selectedDept._id, folderId: folder._id },
+                            {
+                                onSuccess: (res) => {
+                                    const { deleted_files } = res.data?.data ?? {};
+                                    Toast.show({ type: 'success', text1: `Đã xóa thư mục${deleted_files ? ` (${deleted_files} file)` : ''}` });
+                                    setFolderStack((prev) => {
+                                        const idx = prev.findIndex((p) => p._id === folder._id);
+                                        return idx >= 0 ? prev.slice(0, idx) : prev;
+                                    });
+                                },
+                                onError: () => Toast.show({ type: 'error', text1: 'Xóa thư mục thất bại' }),
+                            },
+                        );
+                    },
+                },
+            ]
+        );
+    };
+
+    const listItems = [
+        ...folders.map((f) => ({ type: 'folder', data: f, key: `folder-${f._id}` })),
+        ...files.map((f) => ({ type: 'file', data: f, key: `file-${f._id}` })),
+    ];
+
+    const renderItem = ({ item }) => {
+        if (item.type === 'folder') {
+            return (
+                <FolderItem
+                    folder={item.data}
+                    onOpen={handleOpenFolder}
+                    onDelete={handleDeleteFolder}
+                    canDelete={perms.showFilesMgmt || item.data.createdBy?._id === currentUserId}
+                />
+            );
+        }
+        return (
+            <FileItem
+                file={item.data}
+                onView={handleViewFile}
+                onDelete={handleDeleteFile}
+                isAdmin={perms.showFilesMgmt}
+                currentUserId={currentUserId}
+                authToken={accessToken}
+            />
+        );
+    };
+
+    const BreadcrumbBar = () => (
+        <View style={styles.breadcrumb}>
+            <TouchableOpacity onPress={() => setFolderStack([])} style={styles.breadcrumbItem}>
+                <Ionicons name="folder-open-outline" size={13} color="#6B7280" />
+                <Text style={styles.breadcrumbText}>Root</Text>
+            </TouchableOpacity>
+            {folderStack.map((f, i) => (
+                <React.Fragment key={f._id}>
+                    <Text style={styles.breadcrumbSep}>›</Text>
+                    <TouchableOpacity
+                        onPress={() => setFolderStack((prev) => prev.slice(0, i + 1))}
+                        style={styles.breadcrumbItem}
+                    >
+                        <Text style={[styles.breadcrumbText, i === folderStack.length - 1 && styles.breadcrumbCurrent]} numberOfLines={1}>
+                            {f.name}
+                        </Text>
+                    </TouchableOpacity>
+                </React.Fragment>
+            ))}
+        </View>
+    );
+
+    return (
+        <View style={styles.safeArea}>
+            <Header
+                title="Ổ File Nội Bộ"
+                LeftIcon={folderStack.length > 0 ? ChevronLeft : Menu}
+                onLeftPress={folderStack.length > 0 ? handleGoBack : () => openDrawer()}
+            />
+
+            {loadingDepts ? (
+                <FileListSkeleton />
+            ) : depts.length === 0 ? (
+                <View style={styles.centered}>
+                    <Ionicons name="folder-open-outline" size={48} color="#D1D5DB" />
+                    <Text style={styles.emptyText}>Bạn chưa có phòng ban nào được truy cập</Text>
+                </View>
+            ) : (
+                <>
+                    <View style={styles.deptBar}>
+                        <ScrollView
+                            horizontal
+                            showsHorizontalScrollIndicator={false}
+                            contentContainerStyle={styles.deptScroll}
+                        >
+                            {depts.map((dept) => (
+                                <DeptChip
+                                    key={dept._id}
+                                    dept={dept}
+                                    selected={selectedDept?._id === dept._id}
+                                    onPress={() => handleSelectDept(dept)}
+                                />
+                            ))}
+                        </ScrollView>
+                    </View>
+
+                    <BreadcrumbBar />
+
+                    {loadingContent ? (
+                        <FileListSkeleton />
+                    ) : (
+                        <FlatList
+                            data={listItems}
+                            keyExtractor={(item) => item.key}
+                            renderItem={renderItem}
+                            contentContainerStyle={styles.list}
+                            showsVerticalScrollIndicator={false}
+                            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+                            ListHeaderComponent={
+                                selectedDept ? (
+                                    <View style={styles.listHeader}>
+                                        <View>
+                                            <Text style={styles.deptHeaderName}>{selectedDept.department_name}</Text>
+                                            <Text style={styles.deptHeaderCount}>
+                                                {folders.length > 0 ? `${folders.length} thư mục · ` : ''}{files.length} file
+                                            </Text>
+                                        </View>
+                                        <View style={styles.headerBtns}>
+                                            <TouchableOpacity
+                                                style={styles.newFolderBtn}
+                                                onPress={() => setCreateFolderVisible(true)}
+                                                activeOpacity={0.7}
+                                            >
+                                                <Ionicons name="folder-open-outline" size={14} color="#3B82F6" />
+                                                <Text style={styles.newFolderText}>Thư mục</Text>
+                                            </TouchableOpacity>
+                                            <TouchableOpacity
+                                                style={[styles.uploadBtn, uploading && styles.uploadBtnDisabled]}
+                                                onPress={handleUpload}
+                                                disabled={uploading}
+                                                activeOpacity={0.7}
+                                            >
+                                                {uploading ? (
+                                                    <ActivityIndicator size="small" color="#fff" />
+                                                ) : (
+                                                    <Ionicons name="cloud-upload-outline" size={14} color="#fff" />
+                                                )}
+                                                <Text style={styles.uploadBtnText}>
+                                                    {uploading ? 'Đang tải...' : 'Tải lên'}
+                                                </Text>
+                                            </TouchableOpacity>
+                                        </View>
+                                    </View>
+                                ) : null
+                            }
+                            ListEmptyComponent={
+                                <View style={styles.centered}>
+                                    <Ionicons name="folder-open-outline" size={48} color="#D1D5DB" />
+                                    <Text style={styles.emptyText}>Thư mục trống</Text>
+                                </View>
+                            }
+                        />
+                    )}
+                </>
+            )}
+
+            <CreateFolderModal
+                visible={createFolderVisible}
+                onClose={() => setCreateFolderVisible(false)}
+                onCreate={handleCreateFolder}
+                creating={creatingFolder}
+            />
+        </View>
+    );
+}
+
+const styles = StyleSheet.create({
+    safeArea: { flex: 1, backgroundColor: '#F7F7F7' },
+    centered: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20, gap: 12 },
+    emptyText: { fontSize: 14, color: '#9CA3AF', textAlign: 'center' },
+
+    deptBar: { backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#E5E7EB', paddingVertical: 8 },
+    deptScroll: { paddingHorizontal: 16, gap: 8 },
+    deptChip: { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: '#F3F4F6', borderRadius: 20, paddingHorizontal: 12, paddingVertical: 6, maxWidth: 160 },
+    deptChipActive: { backgroundColor: '#3B82F6' },
+    deptChipText: { fontSize: 13, color: '#6B7280', fontWeight: '500' },
+    deptChipTextActive: { color: '#fff' },
+
+    breadcrumb: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 6, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#F3F4F6', flexWrap: 'wrap' },
+    breadcrumbItem: { flexDirection: 'row', alignItems: 'center', gap: 3 },
+    breadcrumbText: { fontSize: 12, color: '#6B7280' },
+    breadcrumbCurrent: { color: '#111827', fontWeight: '600' },
+    breadcrumbSep: { fontSize: 12, color: '#9CA3AF', marginHorizontal: 4 },
+
+    list: { paddingHorizontal: 16, paddingBottom: 30, paddingTop: 4 },
+    listHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 10 },
+    deptHeaderName: { fontSize: 15, fontWeight: '700', color: '#111827' },
+    deptHeaderCount: { fontSize: 12, color: '#9CA3AF' },
+    headerBtns: { flexDirection: 'row', gap: 8 },
+
+    newFolderBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#EFF6FF', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 7 },
+    newFolderText: { fontSize: 12, color: '#3B82F6', fontWeight: '600' },
+    uploadBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#3B82F6', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 7 },
+    uploadBtnDisabled: { backgroundColor: '#93C5FD' },
+    uploadBtnText: { fontSize: 12, color: '#fff', fontWeight: '600' },
+
+    folderCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', borderRadius: 12, padding: 12, marginBottom: 8, borderWidth: 1, borderColor: '#F3F4F6' },
+    folderIcon: { width: 40, height: 40, justifyContent: 'center', alignItems: 'center', marginRight: 10 },
+    folderInfo: { flex: 1 },
+    folderName: { fontSize: 13, fontWeight: '600', color: '#111827' },
+    folderMeta: { fontSize: 11, color: '#9CA3AF', marginTop: 2 },
+
+    fileCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', borderRadius: 12, padding: 12, marginBottom: 8, shadowColor: '#000', shadowOpacity: 0.04, shadowOffset: { width: 0, height: 1 }, elevation: 1 },
+    extBox: { width: 56, height: 56, borderRadius: 8, justifyContent: 'center', alignItems: 'center', marginRight: 12 },
+    extText: { fontSize: 10, fontWeight: '700' },
+    thumbBox: { borderRadius: 8, overflow: 'hidden', marginRight: 12, backgroundColor: '#F3F4F6', justifyContent: 'center', alignItems: 'center' },
+    thumbImage: { width: '100%', height: '100%' },
+    fileInfo: { flex: 1 },
+    fileName: { fontSize: 13, fontWeight: '600', color: '#111827', lineHeight: 18 },
+    fileMeta: { fontSize: 11, color: '#9CA3AF', marginTop: 2 },
+    categoryBadge: { marginTop: 4, backgroundColor: '#EFF6FF', borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2, alignSelf: 'flex-start' },
+    categoryText: { fontSize: 10, color: '#3B82F6', fontWeight: '600' },
+    fileActions: { flexDirection: 'row', gap: 4, marginLeft: 8 },
+    actionBtn: { padding: 6 },
+
+    modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', alignItems: 'center', padding: 24 },
+    modalBox: { backgroundColor: '#fff', borderRadius: 16, padding: 20, width: '100%', maxWidth: 360 },
+    modalTitle: { fontSize: 16, fontWeight: '700', color: '#111827', marginBottom: 14 },
+    modalInput: { borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 10, paddingHorizontal: 14, paddingVertical: 10, fontSize: 14, color: '#111827', backgroundColor: '#F9FAFB' },
+    modalActions: { flexDirection: 'row', gap: 10, marginTop: 16, justifyContent: 'flex-end' },
+    modalCancelBtn: { paddingHorizontal: 16, paddingVertical: 9, borderRadius: 8, borderWidth: 1, borderColor: '#E5E7EB' },
+    modalCancelText: { fontSize: 14, color: '#6B7280', fontWeight: '500' },
+    modalCreateBtn: { paddingHorizontal: 18, paddingVertical: 9, borderRadius: 8, backgroundColor: '#3B82F6', minWidth: 64, alignItems: 'center' },
+    modalCreateBtnDisabled: { backgroundColor: '#93C5FD' },
+    modalCreateText: { fontSize: 14, color: '#fff', fontWeight: '600' },
+});

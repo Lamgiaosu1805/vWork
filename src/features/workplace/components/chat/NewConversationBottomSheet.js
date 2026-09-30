@@ -9,9 +9,9 @@ import {
   ActivityIndicator,
   Image,
 } from "react-native";
-import BottomSheet from "../../../../components/crm/BottomSheet";
+import BottomSheet from "../../../../components/BottomSheet";
 import { withTiming } from "react-native-reanimated";
-import { HEIGHT_SHEET } from "../../../../screens/crm/CustomerScreen";
+import { HEIGHT_SHEET } from "../../../../helpers/layout";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import useUser from "../../../../hooks/useUser";
@@ -24,7 +24,8 @@ import { AuthAvatar } from "../../../../components/PostCard";
 import OptionRow from "./OptionRow";
 import ContactRow from "./ContactRow";
 import { ScrollView } from "react-native";
-import chatApi from "../../api/chat";
+import useSearchUsers from "../../hooks/useSearchUsers";
+import { Skeleton, SkeletonCircle } from "../../../../components/Skeleton";
 
 const NewConversationBottomSheet = ({ translateNewConversation, onSelect }) => {
   const insets = useSafeAreaInsets();
@@ -36,6 +37,7 @@ const NewConversationBottomSheet = ({ translateNewConversation, onSelect }) => {
   const [searchLoading, setSearchLoading] = useState(false);
   const debounceRef = useRef(null);
   const { getUsers, loading } = useUser();
+  const { searchUsers } = useSearchUsers();
   const scrollY = useSharedValue(0);
   const [groupMode, setGroupMode] = useState(false);
   const [selectedUsers, setSelectedUsers] = useState([]);
@@ -120,8 +122,7 @@ const NewConversationBottomSheet = ({ translateNewConversation, onSelect }) => {
         if (query) {
           if (page === 1) setSearchLoading(true);
 
-          const res = await chatApi.searchUsersForChatApi(query, 30);
-          const data = res?.data?.data ?? res?.data ?? [];
+          const data = await searchUsers(query, 30);
 
           if (page === 1) {
             setUsers(data);
@@ -321,13 +322,18 @@ const NewConversationBottomSheet = ({ translateNewConversation, onSelect }) => {
                 {isSearching ? "Kết quả tìm kiếm" : "Gợi ý"}
               </Text>
 
-              {users?.length === 0 ? (
+              {users?.length === 0 && isListLoading ? (
+                <View>
+                  {Array.from({ length: 5 }).map((_, i) => (
+                    <View key={i} style={{ flexDirection: "row", alignItems: "center", paddingVertical: 12, gap: 12 }}>
+                      <SkeletonCircle size={44} />
+                      <Skeleton width="45%" height={15} />
+                    </View>
+                  ))}
+                </View>
+              ) : users?.length === 0 ? (
                 <View style={styles.emptyWrap}>
-                  {isListLoading ? (
-                    <ActivityIndicator />
-                  ) : (
-                    <Text style={styles.emptyText}>Không có liên hệ</Text>
-                  )}
+                  <Text style={styles.emptyText}>Không có liên hệ</Text>
                 </View>
               ) : (
                 <View>

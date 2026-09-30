@@ -12,7 +12,8 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { AuthAvatar } from "../../../../../components/PostCard";
-import chatApi from "../../../api/chat";
+import useSearchUsers from "../../../hooks/useSearchUsers";
+import { Skeleton, SkeletonCircle } from "../../../../../components/Skeleton";
 
 const AddMembersModal = ({
   visible,
@@ -26,6 +27,7 @@ const AddMembersModal = ({
   const [searching, setSearching] = useState(false);
   const [selectedIds, setSelectedIds] = useState(new Set());
   const [submitting, setSubmitting] = useState(false);
+  const { searchUsers } = useSearchUsers();
 
   const existingSet = useMemo(
     () => new Set(existingMemberIds.map(String)),
@@ -46,8 +48,7 @@ const AddMembersModal = ({
     const timeout = setTimeout(async () => {
       setSearching(true);
       try {
-        const res = await chatApi.searchUsers({ search, limit: 20 });
-        const users = res?.data?.data ?? res?.data ?? [];
+        const users = await searchUsers(search, 20);
         setResults(Array.isArray(users) ? users : []);
       } catch {
         setResults([]);
@@ -123,8 +124,16 @@ const AddMembersModal = ({
         </View>
 
         {searching ? (
-          <View style={styles.loadingWrap}>
-            <ActivityIndicator color="#0F766E" />
+          <View style={{ paddingHorizontal: 16, paddingTop: 8 }}>
+            {Array.from({ length: 5 }).map((_, i) => (
+              <View key={i} style={styles.row}>
+                <SkeletonCircle size={42} />
+                <View style={styles.rowInfo}>
+                  <Skeleton width="50%" height={14} style={{ marginBottom: 6 }} />
+                  <Skeleton width="30%" height={11} />
+                </View>
+              </View>
+            ))}
           </View>
         ) : (
           <FlatList
@@ -219,8 +228,6 @@ const styles = StyleSheet.create({
     backgroundColor: "#F3F4F6",
   },
   searchInput: { flex: 1, fontSize: 14, color: "#111827" },
-
-  loadingWrap: { paddingTop: 40, alignItems: "center" },
 
   row: {
     flexDirection: "row",

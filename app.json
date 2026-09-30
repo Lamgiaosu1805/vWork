@@ -81,7 +81,15 @@
           ]
         }
       ],
-      "expo-secure-store"
+      "expo-secure-store",
+      [
+        "expo-media-library",
+        {
+          "photosPermission": "Cho phép lưu ảnh mã QR giới thiệu vào thư viện ảnh.",
+          "savePhotosPermission": "Cho phép lưu ảnh mã QR giới thiệu vào thư viện ảnh."
+        }
+      ],
+      "expo-audio"
     ],
     "extra": {
       "router": {

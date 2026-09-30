@@ -21,22 +21,6 @@ export const TAB_CONFIG = {
     title: "Mở rộng",
     icon: "apps",
   },
-  Dashboard: {
-    title: "Home CRM",
-    icon: "cart-outline",
-  },
-  Customers: {
-    title: "Khách hàng",
-    icon: "people-outline",
-  },
-  KPI: {
-    title: "KPI",
-    icon: "stats-chart-outline",
-  },
-  Commission: {
-    title: "Hoa hồng",
-    icon: "cash-outline",
-  },
   dashboard: {
     title: "Workplace",
     icon: "business-outline",

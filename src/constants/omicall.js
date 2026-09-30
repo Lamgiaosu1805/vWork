@@ -12,6 +12,8 @@ export const CALL_ERROR_MESSAGES = {
   9: "Đang có cuộc gọi khác.",
   10: "Số nội bộ đã bị khóa.",
   11: "Không có kết nối mạng.",
+  400: "Đang có cuộc gọi khác, vui lòng kết thúc trước khi gọi tiếp.",
+  407: "Khởi tạo cuộc gọi thành công.",
 
   450: "Ứng dụng chưa được cấp quyền Micro.",
   451: "Ứng dụng chưa được cấp quyền Camera.",

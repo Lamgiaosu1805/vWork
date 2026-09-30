@@ -18,7 +18,7 @@ import { router } from "expo-router";
 import { useSelector } from "react-redux";
 import api from "../api/axiosInstance";
 import { unregisterFcmTokenFromServer } from "../utils/notifications/fcmConfig";
-import { getPermissions } from "../helpers/permissions";
+import { useMyPermissions, CRM_ACCESS_PERMISSIONS, HRM_ACCESS_PERMISSIONS } from "../features/permission";
 import { disconnectChatSocket } from "../libs/chatSocket";
 import { clearTokens } from "../libs/secureTokenStorage";
 import utils from "../helpers/utils";
@@ -27,7 +27,9 @@ import { COLORS } from "../assets/theme/colors";
 export default function CustomDrawerContent(props) {
   const { navigation, state } = props;
   const user = useSelector((state) => state.auth.user);
-  const { showCRM } = getPermissions(user);
+  const { canAny } = useMyPermissions();
+  const showCRM = canAny(CRM_ACCESS_PERMISSIONS);
+  const showHRM = canAny(HRM_ACCESS_PERMISSIONS);
 
   const [avatarBase64, setAvatarBase64] = useState(null);
   const [uploading, setUploading] = useState(false);
@@ -119,7 +121,7 @@ export default function CustomDrawerContent(props) {
 
   const handleChangePassword = async () => {
     navigation.closeDrawer?.();
-    router.push("/hrm/change-password");
+    router.push("/change-password");
   };
 
   const DrawerItemCustom = ({ label, icon, routeName }) => {
@@ -219,11 +221,13 @@ export default function CustomDrawerContent(props) {
           icon="business-outline"
           routeName="workplace"
         />
-        <DrawerItemCustom
-          label="HRM"
-          icon="people-outline"
-          routeName="hrm"
-        />
+        {showHRM && (
+          <DrawerItemCustom
+            label="HRM"
+            icon="people-outline"
+            routeName="hrm"
+          />
+        )}
         {showCRM && (
           <DrawerItemCustom
             label="CRM"

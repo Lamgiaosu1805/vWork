@@ -65,7 +65,7 @@ export default function RootLayout() {
               <Provider store={store}>
                 <BottomSheetModalProvider>
                   <ChatSocketBootstrapper />
-                  <Stack screenOptions={{ headerShown: false }}>
+                  <Stack initialRouteName="index" screenOptions={{ headerShown: false }}>
                     <Stack.Screen
                       name="settings"
                       options={{
