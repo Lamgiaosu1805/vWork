@@ -65,6 +65,8 @@
 	<string>Allow $(PRODUCT_NAME) to access your microphone</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Allow $(PRODUCT_NAME) to access your photos</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Cho phép lưu ảnh mã QR giới thiệu vào thư viện ảnh.</string>
 	<key>OMIKitCallKitImage</key>
 	<string>call_image</string>
 	<key>OMIKitEnableVideo</key>
