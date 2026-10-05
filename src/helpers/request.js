@@ -54,8 +54,13 @@ export const getLeaveTimeLabel = (item) => {
     : `${fromLabel} · ${toLabel}`;
 };
 
+// Luồng phân quyền chấm công (HCNS, 10/2026): nghỉ phép dưới 2 ngày chỉ quản lý trực tiếp duyệt,
+// từ 2 ngày trở lên cần 2 cấp (cấp 1 duyệt trước rồi chuyển cấp 2) — khớp backend.
+export const LEAVE_TWO_LEVEL_MIN_DAYS = 2;
+
 export const needsTwoLevelApproval = (item) => {
-  if (item.request_type === "leave" && (item.total_days ?? 0) > 2) return true;
+  const leaveDays = item.total_days ?? 0;
+  if (item.request_type === "leave" && leaveDays >= LEAVE_TWO_LEVEL_MIN_DAYS) return true;
   if (item.request_type === "forgot_checkin" && (item.occurrence ?? 0) >= 6) return true;
   return false;
 };
