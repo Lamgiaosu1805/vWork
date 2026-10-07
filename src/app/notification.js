@@ -22,6 +22,7 @@ import {
   useNotificationsInfinite,
   useUnreadCount,
 } from "../hooks/notification/useNotifications";
+import { isCustomerCarePushType, navigateToCareQueue } from "../features/crmCustomerCare";
 
 dayjs.extend(relativeTime);
 dayjs.locale("vi");
@@ -105,6 +106,8 @@ const NotificationScreen = () => {
     if (!item.is_read) markRead(item._id);
     if (item.ref_type === "request" && item.ref_id) {
       goToRequestNotification(item);
+    } else if (isCustomerCarePushType(item.type)) {
+      navigateToCareQueue();
     }
   };
 

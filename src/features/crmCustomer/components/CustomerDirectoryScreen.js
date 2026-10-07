@@ -62,7 +62,7 @@ const CustomerDirectoryScreen = () => {
 
   const handlePress = (item) => {
     const maNv = item?.referred_by?.ma_nv;
-    router.push({ pathname: "/crm/customer-detail", params: { externalId: item.external_id, ma_nv: maNv } });
+    router.push({ pathname: "/crm/customer-detail", params: { externalId: item.external_id, ma_nv: maNv, customerId: item._id } });
   };
 
   const handleUnassign = (item) => {

@@ -2,6 +2,7 @@ import React, { useMemo, useState } from "react";
 import { View, Text, ScrollView, StyleSheet, RefreshControl, TouchableOpacity } from "react-native";
 import { Skeleton, SkeletonCircle } from "../../../components/Skeleton";
 import { useSelector } from "react-redux";
+import { useQueryClient } from "@tanstack/react-query";
 import { router, useLocalSearchParams } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import { Feather, Ionicons } from "@expo/vector-icons";
@@ -17,12 +18,14 @@ import useCustomerStaffInfo from "../../../features/crmCustomer/hooks/useCustome
 import useCustomerFluctuation from "../../../features/crmCustomer/hooks/useCustomerFluctuation";
 import useCustomerInvestmentHolding from "../../../features/crmCustomer/hooks/useCustomerInvestmentHolding";
 import { CRM_COLORS } from "../../../features/crm/theme/colors";
+import { CARE_QUERY_ROOT, CustomerCareHistorySection } from "../../../features/crmCustomerCare";
 
 export default function CustomerDetailScreen() {
-  const { externalId, ma_nv: maNv } = useLocalSearchParams();
+  const { externalId, ma_nv: maNv, customerId, tab: initialTab } = useLocalSearchParams();
   const accessToken = useSelector((s) => s.auth.accessToken);
+  const queryClient = useQueryClient();
 
-  const [activeTab, setActiveTab] = useState("info");
+  const [activeTab, setActiveTab] = useState(initialTab === "care" ? "care" : "info");
   const [refreshing, setRefreshing] = useState(false);
   const [filterTransaction, setFilterTransaction] = useState({ from: null, to: null });
   const [filterInvestment, setFilterInvestment] = useState({ from: null, to: null });
@@ -55,6 +58,7 @@ export default function CustomerDetailScreen() {
       if (activeTab === "info") await detailQuery.refetch();
       else if (activeTab === "transaction") await fluctuationQuery.refetch();
       else if (activeTab === "investment") await investmentQuery.refetch();
+      else if (activeTab === "care") await queryClient.invalidateQueries({ queryKey: [CARE_QUERY_ROOT] });
     } finally {
       setRefreshing(false);
     }
@@ -157,10 +161,12 @@ export default function CustomerDetailScreen() {
       )}
 
       {activeTab === "care" && (
-        <View style={styles.careEmpty}>
-          <Ionicons name="chatbubble-ellipses-outline" size={32} color="#D1D5DB" />
-          <Text style={styles.careEmptyText}>Tính năng lịch sử chăm sóc đang được xây dựng.</Text>
-        </View>
+        <CustomerCareHistorySection
+          externalId={externalId}
+          customerId={customerId}
+          customerName={detail?.fullName}
+          phoneNumber={detail?.userName}
+        />
       )}
     </ScrollView>
   );
@@ -189,6 +195,4 @@ const styles = StyleSheet.create({
   dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: "#10B981" },
   verifyText: { color: "#047857", fontSize: 11, fontWeight: "600" },
   editBtn: { width: 38, height: 38, borderRadius: 12, backgroundColor: "rgba(255,255,255,0.2)", alignItems: "center", justifyContent: "center" },
-  careEmpty: { alignItems: "center", paddingVertical: 60, gap: 12, paddingHorizontal: 32 },
-  careEmptyText: { fontSize: 13, color: "#9CA3AF", textAlign: "center" },
 });
