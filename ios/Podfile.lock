@@ -1,7 +1,7 @@
 PODS:
   - boost (1.84.0)
   - DoubleConversion (1.1.6)
-  - EXConstants (18.0.14):
+  - EXConstants (18.0.13):
     - ExpoModulesCore
   - EXImageLoader (6.0.0):
     - ExpoModulesCore
@@ -9,7 +9,7 @@ PODS:
   - EXJSONUtils (0.15.0)
   - EXManifests (1.0.11):
     - ExpoModulesCore
-  - Expo (54.0.37):
+  - Expo (54.0.34):
     - boost
     - DoubleConversion
     - ExpoModulesCore
@@ -256,9 +256,9 @@ PODS:
     - ExpoModulesCore
   - ExpoDocumentPicker (14.0.8):
     - ExpoModulesCore
-  - ExpoFileSystem (19.0.24):
+  - ExpoFileSystem (19.0.22):
     - ExpoModulesCore
-  - ExpoFont (14.0.12):
+  - ExpoFont (14.0.11):
     - ExpoModulesCore
   - ExpoHead (6.0.24):
     - ExpoModulesCore
@@ -393,15 +393,15 @@ PODS:
     - nanopb/encode (= 3.30910.0)
   - nanopb/decode (3.30910.0)
   - nanopb/encode (3.30910.0)
-  - OmiKit (1.11.29)
-  - omikit-plugin (4.2.7):
+  - OmiKit (1.11.25)
+  - omikit-plugin (4.2.1):
     - boost
     - DoubleConversion
     - fast_float
     - fmt
     - glog
     - hermes-engine
-    - OmiKit (= 1.11.29)
+    - OmiKit (= 1.11.25)
     - RCT-Folly
     - RCT-Folly/Fabric
     - RCTRequired
@@ -2192,7 +2192,7 @@ PODS:
     - ReactCommon/turbomodule/core
     - SocketRocket
     - Yoga
-  - react-native-pdf (7.0.5):
+  - react-native-pdf (7.0.4):
     - boost
     - DoubleConversion
     - fast_float
@@ -2307,7 +2307,7 @@ PODS:
     - ReactCommon/turbomodule/core
     - SocketRocket
     - Yoga
-  - react-native-view-shot (5.1.1):
+  - react-native-view-shot (5.1.0):
     - boost
     - DoubleConversion
     - fast_float
@@ -2868,7 +2868,7 @@ PODS:
     - React-perflogger (= 0.81.5)
     - React-utils (= 0.81.5)
     - SocketRocket
-  - ReactNativeBlur (4.7.1):
+  - ReactNativeBlur (4.7.0):
     - boost
     - DoubleConversion
     - fast_float
@@ -2982,7 +2982,7 @@ PODS:
     - Yoga
   - RNDeviceInfo (15.0.2):
     - React-Core
-  - RNFBApp (24.1.1):
+  - RNFBApp (24.0.0):
     - boost
     - DoubleConversion
     - fast_float
@@ -3011,7 +3011,7 @@ PODS:
     - ReactCommon/turbomodule/core
     - SocketRocket
     - Yoga
-  - RNFBMessaging (24.1.1):
+  - RNFBMessaging (24.0.0):
     - boost
     - DoubleConversion
     - fast_float
@@ -3071,7 +3071,7 @@ PODS:
     - ReactCommon/turbomodule/core
     - SocketRocket
     - Yoga
-  - RNNotifee (10.7.2):
+  - RNNotifee (10.4.3):
     - boost
     - DoubleConversion
     - fast_float
@@ -3097,10 +3097,10 @@ PODS:
     - ReactCodegen
     - ReactCommon/turbomodule/bridging
     - ReactCommon/turbomodule/core
-    - RNNotifee/NotifeeCore (= 10.7.2)
+    - RNNotifee/NotifeeCore (= 10.4.3)
     - SocketRocket
     - Yoga
-  - RNNotifee/NotifeeCore (10.7.2):
+  - RNNotifee/NotifeeCore (10.4.3):
     - boost
     - DoubleConversion
     - fast_float
@@ -3128,7 +3128,7 @@ PODS:
     - ReactCommon/turbomodule/core
     - SocketRocket
     - Yoga
-  - RNPermissions (5.6.2):
+  - RNPermissions (5.6.0):
     - boost
     - DoubleConversion
     - fast_float
@@ -3506,12 +3506,12 @@ DEPENDENCIES:
   - ExpoAudio (from `../node_modules/expo-audio/ios`)
   - ExpoClipboard (from `../node_modules/expo-clipboard/ios`)
   - ExpoDocumentPicker (from `../node_modules/expo-document-picker/ios`)
-  - ExpoFileSystem (from `../node_modules/expo/node_modules/expo-file-system/ios`)
+  - ExpoFileSystem (from `../node_modules/expo-file-system/ios`)
   - ExpoFont (from `../node_modules/expo-font/ios`)
   - ExpoHead (from `../node_modules/expo-router/ios`)
   - ExpoImageManipulator (from `../node_modules/expo-image-manipulator/ios`)
   - ExpoImagePicker (from `../node_modules/expo-image-picker/ios`)
-  - ExpoKeepAwake (from `../node_modules/expo/node_modules/expo-keep-awake/ios`)
+  - ExpoKeepAwake (from `../node_modules/expo-keep-awake/ios`)
   - ExpoLinearGradient (from `../node_modules/expo-linear-gradient/ios`)
   - ExpoLinking (from `../node_modules/expo-linking/ios`)
   - ExpoLocation (from `../node_modules/expo-location/ios`)
@@ -3664,7 +3664,7 @@ EXTERNAL SOURCES:
   ExpoDocumentPicker:
     :path: "../node_modules/expo-document-picker/ios"
   ExpoFileSystem:
-    :path: "../node_modules/expo/node_modules/expo-file-system/ios"
+    :path: "../node_modules/expo-file-system/ios"
   ExpoFont:
     :path: "../node_modules/expo-font/ios"
   ExpoHead:
@@ -3674,7 +3674,7 @@ EXTERNAL SOURCES:
   ExpoImagePicker:
     :path: "../node_modules/expo-image-picker/ios"
   ExpoKeepAwake:
-    :path: "../node_modules/expo/node_modules/expo-keep-awake/ios"
+    :path: "../node_modules/expo-keep-awake/ios"
   ExpoLinearGradient:
     :path: "../node_modules/expo-linear-gradient/ios"
   ExpoLinking:
@@ -3878,11 +3878,11 @@ EXTERNAL SOURCES:
 SPEC CHECKSUMS:
   boost: 7e761d76ca2ce687f7cc98e698152abd03a18f90
   DoubleConversion: cb417026b2400c8f53ae97020b2be961b59470cb
-  EXConstants: 18ac927605517285307ea8f7ffe6fe7ca538eb5d
+  EXConstants: fce59a631a06c4151602843667f7cfe35f81e271
   EXImageLoader: 189e3476581efe3ad4d1d3fb4735b7179eb26f05
   EXJSONUtils: 1d3e4590438c3ee593684186007028a14b3686cd
   EXManifests: 378c7742de02a8605093b1c82b5774d8f9875cec
-  Expo: c3473549eabe0d0dbe3a4ed23610147bd6301c72
+  Expo: 219270e5a4918b2c3f282b80f2755a91ddc41203
   expo-dev-client: b8adef5e6847b5335a3b95a1fd2edc731d4331ee
   expo-dev-launcher: 4e02f66d36292f2d29864cd61658448d9de20d2c
   expo-dev-menu: c464455bdf1bf1590e1335e053892b98f3a33dab
@@ -3891,8 +3891,8 @@ SPEC CHECKSUMS:
   ExpoAudio: e4cfe3a2f3317b8487460685385a9867a07fb4fb
   ExpoClipboard: b36b287d8356887844bb08ed5c84b5979bb4dd1e
   ExpoDocumentPicker: 7cd9e71a0f66fb19eb0a586d6f26eee1284692e0
-  ExpoFileSystem: 8e87545aef1d8d31f244edbfdd0780df4e5bac2e
-  ExpoFont: dfb7c572372b610da45b41e3b436321fd6a97215
+  ExpoFileSystem: ad991457efaa14253723f1dda997eac6024c700d
+  ExpoFont: f543ce20a228dd702813668b1a07b46f51878d47
   ExpoHead: 33924c5829f9a3f98a5bd432d23c0e02ef64afcc
   ExpoImageManipulator: 607a5c8c88085381639458a46cc55fb9d3869148
   ExpoImagePicker: ade85e148f735fc7e6f27dfe3eef28eb3887e90a
@@ -3920,8 +3920,8 @@ SPEC CHECKSUMS:
   hermes-engine: 9f4dfe93326146a1c99eb535b1cb0b857a3cd172
   libwebp: af5937a13536ef73f3784d69cc342b98961acf33
   nanopb: fad817b59e0457d11a5dfbde799381cd727c1275
-  OmiKit: db78dd19754f62cd1bdd7608792abd3e7d2390af
-  omikit-plugin: a80b68e30fa7a9227444269f2f96fe01c1a39aeb
+  OmiKit: dc42cfd9239712ad44082b7f209efada1ebd5882
+  omikit-plugin: 55960a9e24599cab99c0c1ff90082c47c52d07fc
   PromisesObjC: 752c3227f599e3467650e47ea36f433eeb10c273
   RCT-Folly: 846fda9475e61ec7bcbf8a3fe81edfcaeb090669
   RCTDeprecation: 5eb1d2eeff5fb91151e8a8eef45b6c7658b6c897
@@ -3957,9 +3957,9 @@ SPEC CHECKSUMS:
   React-Mapbuffer: 017336879e2e0fb7537bbc08c24f34e2384c9260
   React-microtasksnativemodule: 63ee6730cec233feab9cdcc0c100dc28a12e4165
   react-native-blob-util: b42f4cb2244f901b647de58788df2258a6b8b93d
-  react-native-pdf: ee2f151c18fa7049447a666e4e573795dd13556b
+  react-native-pdf: 87179d5a02b05a38f6df298a84946619a6a6b9ea
   react-native-safe-area-context: 0a3b034bb63a5b684dd2f5fffd3c90ef6ed41ee8
-  react-native-view-shot: 5ed55de8892be2746074c2f8066e6abc21dd6fd3
+  react-native-view-shot: 1a01c96f6fb09b99539142749cd93f685af7fe48
   react-native-webview: d73728424a0e24989d71ffdc6fcf15d5f74ff4a2
   React-NativeModulesApple: cbceb3c4cb726838c461b13802a76cefa6f3476f
   React-oscompat: eb0626e8ba1a2c61673c991bf9dc21834898475d
@@ -3991,16 +3991,16 @@ SPEC CHECKSUMS:
   ReactAppDependencyProvider: 1bcd3527ac0390a1c898c114f81ff954be35ed79
   ReactCodegen: 2e921a931c5a4dd1d8ab37ade085fdf58fcfe1dd
   ReactCommon: 6d0fa86a4510730da7c72560e0ced14258292ab9
-  ReactNativeBlur: 7312c7f6f8dba530e2c75c3230d349e3d0197061
+  ReactNativeBlur: 7c722eac63ee5e121e060f1a83f5ecebeff78d51
   RNCAsyncStorage: fd44f4b03e007e642e98df6726737bc66e9ba609
   RNCMaskedView: d707a83784c67099b54b37d056ababb2767ce15e
   RNDateTimePicker: ca1dc7e24d0b4839877f0ab619e7bca5db715289
   RNDeviceInfo: 4c852998208b60dc192ae3529e5867817719ad1e
-  RNFBApp: 80839c2807e67832ec3bb4a887f27608e79c1896
-  RNFBMessaging: be1d2c725c5d76937975700d0e35c096dc4d7a63
+  RNFBApp: 31aefc995d81681e010f92e699a4e65ea29a5e72
+  RNFBMessaging: 7af38284ee8cdc96b49e913da3f7cdacc344d8e0
   RNGestureHandler: b8d2e75c2e88fc2a1f6be3b3beeeed80b88fa37d
-  RNNotifee: 2595aad9da5d44c92b0b4c551374c8414ab69b6c
-  RNPermissions: 07268abc3a67be37bcd202cee3524938acdc355f
+  RNNotifee: 243a86ba80cdbdf005a12cb330589a814d202bbe
+  RNPermissions: 6c8be9df339e92a0920fbde5fbdbcc7ff634a031
   RNReanimated: e2c39be4074d998fdf5edfeeb05f1f3c1aceaddb
   RNScreens: 2e9c41cd099b1ca50136af8d57c3594214d0086a
   RNShare: 61cad1e65b8e3788c97ee7c5cac4bcbb25a8df40
