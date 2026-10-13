@@ -9,11 +9,12 @@ import { openDialPad } from "../../../helpers/omicallDialRef";
 const CRM_TAB_CONFIG = {
   dashboard: { title: "Trang chủ", icon: "home-outline", activeIcon: "home" },
   customers: { title: "Khách hàng", icon: "people-outline", activeIcon: "people" },
+  "customer-care": { title: "Xử lý", icon: "alarm-outline", activeIcon: "alarm" },
   tickets: { title: "Hỗ trợ", icon: "ticket-outline", activeIcon: "ticket" },
   commission: { title: "Hoa hồng", icon: "wallet-outline", activeIcon: "wallet" },
 };
 
-const CrmBottomTab = ({ state, navigation }) => {
+const CrmBottomTab = ({ state, navigation, descriptors }) => {
   const insets = useSafeAreaInsets();
 
   const handlePress = useCallback(
@@ -37,6 +38,7 @@ const CrmBottomTab = ({ state, navigation }) => {
     const config = CRM_TAB_CONFIG[route.name];
     if (!config) return null;
     const color = isFocused ? CRM_COLORS.accent : CRM_COLORS.inactiveTab;
+    const badge = descriptors?.[route.key]?.options?.tabBarBadge;
 
     return (
       <TouchableOpacity
@@ -45,11 +47,18 @@ const CrmBottomTab = ({ state, navigation }) => {
         onPress={() => handlePress(index, route.key, route.name)}
         style={styles.tabButton}
       >
-        <Ionicons
-          name={isFocused ? config.activeIcon : config.icon}
-          size={24}
-          color={color}
-        />
+        <View>
+          <Ionicons
+            name={isFocused ? config.activeIcon : config.icon}
+            size={24}
+            color={color}
+          />
+          {badge != null && (
+            <View style={styles.badge}>
+              <Text style={styles.badgeText}>{badge > 99 ? "99+" : badge}</Text>
+            </View>
+          )}
+        </View>
         <Text style={[styles.tabText, { color, fontWeight: isFocused ? "700" : "500" }]}>
           {config.title}
         </Text>
@@ -57,9 +66,17 @@ const CrmBottomTab = ({ state, navigation }) => {
     );
   };
 
+  // Giữ index gốc trong state.routes (dùng để so focus) khi ẩn tab theo quyền (option crmHidden)
+  const visibleTabs = state.routes
+    .map((route, index) => ({ route, index }))
+    .filter(({ route }) => !descriptors?.[route.key]?.options?.crmHidden);
+
+  // Nút gọi ở giữa: số tab lẻ thì bên trái nhiều hơn 1 (vd 5 tab → 3 | gọi | 2)
+  const leftCount = Math.ceil(visibleTabs.length / 2);
+
   return (
     <View style={[styles.container, { paddingBottom: Math.max(insets.bottom, 10) }]}>
-      {state.routes.slice(0, 2).map((route, index) => renderTabButton(route, index))}
+      {visibleTabs.slice(0, leftCount).map(({ route, index }) => renderTabButton(route, index))}
 
       <View style={styles.callButtonSlot}>
         <TouchableOpacity style={styles.callButton} activeOpacity={0.85} onPress={() => openDialPad()}>
@@ -67,7 +84,7 @@ const CrmBottomTab = ({ state, navigation }) => {
         </TouchableOpacity>
       </View>
 
-      {state.routes.slice(2).map((route, index) => renderTabButton(route, index + 2))}
+      {visibleTabs.slice(leftCount).map(({ route, index }) => renderTabButton(route, index))}
     </View>
   );
 };
@@ -94,6 +111,25 @@ const styles = StyleSheet.create({
   },
   tabText: {
     fontSize: 10,
+  },
+  badge: {
+    position: "absolute",
+    top: -4,
+    right: -10,
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
+    paddingHorizontal: 4,
+    backgroundColor: CRM_COLORS.error,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1.5,
+    borderColor: "#fff",
+  },
+  badgeText: {
+    color: "#fff",
+    fontSize: 10,
+    fontWeight: "800",
   },
   callButtonSlot: {
     flex: 1,

@@ -2,7 +2,7 @@ import React, { useEffect } from "react";
 import { Stack } from "expo-router";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClientProvider } from "@tanstack/react-query";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { Provider, useDispatch, useSelector } from "react-redux";
 import { store } from "../redux/store";
@@ -20,8 +20,7 @@ import {
 import { ThemeProvider } from "../assets/theme/ThemeProvider";
 import useDailyAppRestart from "../hooks/useDailyAppRestart";
 import { initDeepLink } from "../helpers/deepLink";
-
-const queryClient = new QueryClient();
+import { queryClient } from "../libs/queryClient";
 
 const ChatSocketBootstrapper = () => {
   const dispatch = useDispatch();
