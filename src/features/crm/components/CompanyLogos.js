@@ -9,5 +9,5 @@ export const TikluyLogo = ({ size = 24 }) => (
 );
 
 export const VnfiteLogo = ({ size = 24 }) => (
-  <Image source={Icons.IcApp} style={{ width: size, height: size }} resizeMode="contain" />
+  <Image source={Icons.IcVnfite} style={{ width: size, height: size }} resizeMode="contain" />
 );

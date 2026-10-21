@@ -8,7 +8,6 @@ const STATUS_OPTIONS = [
   { value: "ekyc_chua_dt", label: "eKYC chưa ĐT" },
   { value: "dang_dau_tu", label: "Đang đầu tư" },
   { value: "da_tat_toan", label: "Đã tất toán" },
-  { value: "khac", label: "Khác" },
 ];
 
 const RELATIONSHIP_OPTIONS = [
