@@ -32,6 +32,7 @@ import useGetMyRequestsInfinite from "../../../../features/requests/hooks/useGet
 import useGetRequestById from "../../../../features/requests/hooks/useGetRequestById";
 import { openDrawer } from "../../../../helpers/navigationRef";
 import { getPermissions } from "../../../../helpers/permissions";
+import useCanViewAllRequests from "../../../../features/requests/hooks/useCanViewAllRequests";
 import useCancelLeaveRequest from "../../../../features/requests/hooks/useCancelLeaveRequest";
 import { Skeleton } from "../../../../components/Skeleton";
 import { useFocusEffect } from "@react-navigation/native";
@@ -100,7 +101,8 @@ export default function RequestScreen() {
 
   const auth = useSelector((state) => state.auth);
   const perms = getPermissions(auth.user);
-  const canOpenApproval = perms.canReviewRequests || perms.canViewAllRequests;
+  const canViewAllRequests = useCanViewAllRequests();
+  const canOpenApproval = perms.canReviewRequests || canViewAllRequests;
 
   const [tabRowWidth, setTabRowWidth] = useState(0);
   const tabW = tabRowWidth

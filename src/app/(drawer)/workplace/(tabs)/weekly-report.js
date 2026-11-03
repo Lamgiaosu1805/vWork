@@ -14,7 +14,6 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useSelector } from 'react-redux';
 import Toast from 'react-native-toast-message';
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
@@ -23,11 +22,11 @@ import 'dayjs/locale/vi';
 
 import Header from "../../../../components/Header";
 import { openDrawer } from "../../../../helpers/navigationRef";
-import { getPermissions } from "../../../../helpers/permissions";
 import useAccessibleDepts from "../../../../features/workplace/hooks/useAccessibleDepts";
 import useMyDeptReport from "../../../../features/workplace/hooks/useMyDeptReport";
 import useReportHistory from "../../../../features/workplace/hooks/useReportHistory";
 import useAdminReports from "../../../../features/workplace/hooks/useAdminReports";
+import useCanViewAllWeeklyReports from "../../../../features/workplace/hooks/useCanViewAllWeeklyReports";
 import useSubmitReport from "../../../../features/workplace/hooks/useSubmitReport";
 import { Menu } from 'lucide-react-native';
 import { Skeleton } from '../../../../components/Skeleton';
@@ -70,8 +69,7 @@ const SectionTab = ({ tabs, active, onChange }) => (
 );
 
 export default function WeeklyReportScreen() {
-    const user = useSelector((state) => state.auth.user);
-    const perms = getPermissions(user);
+    const canViewAllReports = useCanViewAllWeeklyReports();
 
     const [tab, setTab] = useState(0);
     const [submitOpen, setSubmitOpen] = useState(false);
@@ -99,7 +97,7 @@ export default function WeeklyReportScreen() {
     const {
         data: adminReports = [],
         refetch: refetchAdminReports,
-    } = useAdminReports(perms.showWeeklyReportAll);
+    } = useAdminReports(canViewAllReports);
     const submitReport = useSubmitReport();
 
     const loading = deptsLoading || reportLoading;
@@ -110,7 +108,7 @@ export default function WeeklyReportScreen() {
         refetchDepts();
         refetchReport();
         refetchHistory();
-        if (perms.showWeeklyReportAll) refetchAdminReports();
+        if (canViewAllReports) refetchAdminReports();
     };
 
     const handlePickFile = async () => {
@@ -247,7 +245,7 @@ export default function WeeklyReportScreen() {
         );
     }
 
-    const tabs = perms.showWeeklyReportAll ? ['Lịch sử', 'Tổng hợp'] : ['Lịch sử'];
+    const tabs = canViewAllReports ? ['Lịch sử', 'Tổng hợp'] : ['Lịch sử'];
 
     return (
         <SafeAreaView style={styles.safeArea} edges={['bottom']}>
@@ -339,7 +337,7 @@ export default function WeeklyReportScreen() {
                         )
                     )}
 
-                    {tab === 1 && perms.showWeeklyReportAll && (
+                    {tab === 1 && canViewAllReports && (
                         adminReports.length === 0 ? (
                             <View style={styles.empty}>
                                 <Ionicons name="stats-chart-outline" size={36} color="#D1D5DB" />

@@ -15,12 +15,12 @@ import 'dayjs/locale/vi';
 
 import Header from "../../../../components/Header";
 import { openDrawer } from "../../../../helpers/navigationRef";
-import { getPermissions } from "../../../../helpers/permissions";
 import useAccessibleDepts from "../../../../features/workplace/hooks/useAccessibleDepts";
 import useMyDeptReport from "../../../../features/workplace/hooks/useMyDeptReport";
 import useDeptFiles from "../../../../features/workplace/hooks/useDeptFiles";
 import useReportHistory from "../../../../features/workplace/hooks/useReportHistory";
 import useAdminReports from "../../../../features/workplace/hooks/useAdminReports";
+import useCanViewAllWeeklyReports from "../../../../features/workplace/hooks/useCanViewAllWeeklyReports";
 import { Bell, Menu } from 'lucide-react-native';
 import { Skeleton } from '../../../../components/Skeleton';
 
@@ -86,7 +86,7 @@ const StatusBadge = ({ status }) => (
 export default function WorkplaceDashboardScreen() {
     const user = useSelector((state) => state.auth.user);
     const accessToken = useSelector((state) => state.auth.accessToken);
-    const perms = getPermissions(user);
+    const canViewAllReports = useCanViewAllWeeklyReports();
 
     const {
         data: depts = [],
@@ -100,7 +100,7 @@ export default function WorkplaceDashboardScreen() {
 
     const { data: files = [], refetch: refetchFiles } = useDeptFiles(deptId, null);
     const { data: history = [], refetch: refetchHistory } = useReportHistory(deptId, { page: 1, limit: 8 });
-    const { data: adminReports = [], refetch: refetchAdminReports } = useAdminReports(perms.showWeeklyReportAll);
+    const { data: adminReports = [], refetch: refetchAdminReports } = useAdminReports(canViewAllReports);
 
     const loading = deptsLoading || reportLoading;
     const refreshing = deptsFetching && !deptsLoading;
@@ -110,7 +110,7 @@ export default function WorkplaceDashboardScreen() {
         refetchReport();
         refetchFiles();
         refetchHistory();
-        if (perms.showWeeklyReportAll) refetchAdminReports();
+        if (canViewAllReports) refetchAdminReports();
     };
 
     const onTimeCount = history.filter(
@@ -293,7 +293,7 @@ export default function WorkplaceDashboardScreen() {
                     </View>
                 </View>
 
-                {perms.showWeeklyReportAll && adminReports.length > 0 && (
+                {canViewAllReports && adminReports.length > 0 && (
                     <View style={styles.section}>
                         <View style={styles.sectionHeader}>
                             <Text style={styles.sectionTitle}>Tổng hợp tuần này</Text>

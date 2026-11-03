@@ -7,3 +7,4 @@ export { default as useGetRequestsInfinite } from "./hooks/useGetRequestsInfinit
 export { default as useGetRequestById } from "./hooks/useGetRequestById";
 export { default as useGetStatisticsRequests } from "./hooks/useGetStatisticsRequests";
 export { default as useReviewRequest } from "./hooks/useReviewRequest";
+export { default as useCanViewAllRequests } from "./hooks/useCanViewAllRequests";
