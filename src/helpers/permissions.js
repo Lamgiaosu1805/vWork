@@ -21,8 +21,14 @@ export const canAny = (user, codes) =>
   user?.role === "admin" ||
   codes.some((code) => (user?.permissions ?? []).includes(code));
 
-export const getPermissions = (user) => {
+/**
+ * effectivePermissions: permission code hiệu lực từ GET /permissions/me (useMyPermissions().permissions).
+ * Các flag dựa trên hệ permission mới (CASL) đọc từ đây và KHÔNG bypass role=admin — khớp BE
+ * requirePermission. Không truyền thì rơi về user.permissions.
+ */
+export const getPermissions = (user, effectivePermissions) => {
   const role = user?.role ?? "user";
+  const effective = effectivePermissions ?? user?.permissions ?? [];
 
   console.log("getPermissions - user:", user);
 
@@ -50,5 +56,8 @@ export const getPermissions = (user) => {
     showMyCustomers: has(user, "crm"),
     showCustomerAll: canMgr(user, "crm"),
     showCrmDashboardManagement: canMgr(user, "crm"),
+    // Quy định 183A — phân khách & SLA chăm sóc
+    showCustomerCareQueue: effective.includes("customer_care.view"),
+    showCustomerCareMgmt: effective.includes("customer_care.manage"),
   };
 };

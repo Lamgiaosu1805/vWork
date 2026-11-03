@@ -33,6 +33,7 @@ import {
 } from "../libs/secureTokenStorage";
 import { syncFcmTokenWithServer } from "../utils/notifications/fcmConfig";
 import { permissionApi, hasAnyPermission, CRM_ACCESS_PERMISSIONS, HRM_ACCESS_PERMISSIONS } from "../features/permission";
+import { markCareNavigationReady } from "../features/crmCustomerCare";
 import { Icons } from "../assets/icons";
 import { Images } from "../assets/images";
 import useTheme from "../assets/theme/useTheme";
@@ -97,6 +98,7 @@ export default function LoginScreen() {
         const hasHrm = hasAnyPermission(myPermissions, HRM_ACCESS_PERMISSIONS);
         const target = await resolveInitialRoute({ hasCrm, hasHrm });
         router.replace(`/${target}`);
+        markCareNavigationReady(hasCrm);
       }
     } catch (error) {
       console.log("Login error:", error.response?.data || error.message);

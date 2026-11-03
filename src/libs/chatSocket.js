@@ -17,6 +17,8 @@ let currentToken = null;
 let globalDispatch = null;
 let currentUserKeys = null;
 let appStateSubscription = null;
+// Listener ngoài chat (vd customer_call:ended) — giữ lại để gắn lại khi socket bị tạo mới (đổi token)
+const extraEventHandlers = new Map();
 
 const isFromSelf = (message) => {
   if (!currentUserKeys || !message) return false;
@@ -140,6 +142,16 @@ const attachGlobalHandlers = () => {
   });
 };
 
+const attachExtraHandlers = () => {
+  if (!chatSocket) return;
+  extraEventHandlers.forEach((handlers, event) => {
+    handlers.forEach((handler) => {
+      chatSocket.off(event, handler);
+      chatSocket.on(event, handler);
+    });
+  });
+};
+
 const attachDiagnosticHandlers = () => {
   if (!chatSocket) return;
 
@@ -239,6 +251,7 @@ export const connectChatSocket = async (token) => {
   }
 
   if (globalDispatch) attachGlobalHandlers();
+  attachExtraHandlers();
 
   return instance;
 };
@@ -273,6 +286,21 @@ export const setChatSocketToken = (token) => {
 export const registerGlobalChatHandlers = (dispatch) => {
   globalDispatch = dispatch;
   if (chatSocket) attachGlobalHandlers();
+};
+
+/**
+ * Đăng ký nghe 1 event trên socket đã xác thực (room user:<userInfoId>), tự gắn lại khi socket được
+ * tạo mới. Trả về hàm huỷ đăng ký.
+ */
+export const subscribeChatSocketEvent = (event, handler) => {
+  if (!extraEventHandlers.has(event)) extraEventHandlers.set(event, new Set());
+  extraEventHandlers.get(event).add(handler);
+  chatSocket?.on(event, handler);
+
+  return () => {
+    extraEventHandlers.get(event)?.delete(handler);
+    chatSocket?.off(event, handler);
+  };
 };
 
 export const onChatSocketStatusChange = (callback) => {

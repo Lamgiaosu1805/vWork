@@ -11,6 +11,14 @@ import {
   registerDeviceTokenApi,
   unregisterDeviceTokenApi,
 } from "../../api/notificationApi";
+import { queryClient } from "../../libs/queryClient";
+// Import thẳng lib (không qua barrel crmCustomerCare) — file này nạp từ index.js gốc/headless handler,
+// tránh kéo cả UI CRM (omikit, bottom sheet...) vào lúc khởi động
+import {
+  isCustomerCarePushType,
+  navigateToCareQueue,
+} from "../../features/crmCustomerCare/lib/careNavigation";
+import { CARE_QUERY_ROOT } from "../../features/crmCustomerCare/lib/queryKeys";
 
 export const FCM_TOKEN_STORAGE_KEY = "FCM_TOKEN";
 const DEFAULT_CHANNEL_ID = "default";
@@ -137,6 +145,21 @@ function navigateToChatFromRemoteMessage(remoteMessage) {
   return true;
 }
 
+function handleNotificationOpen(remoteMessage) {
+  const data = remoteMessage?.data ?? {};
+  if (isCustomerCarePushType(data.type)) {
+    navigateToCareQueue();
+    return true;
+  }
+  return navigateToChatFromRemoteMessage(remoteMessage);
+}
+
+function handleForegroundCustomerCare(remoteMessage) {
+  if (!isCustomerCarePushType(remoteMessage?.data?.type)) return;
+  // Hiển thị đã có sẵn (iOS: firebase.json foreground_presentation_options, Android: notifyKit) — chỉ cần làm mới hàng đợi
+  queryClient.invalidateQueries({ queryKey: [CARE_QUERY_ROOT] });
+}
+
 export async function initNotifications() {
   await createDefaultNotificationChannel();
   return getFcmToken();
@@ -151,12 +174,13 @@ export function registerNotificationListeners() {
           "Notification opened from quit state:",
           JSON.stringify(remoteMessage),
         );
-        navigateToChatFromRemoteMessage(remoteMessage);
+        handleNotificationOpen(remoteMessage);
       }
     });
 
   const unsubscribeOnMessage = messaging().onMessage(async (remoteMessage) => {
     console.log("onMessage Received:", JSON.stringify(remoteMessage));
+    handleForegroundCustomerCare(remoteMessage);
     if (
       remoteMessage?.notification?.title &&
       remoteMessage?.notification?.body
@@ -177,7 +201,7 @@ export function registerNotificationListeners() {
         JSON.stringify(remoteMessage),
       );
 
-      navigateToChatFromRemoteMessage(remoteMessage);
+      handleNotificationOpen(remoteMessage);
     },
   );
   const unsubscribeNotifyKitForeground = notifyKit.onForegroundEvent(
@@ -187,6 +211,9 @@ export function registerNotificationListeners() {
           "NotifyKit notification pressed:",
           JSON.stringify(detail.notification),
         );
+        if (isCustomerCarePushType(detail.notification?.data?.type)) {
+          navigateToCareQueue();
+        }
       }
     },
   );

@@ -86,6 +86,10 @@ src/
 │   ├── crmInvestment/                # Đầu tư (read-only)
 │   ├── crmAgency/                    # Đại lý (read-only)
 │   ├── crmLeadRequest/               # Yêu cầu nhận khách
+│   ├── crmCustomerCare/              # Quy định 183A: hàng đợi "Khách cần xử lý" (SLA đếm ngược),
+│   │                               # form báo cáo chăm sóc (CustomerCareReportHost mount ở crm/_layout.js,
+│   │                               # mở qua openCareReport(), tự mở sau cuộc gọi qua socket customer_call:ended),
+│   │                               # lịch sử chăm sóc/giao khách, Điều phối khách (quản lý)
 │   └── crmTicket/                    # Hỗ trợ (placeholder, chưa có backend)
 ├── api/                            # CHỈ còn API dùng chung toàn app
 │   └── axiosInstance.js            # Axios singleton, interceptor auth + refresh
@@ -202,6 +206,8 @@ lúc mount.
 | Xem "Tất cả khách hàng" + gán/chuyển sale (tab Khách hàng) | `canMgr(user, "crm")` |
 | Duyệt/từ chối/thu hồi yêu cầu nhận khách | `canMgr(user, "crm")` (thu hồi cần thêm `role === "admin"`) |
 | Dashboard điều hành CRM (Trang chủ) | `canMgr(user, "crm")` |
+| Tab "Cần xử lý" (hàng đợi chăm sóc khách) | `showCustomerCareQueue` = `customer_care.view` (hệ permission mới — `getPermissions(user, permissions)`) |
+| Màn "Điều phối khách" (`/crm/customer-care-dispatch`) | `showCustomerCareMgmt` = `customer_care.manage` |
 
 ### API gán quyền (admin)
 

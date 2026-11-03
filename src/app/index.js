@@ -10,6 +10,7 @@ import { getAccessToken } from "../libs/secureTokenStorage";
 import { resolveInitialRoute } from "../features/auth/lib/resolveInitialRoute";
 import useFetchUserInfoWithToken from "../features/auth/hooks/useFetchUserInfoWithToken";
 import { permissionApi, hasAnyPermission, CRM_ACCESS_PERMISSIONS, HRM_ACCESS_PERMISSIONS } from "../features/permission";
+import { markCareNavigationReady } from "../features/crmCustomerCare";
 
 export default function SplashScreen() {
     const dispatch = useDispatch();
@@ -42,6 +43,7 @@ export default function SplashScreen() {
                     const hasHrm = hasAnyPermission(myPermissions, HRM_ACCESS_PERMISSIONS);
                     const target = await resolveInitialRoute({ hasCrm, hasHrm });
                     router.replace(`/${target}`);
+                    markCareNavigationReady(hasCrm);
                 } else {
                     router.replace("/login");
                 }

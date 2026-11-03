@@ -34,6 +34,7 @@ import {
   PieChart,
   Briefcase,
   Building2,
+  Network,
 } from "lucide-react-native";
 
 import { openDrawer } from "../../../../helpers/navigationRef";
@@ -43,7 +44,12 @@ import { Skeleton } from "../../../../components/Skeleton";
 import AppSwitcherPill from "../../../../features/crm/components/AppSwitcherPill";
 import { CRM_COLORS, CRM_RADIUS } from "../../../../features/crm/theme/colors";
 import { useAppSwitcher } from "../../../../features/crm/context/AppSwitcherContext";
-import { useMyPermissions, CRM_INVESTMENT_PERMISSIONS, CRM_AGENT_PERMISSIONS } from "../../../../features/permission";
+import {
+  useMyPermissions,
+  CRM_INVESTMENT_PERMISSIONS,
+  CRM_AGENT_PERMISSIONS,
+  CRM_CUSTOMER_CARE_MANAGE_PERMISSIONS,
+} from "../../../../features/permission";
 import useQrSale from "../../../../features/crmDashboard/hooks/useQrSale";
 import useMyCustomersSummary from "../../../../features/crmCustomer/hooks/useMyCustomersSummary";
 import useAllCustomersTotal from "../../../../features/crmCustomer/hooks/useAllCustomersTotal";
@@ -65,6 +71,7 @@ const QUICK_ACTIONS = [
   { key: "investments", label: "Quản lý Đầu tư", icon: Briefcase, bg: "#F5F0FF", color: "#7C3AED", borderColor: "#EBE0FF", route: "/crm/investments", permissionAny: CRM_INVESTMENT_PERMISSIONS },
   { key: "agency", label: "Đại lý", icon: Building2, bg: "#ECFDF5", color: "#059669", borderColor: "#D1FAE5", route: "/crm/agency", permissionAny: CRM_AGENT_PERMISSIONS },
   { key: "lead", label: "Nhận lead", icon: UserCheck, bg: "#EFF3FF", color: CRM_COLORS.accent, borderColor: "#DCE6FF", route: "/crm/lead-request" },
+  { key: "care-dispatch", label: "Điều phối khách", icon: Network, bg: "#FEF2F2", color: "#DC2626", borderColor: "#FECACA", route: "/crm/customer-care-dispatch", permissionAny: CRM_CUSTOMER_CARE_MANAGE_PERMISSIONS },
 ];
 
 const computeConversion = (conversion) => {
