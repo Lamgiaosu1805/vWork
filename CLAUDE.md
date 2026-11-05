@@ -87,6 +87,8 @@ src/
 │   ├── crmAgency/                    # Đại lý (read-only)
 │   ├── crmLeadRequest/               # Yêu cầu nhận khách
 │   └── crmTicket/                    # Hỗ trợ (placeholder, chưa có backend)
+│   ├── appUpdate/                    # Ép cập nhật: ForceUpdateGate (mount ở root layout) + header
+│   │                                 # x-app-platform/x-app-version + bắt 426 trong axiosInstance
 ├── api/                            # CHỈ còn API dùng chung toàn app
 │   └── axiosInstance.js            # Axios singleton, interceptor auth + refresh
 ├── components/                     # Component dùng chung toàn app

@@ -18,10 +18,13 @@ import { router } from "expo-router";
 import { useSelector } from "react-redux";
 import api from "../api/axiosInstance";
 import { unregisterFcmTokenFromServer } from "../utils/notifications/fcmConfig";
-import { useMyPermissions, CRM_ACCESS_PERMISSIONS, HRM_ACCESS_PERMISSIONS } from "../features/permission";
+import {
+  useMyPermissions,
+  CRM_ACCESS_PERMISSIONS,
+  HRM_ACCESS_PERMISSIONS,
+} from "../features/permission";
 import { disconnectChatSocket } from "../libs/chatSocket";
 import { clearTokens } from "../libs/secureTokenStorage";
-import utils from "../helpers/utils";
 import { COLORS } from "../assets/theme/colors";
 
 export default function CustomDrawerContent(props) {
@@ -156,6 +159,11 @@ export default function CustomDrawerContent(props) {
             router.push("/settings");
             return;
           }
+          if (routeName === "Ticket") {
+            navigation.closeDrawer?.();
+            router.push("/tickets");
+            return;
+          }
           Alert.alert(
             label,
             "Tính năng đang được phát triển",
@@ -222,18 +230,10 @@ export default function CustomDrawerContent(props) {
           routeName="workplace"
         />
         {showHRM && (
-          <DrawerItemCustom
-            label="HRM"
-            icon="people-outline"
-            routeName="hrm"
-          />
+          <DrawerItemCustom label="HRM" icon="people-outline" routeName="hrm" />
         )}
         {showCRM && (
-          <DrawerItemCustom
-            label="CRM"
-            icon="cart-outline"
-            routeName="crm"
-          />
+          <DrawerItemCustom label="CRM" icon="cart-outline" routeName="crm" />
         )}
       </View>
 
@@ -242,6 +242,11 @@ export default function CustomDrawerContent(props) {
       <View style={styles.featureGroup}>
         <Text style={styles.featureGroupTitle}>Tiện ích</Text>
         <View style={styles.featureGroupItems}>
+          <OtherFeature
+            label="Ticket hỗ trợ"
+            icon="help-buoy-outline"
+            routeName="Ticket"
+          />
           <OtherFeature
             label="Cài đặt"
             icon="settings-outline"
@@ -265,7 +270,11 @@ export default function CustomDrawerContent(props) {
           style={styles.changePassBtn}
           onPress={handleChangePassword}
         >
-          <Ionicons name="lock-closed-outline" size={20} color={COLORS.Primary} />
+          <Ionicons
+            name="lock-closed-outline"
+            size={20}
+            color={COLORS.Primary}
+          />
           <Text style={styles.changePassText}>Đổi mật khẩu</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>

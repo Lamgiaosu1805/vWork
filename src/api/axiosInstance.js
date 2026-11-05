@@ -3,6 +3,9 @@ import { store } from "../redux/store";
 import { setAccessToken, logoutUser } from "../redux/slice/authSlice";
 import utils from "../helpers/utils";
 import * as secureTokenStorage from "../libs/secureTokenStorage";
+// Import thẳng lib (không qua barrel features/appUpdate) để tránh vòng import: barrel → hook → api → axiosInstance
+import { appVersionHeaders } from "../features/appUpdate/lib/appVersion";
+import { signalUpdateRequired } from "../features/appUpdate/lib/updateRequiredSignal";
 
 const api = axios.create({
     baseURL: utils.BASE_URL,
@@ -17,6 +20,7 @@ api.interceptors.request.use(
         config.headers = {
             ...config.headers,
             "x-request-id": generateRequestId(),
+            ...appVersionHeaders(),
         };
 
         if (!config.requiresAuth) return config;
@@ -46,9 +50,11 @@ const performRefresh = async () => {
             throw new Error("NO_REFRESH_TOKEN");
         }
 
-        const res = await axios.post(`${utils.BASE_URL}/auth/refreshToken`, {
-            refreshToken,
-        });
+        const res = await axios.post(
+            `${utils.BASE_URL}/auth/refreshToken`,
+            { refreshToken },
+            { headers: appVersionHeaders() }
+        );
 
         const newAccessToken = res.data?.accessToken;
         const newRefreshToken = res.data?.refreshToken;
@@ -79,6 +85,12 @@ api.interceptors.response.use(
         const originalRequest = error.config;
 
         if (!error.response) {
+            return Promise.reject(error);
+        }
+
+        // Server chặn bản app quá cũ (dưới minVersion) → hiện màn bắt buộc cập nhật
+        if (error.response.status === 426) {
+            signalUpdateRequired(error.response.data?.data);
             return Promise.reject(error);
         }
 
