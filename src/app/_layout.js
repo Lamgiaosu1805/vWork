@@ -2,7 +2,8 @@ import React, { useEffect } from "react";
 import { Stack } from "expo-router";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClient, QueryClientProvider, focusManager } from "@tanstack/react-query";
+import { AppState, Platform } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { Provider, useDispatch, useSelector } from "react-redux";
 import { store } from "../redux/store";
@@ -20,8 +21,18 @@ import {
 import { ThemeProvider } from "../assets/theme/ThemeProvider";
 import useDailyAppRestart from "../hooks/useDailyAppRestart";
 import { initDeepLink } from "../helpers/deepLink";
+import { ForceUpdateGate } from "../features/appUpdate";
 
 const queryClient = new QueryClient();
+
+// React Native không có sự kiện focus như trình duyệt: TanStack coi app luôn "đang mở" nên refetchInterval vẫn chạy
+// khi app nằm nền. Nối với AppState để dừng polling khi ẩn app và tải lại dữ liệu cũ khi mở app lên.
+focusManager.setEventListener((handleFocus) => {
+  const subscription = AppState.addEventListener("change", (status) => {
+    if (Platform.OS !== "web") handleFocus(status === "active");
+  });
+  return () => subscription.remove();
+});
 
 const ChatSocketBootstrapper = () => {
   const dispatch = useDispatch();
@@ -77,6 +88,7 @@ export default function RootLayout() {
                     />
                   </Stack>
                   <Toast />
+                  <ForceUpdateGate />
                 </BottomSheetModalProvider>
               </Provider>
             </QueryClientProvider>

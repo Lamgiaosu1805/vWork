@@ -4,13 +4,15 @@ import notifyKit, {
   AndroidImportance,
   EventType,
 } from "react-native-notify-kit";
-import { PermissionsAndroid, Platform } from "react-native";
+import { Linking, PermissionsAndroid, Platform } from "react-native";
 import DeviceInfo from "react-native-device-info";
 import { router } from "expo-router";
 import {
   registerDeviceTokenApi,
   unregisterDeviceTokenApi,
 } from "../../api/notificationApi";
+import { APP_VERSION } from "../../features/appUpdate/lib/appVersion";
+import { compareVersions } from "../../features/appUpdate/lib/compareVersions";
 
 export const FCM_TOKEN_STORAGE_KEY = "FCM_TOKEN";
 const DEFAULT_CHANNEL_ID = "default";
@@ -126,6 +128,28 @@ export async function displayNotificationFromRemoteMessage(remoteMessage) {
   }
 }
 
+// Thông báo "có bản mới" (admin bắn khi phát hành lên store): bấm vào thì mở thẳng App Store / CH Play
+function openStoreFromRemoteMessage(data) {
+  if (data?.type !== "app_update" || !data?.storeUrl) return false;
+  Linking.openURL(data.storeUrl).catch(() => {});
+  return true;
+}
+
+// Máy đã ở bản đó (hoặc mới hơn) thì không cần hiện thông báo cập nhật khi app đang mở
+function isAlreadyUpdated(data) {
+  return (
+    data?.type === "app_update" &&
+    !!data?.version &&
+    !!APP_VERSION &&
+    compareVersions(APP_VERSION, data.version) >= 0
+  );
+}
+
+function handleOpenedRemoteMessage(remoteMessage) {
+  if (openStoreFromRemoteMessage(remoteMessage?.data)) return;
+  navigateToChatFromRemoteMessage(remoteMessage);
+}
+
 function navigateToChatFromRemoteMessage(remoteMessage) {
   const data = remoteMessage?.data ?? {};
   const conversationId = data?.conversationId;
@@ -151,12 +175,13 @@ export function registerNotificationListeners() {
           "Notification opened from quit state:",
           JSON.stringify(remoteMessage),
         );
-        navigateToChatFromRemoteMessage(remoteMessage);
+        handleOpenedRemoteMessage(remoteMessage);
       }
     });
 
   const unsubscribeOnMessage = messaging().onMessage(async (remoteMessage) => {
     console.log("onMessage Received:", JSON.stringify(remoteMessage));
+    if (isAlreadyUpdated(remoteMessage?.data)) return;
     if (
       remoteMessage?.notification?.title &&
       remoteMessage?.notification?.body
@@ -177,7 +202,7 @@ export function registerNotificationListeners() {
         JSON.stringify(remoteMessage),
       );
 
-      navigateToChatFromRemoteMessage(remoteMessage);
+      handleOpenedRemoteMessage(remoteMessage);
     },
   );
   const unsubscribeNotifyKitForeground = notifyKit.onForegroundEvent(
@@ -187,6 +212,7 @@ export function registerNotificationListeners() {
           "NotifyKit notification pressed:",
           JSON.stringify(detail.notification),
         );
+        openStoreFromRemoteMessage(detail.notification?.data);
       }
     },
   );
