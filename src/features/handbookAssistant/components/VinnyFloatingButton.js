@@ -32,6 +32,13 @@ const tabBarHeight = (insetBottom) =>
 
 const openAssistant = () => router.push("/handbook-assistant");
 
+const MODULE_ROOTS = ["workplace", "hrm", "crm"];
+// Màn có thanh tab: segment chứa "(tabs)", hoặc đang ở gốc module — Expo Router bỏ "(tabs)" khỏi segment khi
+// module đang ở tab mặc định (vd. ["(drawer)", "crm"]). Màn con (chat-room, customer-detail…) luôn dài hơn.
+const isTabScreen = (segments) =>
+  segments.includes("(tabs)") ||
+  (segments.length === 2 && segments[0] === "(drawer)" && MODULE_ROOTS.includes(segments[1]));
+
 // VINNY nổi, kéo thả được (thả ra thì bám cạnh trái/phải gần nhất, nhớ vị trí theo tài khoản). Chỉ hiện ở màn
 // có thanh tab: màn con có ô nhập (chat, tạo đơn…) thì nó sẽ che.
 const VinnyFloatingButton = () => {
@@ -110,7 +117,7 @@ const VinnyFloatingButton = () => {
     ],
   }));
 
-  if (!accessToken || !canUse || hidden !== false || !segments.includes("(tabs)")) return null;
+  if (!accessToken || !canUse || hidden !== false || !isTabScreen(segments)) return null;
 
   const hide = () => {
     setHidden(true);
