@@ -208,6 +208,7 @@ lúc mount.
 | Dashboard điều hành CRM (Trang chủ) | `canMgr(user, "crm")` |
 | Tab "Cần xử lý" (hàng đợi chăm sóc khách) | `showCustomerCareQueue` = `customer_care.view` (hệ permission mới — `getPermissions(user, permissions)`) |
 | Màn "Điều phối khách" (`/crm/customer-care-dispatch`) | `showCustomerCareMgmt` = `customer_care.manage` |
+| Báo cáo ngày kinh doanh (chưa có màn app — web đã có) | `showDailyReport` = `daily_report.submit`, `showDailyReportMgmt` = `daily_report.view` |
 
 ### API gán quyền (admin)
 
