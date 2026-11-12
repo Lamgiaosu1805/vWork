@@ -6,3 +6,4 @@ export const accountKeyOf = (user) => {
 
 export const consentStorageKey = (accountKey) => `handbookAssistant:consent:${accountKey}`;
 export const floatingHiddenStorageKey = (accountKey) => `handbookAssistant:floatingHidden:${accountKey}`;
+export const floatingPositionStorageKey = (accountKey) => `handbookAssistant:floatingPosition:${accountKey}`;

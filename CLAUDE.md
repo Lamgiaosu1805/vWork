@@ -403,7 +403,8 @@ dùng chung web ↔ app). Port từ `vWork-website/src/features/ai-assistant/` (
   `history.js`, `article.js` (modal nguyên văn Điều được trích dẫn — khai báo `presentation: "modal"` ở
   `app/_layout.js`). Mở bằng `router.push("/handbook-assistant")`.
 - **Lối vào:** VINNY nổi góc phải dưới (`VinnyFloatingButton`, mount ở root layout) — CHỈ hiện ở màn có thanh
-  tab (`useSegments()` chứa `"(tabs)"`), trong CRM đứng trên nút AI của CRM; nút × ẩn trên máy theo tài khoản
+  tab (`useSegments()` chứa `"(tabs)"`), kéo thả được (thả ra bám cạnh trái/phải, không xuống dưới thanh tab —
+  trong CRM không thấp hơn nút AI của CRM — nhớ vị trí theo tài khoản); nút × ẩn trên máy theo tài khoản
   (bật lại ở menu ⋮ màn trợ lý). Mục "VINNY - Trợ lý Nội quy" trong drawer (nhóm Tiện ích). Cả hai ẩn khi thiếu quyền.
 - **State:** redux slice `handbookAssistant` (tin nhắn theo hội thoại, câu đang chạy, nháp, chưa đọc, ẩn VINNY);
   dữ liệu REST qua TanStack Query (`QUERY_KEYS` trong `constants.js`).
