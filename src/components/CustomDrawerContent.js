@@ -15,7 +15,8 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as ImagePicker from "expo-image-picker";
 import * as ImageManipulator from "expo-image-manipulator";
 import { router } from "expo-router";
-import { useSelector } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
+import { useQueryClient } from "@tanstack/react-query";
 import api from "../api/axiosInstance";
 import { unregisterFcmTokenFromServer } from "../utils/notifications/fcmConfig";
 import {
@@ -26,6 +27,13 @@ import {
 import { disconnectChatSocket } from "../libs/chatSocket";
 import { clearTokens } from "../libs/secureTokenStorage";
 import { COLORS } from "../assets/theme/colors";
+import {
+  AssistantAvatar,
+  HANDBOOK_QUERY_KEYS,
+  resetHandbookAssistant,
+  stopStreamTimers,
+  useCanUseHandbook,
+} from "../features/handbookAssistant";
 
 export default function CustomDrawerContent(props) {
   const { navigation, state } = props;
@@ -33,6 +41,9 @@ export default function CustomDrawerContent(props) {
   const { canAny } = useMyPermissions();
   const showCRM = canAny(CRM_ACCESS_PERMISSIONS);
   const showHRM = canAny(HRM_ACCESS_PERMISSIONS);
+  const { canUse: showAssistant } = useCanUseHandbook();
+  const dispatch = useDispatch();
+  const queryClient = useQueryClient();
 
   const [avatarBase64, setAvatarBase64] = useState(null);
   const [uploading, setUploading] = useState(false);
@@ -119,6 +130,10 @@ export default function CustomDrawerContent(props) {
     await AsyncStorage.removeItem("lastStack");
     await clearTokens();
     disconnectChatSocket();
+    // Drawer không xoá redux khi đăng xuất — tự dọn hội thoại trợ lý để người đăng nhập sau không thấy.
+    stopStreamTimers();
+    dispatch(resetHandbookAssistant());
+    queryClient.removeQueries({ queryKey: HANDBOOK_QUERY_KEYS.all });
     router.replace("/login");
   };
 
@@ -242,6 +257,21 @@ export default function CustomDrawerContent(props) {
       <View style={styles.featureGroup}>
         <Text style={styles.featureGroupTitle}>Tiện ích</Text>
         <View style={styles.featureGroupItems}>
+          {showAssistant && (
+            <TouchableOpacity
+              style={styles.menuItem}
+              activeOpacity={0.8}
+              onPress={() => {
+                navigation.closeDrawer?.();
+                router.push("/handbook-assistant");
+              }}
+            >
+              <View style={styles.assistantIcon}>
+                <AssistantAvatar size={24} />
+              </View>
+              <Text style={styles.menuLabel}>VINNY - Trợ lý Nội quy</Text>
+            </TouchableOpacity>
+          )}
           <OtherFeature
             label="Ticket hỗ trợ"
             icon="help-buoy-outline"
@@ -287,6 +317,11 @@ export default function CustomDrawerContent(props) {
 }
 
 const styles = StyleSheet.create({
+  assistantIcon: {
+    width: 22,
+    marginRight: 10,
+    alignItems: "center",
+  },
   profileContainer: {
     padding: 20,
     alignItems: "center",

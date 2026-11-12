@@ -22,6 +22,7 @@ import { ThemeProvider } from "../assets/theme/ThemeProvider";
 import useDailyAppRestart from "../hooks/useDailyAppRestart";
 import { initDeepLink } from "../helpers/deepLink";
 import { ForceUpdateGate } from "../features/appUpdate";
+import { HandbookAssistantBootstrapper, VinnyFloatingButton } from "../features/handbookAssistant";
 
 const queryClient = new QueryClient();
 
@@ -76,6 +77,7 @@ export default function RootLayout() {
               <Provider store={store}>
                 <BottomSheetModalProvider>
                   <ChatSocketBootstrapper />
+                  <HandbookAssistantBootstrapper />
                   <Stack initialRouteName="index" screenOptions={{ headerShown: false }}>
                     <Stack.Screen
                       name="settings"
@@ -86,7 +88,12 @@ export default function RootLayout() {
                         headerStyle: { backgroundColor: "#fff" },
                       }}
                     />
+                    <Stack.Screen
+                      name="handbook-assistant/article"
+                      options={{ presentation: "modal" }}
+                    />
                   </Stack>
+                  <VinnyFloatingButton />
                   <Toast />
                   <ForceUpdateGate />
                 </BottomSheetModalProvider>
