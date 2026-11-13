@@ -41,7 +41,7 @@ const DEPT_TYPE_OPTIONS = [
   { value: 'board',      label: 'Ban' },
   { value: 'division',   label: 'Khối' },
   { value: 'department', label: 'Phòng ban' },
-  { value: 'branch',     label: 'Chi nhánh (TTKD)' },
+  { value: 'branch',     label: 'Trung tâm kinh doanh (TTKD)' },
 ];
 
 const TYPE_STYLE = {

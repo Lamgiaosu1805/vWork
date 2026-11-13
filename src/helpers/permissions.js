@@ -59,5 +59,8 @@ export const getPermissions = (user, effectivePermissions) => {
     // Quy định 183A — phân khách & SLA chăm sóc
     showCustomerCareQueue: effective.includes("customer_care.view"),
     showCustomerCareMgmt: effective.includes("customer_care.manage"),
+    // Báo cáo ngày kinh doanh — màn app chưa làm, flag có sẵn để đồng bộ với web
+    showDailyReport: effective.includes("daily_report.submit"),
+    showDailyReportMgmt: effective.includes("daily_report.view"),
   };
 };
