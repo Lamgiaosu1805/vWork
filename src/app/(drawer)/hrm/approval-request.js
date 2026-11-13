@@ -29,6 +29,7 @@ import Toast from "react-native-toast-message";
 import DatePickerApprovalModal from "../../../features/requests/components/approvalRequest/DatePickerApprovalModal";
 import { ChevronLeft } from "lucide-react-native";
 import { getPermissions } from "../../../helpers/permissions";
+import useCanViewAllRequests from "../../../features/requests/hooks/useCanViewAllRequests";
 import requestsApi from "../../../features/requests/api/requestsApi";
 import { isAlreadyApprovedByMe } from "../../../helpers/request";
 import { Skeleton, SkeletonCircle } from "../../../components/Skeleton";
@@ -55,7 +56,8 @@ const RequestApprovalCardSkeleton = () => (
 
 const ApprovalRequestScreen = () => {
   const user = useSelector((s) => s.auth.user);
-  const { canReviewRequests, canViewAllRequests } = getPermissions(user);
+  const { canReviewRequests } = getPermissions(user);
+  const canViewAllRequests = useCanViewAllRequests();
   const viewOnly = !canReviewRequests && canViewAllRequests;
   const [status, setStatus] = useState("");
   const effectiveStatus = viewOnly ? "approved" : status;

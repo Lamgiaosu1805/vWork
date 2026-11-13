@@ -17,6 +17,7 @@ export { default as useAccessibleDepts } from "./hooks/useAccessibleDepts";
 export { default as useMyDeptReport } from "./hooks/useMyDeptReport";
 export { default as useReportHistory } from "./hooks/useReportHistory";
 export { default as useAdminReports } from "./hooks/useAdminReports";
+export { default as useCanViewAllWeeklyReports } from "./hooks/useCanViewAllWeeklyReports";
 export { default as useSubmitReport } from "./hooks/useSubmitReport";
 export { default as useDeptFolders } from "./hooks/useDeptFolders";
 export { default as useDeptFiles } from "./hooks/useDeptFiles";

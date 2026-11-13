@@ -32,5 +32,11 @@ export const requestCallPermissions = async () => {
   });
   const result = await request(permission);
   console.log("[OMIKIT] Microphone permission:", result);
+
+  if (Platform.OS === "android") {
+    const callLogResult = await request(PERMISSIONS.ANDROID.WRITE_CALL_LOG);
+    console.log("[OMIKIT] Write call log permission:", callLogResult);
+  }
+
   return result === RESULTS.GRANTED;
 };

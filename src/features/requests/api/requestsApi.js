@@ -34,6 +34,9 @@ const requestsApi = {
       params,
     }),
 
+  getRequestViewScope: () =>
+    api.get("/requests/view-scope", { requiresAuth: true }),
+
   getRequestById: (requestId) =>
     api.get(`/requests/${requestId}`, { requiresAuth: true }),
 

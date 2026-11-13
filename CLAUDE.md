@@ -91,6 +91,9 @@ src/
 │   │                               # mở qua openCareReport(), tự mở sau cuộc gọi qua socket customer_call:ended),
 │   │                               # lịch sử chăm sóc/giao khách, Điều phối khách (quản lý)
 │   └── crmTicket/                    # Hỗ trợ (placeholder, chưa có backend)
+│   ├── handbookAssistant/            # Trợ lý Nội quy VINNY (AI) — xem mục "Trợ lý Nội quy"
+│   ├── appUpdate/                    # Ép cập nhật: ForceUpdateGate (mount ở root layout) + header
+│   │                                 # x-app-platform/x-app-version + bắt 426 trong axiosInstance
 ├── api/                            # CHỈ còn API dùng chung toàn app
 │   └── axiosInstance.js            # Axios singleton, interceptor auth + refresh
 ├── components/                     # Component dùng chung toàn app
@@ -397,6 +400,33 @@ name: decodeURIComponent(a.fileName ?? a.uri.split('/').pop())
 
 ---
 
+## Trợ lý Nội quy (VINNY) — `src/features/handbookAssistant/`
+
+AI hỏi đáp nội quy / chính sách nhân sự / cách dùng Đơn từ, dùng chung backend với web
+(`/handbook-assistant` + socket `handbook:*`, quyền `handbook_assistant.use`, hạn mức 30 câu/ngày và lịch sử
+dùng chung web ↔ app). Port từ `vWork-website/src/features/ai-assistant/` (logic giữ nguyên, UI viết lại RN).
+
+- **Route** (cấp gốc như Ticket, mở được từ mọi module): `app/handbook-assistant/index.js` (chat),
+  `history.js`, `article.js` (modal nguyên văn Điều được trích dẫn — khai báo `presentation: "modal"` ở
+  `app/_layout.js`). Mở bằng `router.push("/handbook-assistant")`.
+- **Lối vào:** VINNY nổi góc phải dưới (`VinnyFloatingButton`, mount ở root layout) — CHỈ hiện ở màn có thanh
+  tab (`useSegments()` chứa `"(tabs)"`), kéo thả được (thả ra bám cạnh trái/phải, không xuống dưới thanh tab —
+  trong CRM không thấp hơn nút AI của CRM — nhớ vị trí theo tài khoản); nút × ẩn trên máy theo tài khoản
+  (bật lại ở menu ⋮ màn trợ lý). Mục "VINNY - Trợ lý Nội quy" trong drawer (nhóm Tiện ích). Cả hai ẩn khi thiếu quyền.
+- **State:** redux slice `handbookAssistant` (tin nhắn theo hội thoại, câu đang chạy, nháp, chưa đọc, ẩn VINNY);
+  dữ liệu REST qua TanStack Query (`QUERY_KEYS` trong `constants.js`).
+- **Luồng trả lời** (`lib/streamController.js`, sống ngoài component nên rời màn vẫn chạy): dùng chung socket
+  chat (`getChatSocket()`); `HandbookAssistantBootstrapper` gắn listener lại mỗi khi đổi token (chatSocket tạo
+  socket mới, xoá listener cũ). Mất kết nối KHÔNG báo lỗi ngay: khi socket nối lại / app về foreground thì hỏi
+  lại **cùng `clientId`** → server không tạo lượt mới, không trừ lượt, phát lại kết quả. Không gửi `handbook:ask`
+  khi socket chưa kết nối (socket.io đệm emit rồi gửi bù → server tạo câu hỏi dù app đã báo lỗi). `clientId` là
+  UUID ngẫu nhiên (server coi là duy nhất mãi mãi theo tài khoản).
+- **Đồng ý chia sẻ dữ liệu** (App Store 5.1.2(i)): `ConsentCard` hiện trước lần dùng đầu, lưu AsyncStorage
+  theo tài khoản + `CONSENT_VERSION` — đổi nội dung thì tăng version để mọi người đồng ý lại.
+- Đăng xuất ở drawer tự dọn slice + cache trợ lý (redux `auth` không được xoá khi đăng xuất).
+
+---
+
 ## Thư viện đáng chú ý
 
 | Thư viện | Dùng cho |
@@ -413,3 +443,4 @@ name: decodeURIComponent(a.fileName ?? a.uri.split('/').pop())
 | `react-native-wifi-reborn` | Lấy tên WiFi cho check-in |
 | `react-native-toast-message` | Toast thông báo toàn app |
 | `dayjs` | Xử lý ngày giờ (locale vi) |
+| `react-native-markdown-display` | Hiển thị Markdown câu trả lời của Trợ lý Nội quy (JS thuần) |
