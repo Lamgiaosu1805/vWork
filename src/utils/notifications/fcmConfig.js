@@ -11,6 +11,14 @@ import {
   registerDeviceTokenApi,
   unregisterDeviceTokenApi,
 } from "../../api/notificationApi";
+import { queryClient } from "../../libs/queryClient";
+// Import thẳng lib (không qua barrel crmCustomerCare) — file này nạp từ index.js gốc/headless handler,
+// tránh kéo cả UI CRM (omikit, bottom sheet...) vào lúc khởi động
+import {
+  isCustomerCarePushType,
+  navigateToCareQueue,
+} from "../../features/crmCustomerCare/lib/careNavigation";
+import { CARE_QUERY_ROOT } from "../../features/crmCustomerCare/lib/queryKeys";
 import { APP_VERSION } from "../../features/appUpdate/lib/appVersion";
 import { compareVersions } from "../../features/appUpdate/lib/compareVersions";
 
@@ -147,7 +155,7 @@ function isAlreadyUpdated(data) {
 
 function handleOpenedRemoteMessage(remoteMessage) {
   if (openStoreFromRemoteMessage(remoteMessage?.data)) return;
-  navigateToChatFromRemoteMessage(remoteMessage);
+  handleNotificationOpen(remoteMessage);
 }
 
 function navigateToChatFromRemoteMessage(remoteMessage) {
@@ -159,6 +167,21 @@ function navigateToChatFromRemoteMessage(remoteMessage) {
   router.push("/workplace");
 
   return true;
+}
+
+function handleNotificationOpen(remoteMessage) {
+  const data = remoteMessage?.data ?? {};
+  if (isCustomerCarePushType(data.type)) {
+    navigateToCareQueue();
+    return true;
+  }
+  return navigateToChatFromRemoteMessage(remoteMessage);
+}
+
+function handleForegroundCustomerCare(remoteMessage) {
+  if (!isCustomerCarePushType(remoteMessage?.data?.type)) return;
+  // Hiển thị đã có sẵn (iOS: firebase.json foreground_presentation_options, Android: notifyKit) — chỉ cần làm mới hàng đợi
+  queryClient.invalidateQueries({ queryKey: [CARE_QUERY_ROOT] });
 }
 
 export async function initNotifications() {
@@ -182,6 +205,7 @@ export function registerNotificationListeners() {
   const unsubscribeOnMessage = messaging().onMessage(async (remoteMessage) => {
     console.log("onMessage Received:", JSON.stringify(remoteMessage));
     if (isAlreadyUpdated(remoteMessage?.data)) return;
+    handleForegroundCustomerCare(remoteMessage);
     if (
       remoteMessage?.notification?.title &&
       remoteMessage?.notification?.body
@@ -212,7 +236,10 @@ export function registerNotificationListeners() {
           "NotifyKit notification pressed:",
           JSON.stringify(detail.notification),
         );
-        openStoreFromRemoteMessage(detail.notification?.data);
+        if (openStoreFromRemoteMessage(detail.notification?.data)) return;
+        if (isCustomerCarePushType(detail.notification?.data?.type)) {
+          navigateToCareQueue();
+        }
       }
     },
   );

@@ -2,7 +2,7 @@ import React, { useEffect } from "react";
 import { Stack } from "expo-router";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
-import { QueryClient, QueryClientProvider, focusManager } from "@tanstack/react-query";
+import { QueryClientProvider, focusManager } from "@tanstack/react-query";
 import { AppState, Platform } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { Provider, useDispatch, useSelector } from "react-redux";
@@ -21,10 +21,9 @@ import {
 import { ThemeProvider } from "../assets/theme/ThemeProvider";
 import useDailyAppRestart from "../hooks/useDailyAppRestart";
 import { initDeepLink } from "../helpers/deepLink";
+import { queryClient } from "../libs/queryClient";
 import { ForceUpdateGate } from "../features/appUpdate";
 import { HandbookAssistantBootstrapper, VinnyFloatingButton } from "../features/handbookAssistant";
-
-const queryClient = new QueryClient();
 
 // React Native không có sự kiện focus như trình duyệt: TanStack coi app luôn "đang mở" nên refetchInterval vẫn chạy
 // khi app nằm nền. Nối với AppState để dừng polling khi ẩn app và tải lại dữ liệu cũ khi mở app lên.
